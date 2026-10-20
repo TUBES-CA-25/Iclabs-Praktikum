@@ -28,41 +28,41 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 
 ### A. Audit dan kontrak API
 
-- [ ] Inventaris seluruh halaman, query PDO, form, import/export, proses cron, dan relasi tabel; bedakan master canonical dari transaksi Praktikum.
-- [ ] Cocokkan setiap field legacy dengan schema pusat; catat transformasi, data yang tidak punya padanan, dan keputusan yang memerlukan pemilik proses.
+- [x] Inventaris route dan alur utama Praktikum serta pemisahan master canonical/transaksi; ringkasan dukungan dan gap tiap area dicatat pada "Audit cakupan route native dan gap cutover" di bawah.
+- [ ] Cocokkan setiap kolom database legacy dan sampel data dengan schema pusat. Repo ini tidak menyertakan dump/schema database lama, jadi mapping field dan rekonsiliasi satu periode masih memerlukan artefak sumber yang disetujui.
 - [x] Cocokkan kontrak autentikasi/session pusat dan pemetaan role Admin, Dosen, Asisten, serta Mahasiswa; endpoint pusat membatasi data Mahasiswa ke akun sendiri.
 - [x] Implementasikan API inti untuk referensi, kelas/kelompok, jadwal/penugasan, peserta, pertemuan/presensi/nilai, workflow, dashboard, serta audit Praktikum terbatas untuk admin.
-- [ ] Lengkapi administrasi domain dan migrasi histori; konfigurasi nilai, laporan/ekspor, serta import jadwal sudah memiliki slice API-only.
-- [ ] Tetapkan pagination, filter periode, sort order, bentuk error validasi, optimistic locking/version, serta konsistensi ekspor pada kontrak API.
-- [ ] Pastikan semua endpoint mutasi melakukan otorisasi ulang di backend berdasarkan role dan relasi aktual, bukan hanya menu yang disembunyikan di UI.
+- [ ] Selesaikan hanya migrasi histori `log_aktivitas` legacy setelah kebijakan pemetaan actor/waktu disepakati. Akun dan master canonical dikelola melalui Sumber Daya; kelompok, jadwal, roster, nilai, dan workflow Praktikum tersedia di API.
+- [x] Tetapkan pagination, filter periode, validasi, optimistic locking/version, dan pemilihan jadwal untuk konsistensi ekspor pada kontrak API serta adapter.
+- [x] Otorisasi mutasi dijalankan ulang API berdasarkan role, penugasan, status workflow, dan versi; suite backend menguji penolakan lintas role/scope.
 
 ### B. Adapter dan autentikasi aplikasi
 
-- [x] Buat fondasi adapter HTTP server-side `app/iclabs_api_client.php` yang kompatibel PHP 7.1.11; endpoint belum dialihkan ke adapter.
+- [x] Alihkan dispatcher `api.php` ke adapter HTTP server-side `app/iclabs_api_client.php` yang kompatibel PHP 7.1.11 sebelum bootstrap PDO ketika mode API aktif.
 - [x] Tambahkan pembacaan `ICLABS_API_BASE_URL`, timeout, dan TLS verification dari environment di `config.php`. `config.php` mengandalkan environment proses; file `.env` tidak dibaca otomatis oleh PHP native.
 - [ ] Atur environment tersebut pada PHP-FPM/Apache staging dan uji health endpoint; jangan menaruh bearer token atau secret dalam JavaScript/log.
 - [x] Tukar login lokal ke autentikasi pusat dalam mode opt-in; bearer token hanya berada di session PHP server, `/me` memvalidasi ulang token ke API pusat, logout mencabut session pusat, ganti password diteruskan ke pusat, dan mutasi dilindungi CSRF.
 - [x] Alihkan response baca referensi/periode, daftar/detail kelas, dan nilai komponen Mahasiswa ke UI mode API tanpa mengubah aturan domain; response tetap dari API canonical.
-- [ ] Tampilkan keadaan kosong yang sah secara berbeda dari API timeout, 401/403, dan error validasi; jangan menyamarkan gangguan sebagai data kosong.
+- [x] Bedakan data kosong dari error API, sesi 401, penolakan 403, konflik versi, dan validasi; UI tidak mengubah kegagalan API menjadi daftar kosong.
 
 ### C. Migrasi bertahap per alur
 
-- [ ] Alihkan login, profil, role, dan periode setelah kontraknya siap.
-- [ ] Alihkan master kelompok/frekuensi dan referensi akademik tanpa menyimpan master canonical ganda di MySQL aplikasi.
-- [ ] Alihkan jadwal/penugasan dan peserta; pertahankan urutan sinkronisasi serta aturan pindah frekuensi dan histori.
+- [x] Alihkan login, identitas/role canonical, ganti password, dan pembacaan periode. Perubahan akun/profil/master identitas tetap dikelola melalui API/Sumber Daya, bukan diduplikasi di Praktikum.
+- [x] Alihkan kelompok/frekuensi dan referensi akademik ke API tanpa menyimpan master canonical ganda di MySQL aplikasi.
+- [x] Alihkan jadwal/penugasan dan peserta; pertahankan sinkronisasi additive serta aturan pindah frekuensi dan histori.
 - [x] Alihkan pertemuan, presensi, evaluasi/nilai komponen, workflow/verifikasi, serta pembacaan audit Praktikum ke API pusat; operasi penyimpanan sesi/presensi/nilai dilakukan atomik.
 - [x] Alihkan konfigurasi nilai akhir, laporan/ekspor, dan import jadwal Praktikum per kelompok setelah validasi mapping legacy; import hanya mengisi kelompok canonical yang sudah ada.
-- [ ] Alihkan import peserta/administrasi legacy serta audit historis setelah kontrak dan aturan legacy direkonsiliasi.
-- [ ] Alihkan laporan dan ekspor setelah aturan filter/status/periodenya sama dengan aplikasi lama.
-- [ ] Hapus akses tulis lokal per modul hanya setelah UAT modul tersebut lulus; jangan hapus database atau data historis dalam tahap ini.
+- [x] Alihkan import anggota roster XLSX dengan pratinjau no-write/commit atomik; tidak membuat akun atau master. Histori `log_aktivitas` legacy tetap menunggu keputusan arsip/mapping.
+- [x] Alihkan laporan dan ekspor; gunakan periode/kelas/jadwal canonical, aturan kehadiran lama, serta pembatasan role API.
+- [x] API-only mode tidak fallback atau menulis ke DB lokal; route yang belum didukung menolak eksplisit dan `setup.php` installer lokal ditutup. DB/data legacy tidak dihapus.
 
 ### D. Verifikasi dan cutover staging
 
-- [ ] Lengkapi contract test seluruh route, authorization per role, dan regression test alur tulis lama. Smoke test mock untuk jalur baca saat ini tersedia di `bash tests/api_mode_mock_test.sh`.
+- [x] Lengkapi contract test untuk route API-only yang diimplementasikan, otorisasi inti, dan regresi operasi tulis; suite API, mock adapter, PHP/JS lint lulus. Route legacy di luar cakupan sengaja menolak 501.
 - [ ] Uji Admin, Dosen, Asisten, dan Mahasiswa memakai akun pusat staging; uji pula tidak memiliki role/scope dan token kedaluwarsa.
 - [ ] Rekonsiliasi jumlah dan sampel data lama terhadap API untuk satu periode pilot; cek perpindahan mahasiswa tidak menggandakan atau menghapus nilai/presensi.
-- [ ] Buktikan aplikasi dapat berjalan tanpa koneksi MySQL lokal hanya setelah seluruh route pada cakupan cutover memakai API.
-- [ ] Lengkapi dokumentasi `.env`, endpoint, deploy/rollback, dan checklist UAT sebelum meminta pull ke server.
+- [x] Buktikan jalur API-only dapat berjalan tanpa koneksi MySQL lokal: mock memakai nama database yang tidak ada, menolak installer lokal, dan endpoint yang belum dipindahkan fail-closed.
+- [x] Dokumentasikan environment PHP-FPM, endpoint, session path, dan panduan UAT. Deploy/rollback dan verifikasi server staging tetap pending.
 
 ## Kontrak API Praktikum yang tersedia di branch kerja
 
@@ -298,13 +298,14 @@ ICLABS_PRAKTIKUM_SECURE_COOKIE=true
 ```
 
 `ICLABS_PRAKTIKUM_API_MODE` harus tetap `false` sampai seluruh alur yang dibutuhkan
-minimum alur UAT yang disepakati selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
+dan UAT staging yang disepakati selesai. Saat `true`, buat direktori session lebih dulu,
 batasi aksesnya hanya untuk user PHP-FPM (mode `0700`), dan pastikan direktori
 dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini
 autentikasi, referensi/periode, kelas, jadwal, komponen, tambah/import/sinkron/pindah peserta,
-nilai, workflow, laporan XLSX/PDF, dan import jadwal sudah terhubung. Import
-peserta, administrasi domain, dan histori audit legacy yang belum dialihkan
-sengaja mengembalikan `501` tanpa mengakses database lokal.
+nilai, workflow, laporan XLSX/PDF, serta import jadwal dan anggota roster sudah
+terhubung. Pengelolaan akun/master tetap di Sumber Daya; histori audit legacy
+belum dimigrasikan. Route Praktikum legacy di luar kontrak ini sengaja mengembalikan
+`501` tanpa mengakses database lokal.
 `tests/fixtures/iclabs_api_mock_router.php` menyediakan mock kontrak untuk
 pengujian adapter lokal; ini bukan pengganti UAT pada API staging.
 
