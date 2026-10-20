@@ -250,6 +250,17 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/admin/grade-bands' && in_array($method, array('GET', 'PUT'), true)) {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Akses khusus administrator.'), 403);
+        }
+        $response = api_mode_request($method, 'praktikum/konfigurasi-nilai', $method === 'PUT' ? $payload : null);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Konfigurasi nilai tidak dapat dimuat atau disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if ($route === '/references' && $method === 'GET') {
         $response = api_mode_request('GET', 'praktikum/referensi');
         if ($response['status'] < 200 || $response['status'] >= 300) {

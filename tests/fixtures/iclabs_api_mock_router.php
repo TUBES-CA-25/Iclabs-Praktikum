@@ -70,6 +70,21 @@ if ($path === '/api/v1/praktikum/audit') {
     ))));
     return;
 }
+if ($path === '/api/v1/praktikum/konfigurasi-nilai') {
+    $bands = array(
+        array('kode' => 'A', 'nilai_minimum' => 85, 'aktif' => true),
+        array('kode' => 'A-', 'nilai_minimum' => 80, 'aktif' => true),
+        array('kode' => 'B+', 'nilai_minimum' => 75, 'aktif' => true),
+        array('kode' => 'B', 'nilai_minimum' => 70, 'aktif' => true),
+        array('kode' => 'B-', 'nilai_minimum' => 65, 'aktif' => true),
+        array('kode' => 'C+', 'nilai_minimum' => 60, 'aktif' => true),
+        array('kode' => 'C', 'nilai_minimum' => 55, 'aktif' => true),
+        array('kode' => 'D', 'nilai_minimum' => 40, 'aktif' => true),
+        array('kode' => 'E', 'nilai_minimum' => 0, 'aktif' => true),
+    );
+    echo json_encode(array('data' => array('versi' => $method === 'PUT' ? (int) ($request['versi'] ?? 0) + 1 : 1, 'rentang' => $method === 'PUT' ? ($request['rentang'] ?? $bands) : $bands)));
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,
@@ -104,7 +119,7 @@ if ($path === '/api/v1/praktikum/kelas/10') {
         'jadwal' => array(array('id' => 99, 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '11:00', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12', 'pola_perulangan' => 'MINGGUAN', 'status' => 'AKTIF', 'nama_laboratorium' => 'Laboratorium Uji', 'status_workflow' => 'TERVERIFIKASI', 'versi_workflow' => 1, 'pengajar' => array())),
         'sesi' => array(),
         'komponen_nilai' => array(array('id' => 1, 'kode' => 'MID', 'nama' => 'Ujian Tengah Semester', 'bobot_persen' => 30, 'urutan' => 1, 'aktif' => true)),
-        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(), 'nilai' => array())),
+        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(), 'nilai' => array(), 'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'))),
     );
     echo json_encode(array('data' => $class));
     return;
@@ -149,6 +164,7 @@ if ($path === '/api/v1/praktikum/nilai/saya') {
         'nama_mata_kuliah' => 'Algoritma dan Pemrograman', 'tahun_akademik' => '2026/2027',
         'semester' => 'Ganjil', 'kode_komponen' => 'MID', 'nama_komponen' => 'Ujian Tengah Semester',
         'bobot_persen' => 30, 'nilai' => 85,
+        'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'),
     ))));
     return;
 }

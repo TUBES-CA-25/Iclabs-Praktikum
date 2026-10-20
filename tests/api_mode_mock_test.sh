@@ -52,6 +52,10 @@ dashboard_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.
 grep -q '"jumlah_kelas":2' <<<"$dashboard_response" || { echo "FAIL: ringkasan dashboard"; exit 1; }
 audit_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
 grep -q '"trx_kelas_kuliah:10 · UPDATE"' <<<"$audit_response" || { echo "FAIL: audit aktivitas Praktikum"; exit 1; }
+bands_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fgrade-bands")"
+grep -q '"kode":"A"' <<<"$bands_response" || { echo "FAIL: ambang nilai admin"; exit 1; }
+bands_update="$(curl -sS -b "$cookie_jar" -X PUT -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"rentang":[{"kode":"A","nilai_minimum":86},{"kode":"A-","nilai_minimum":80},{"kode":"B+","nilai_minimum":75},{"kode":"B","nilai_minimum":70},{"kode":"B-","nilai_minimum":65},{"kode":"C+","nilai_minimum":60},{"kode":"C","nilai_minimum":55},{"kode":"D","nilai_minimum":40},{"kode":"E","nilai_minimum":0}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fgrade-bands")"
+grep -q '"versi":2' <<<"$bands_update" || { echo "FAIL: penyimpanan ambang nilai"; exit 1; }
 references_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Freferences")"
 grep -q '"kode":"LAB-UJI"' <<<"$references_response" || { echo "FAIL: referensi form jadwal"; exit 1; }
 grep -q '"kode":"TI"' <<<"$references_response" || { echo "FAIL: referensi form kelas"; exit 1; }
@@ -96,4 +100,4 @@ grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai prib
 student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
 [[ "$student_audit_status" == 403 ]] || { echo "FAIL: audit harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit admin, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit admin, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
