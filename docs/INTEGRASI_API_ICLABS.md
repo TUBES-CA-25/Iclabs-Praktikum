@@ -29,7 +29,7 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 ### A. Audit dan kontrak API
 
 - [x] Inventaris route dan alur utama Praktikum serta pemisahan master canonical/transaksi; ringkasan dukungan dan gap tiap area dicatat pada "Audit cakupan route native dan gap cutover" di bawah.
-- [ ] Cocokkan setiap kolom database legacy dan sampel data dengan schema pusat. Repo ini tidak menyertakan dump/schema database lama, jadi mapping field dan rekonsiliasi satu periode masih memerlukan artefak sumber yang disetujui.
+- [ ] Cocokkan setiap kolom database legacy dan sampel data dengan schema pusat. Project Praktikum tidak menyertakan dump; workspace integrasi memiliki snapshot lebih lama `db/db_praktikum_fikom_2026-10-13_021627.sql` (SHA-256 `12af7b11fd058ee94649d0017b71a1e7326ea9b6f25afcc976ce342816984b45`). Dump yang disetujui untuk audit transaksi adalah snapshot 16 Oktober (SHA-256 `f53d31d91aa781f2a02c9401d0bccec75583110117d50dbf884d091291ae3ba1`) dan belum ada di workspace lokal; jangan gunakan snapshot 13 Oktober sebagai dasar migrasi atau persetujuan field mapping.
 - [x] Cocokkan kontrak autentikasi/session pusat dan pemetaan role Admin, Dosen, Asisten, serta Mahasiswa; endpoint pusat membatasi data Mahasiswa ke akun sendiri.
 - [x] Implementasikan API inti untuk referensi, kelas/kelompok, jadwal/penugasan, peserta, pertemuan/presensi/nilai, workflow, dashboard, serta audit Praktikum terbatas untuk admin.
 - [ ] Selesaikan hanya migrasi histori `log_aktivitas` legacy setelah kebijakan pemetaan actor/waktu disepakati. Akun dan master canonical dikelola melalui Sumber Daya; kelompok, jadwal, roster, nilai, dan workflow Praktikum tersedia di API.
