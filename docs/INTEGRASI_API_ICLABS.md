@@ -212,7 +212,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Pada tahap ini aplikasi legacy tetap berjalan seperti sebelumnya;
 tidak ada akses atau perubahan database yang dialihkan ke API.
 
-Suite backend pada container lulus 238 tests / 1.495 assertions; Pint dan
+Suite backend pada container lulus 240 tests / 1.503 assertions; Pint dan
 route registration juga lulus. Tes ini bukan UAT VPS maupun pengujian seluruh
 route Praktikum.
 
