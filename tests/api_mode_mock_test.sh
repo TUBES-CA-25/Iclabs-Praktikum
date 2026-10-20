@@ -37,6 +37,10 @@ if [[ "$ready" != true ]]; then
   exit 1
 fi
 
+setup_status="$(curl -sS -o "$test_dir/setup.txt" -w '%{http_code}' "http://127.0.0.1:$app_port/setup.php")"
+[[ "$setup_status" == 404 ]] || { echo "FAIL: installer database lokal harus ditutup pada mode API (HTTP $setup_status)"; exit 1; }
+grep -q '^Not found\.$' "$test_dir/setup.txt" || { echo "FAIL: respons installer mode API tidak sesuai"; exit 1; }
+
 cookie_jar="$test_dir/cookies.txt"
 login_response="$(curl -sS -c "$cookie_jar" -H 'Content-Type: application/json' -d '{"email":"uji-admin@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"
 [[ "$login_response" == '{"ok":true}' ]] || { echo "FAIL: login bridge: $login_response"; exit 1; }

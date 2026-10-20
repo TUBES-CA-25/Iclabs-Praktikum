@@ -12,6 +12,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] UI mode API memiliki form admin membuat/mengubah kelas/kelompok, mengatur jumlah komponen nilai, dan CRUD jadwal/penugasan; ada tindakan sinkron/pindah peserta.
 - [ ] Migrasi histori audit legacy, rekonsiliasi penuh seluruh aturan legacy, dan cutover semua route belum selesai. Konfigurasi nilai global, kalkulasi nilai akhir, ekspor laporan, dan import jadwal ke kelompok canonical tersedia. Jangan menganggap aplikasi siap cutover.
 - [x] Simpan sesi, presensi dan nilai tetap menggunakan satu endpoint gabungan atomik; UI API-only memuat hanya field presensi/nilai yang diubah agar tidak menimpa data tanpa perubahan.
+- [x] Tutup `setup.php` saat mode API aktif sebelum session/PDO lokal dibuka; pembuatan akun dan role Praktikum tetap melalui API/Sumber Daya dan tidak membuat admin duplikat.
 
 Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelompok, komponen, jadwal, sinkron/pindah peserta dan workflow. Backend API berada di branch `feature/praktikum-read-api`; deploy dan UAT VPS belum dibuktikan.
 
@@ -255,7 +256,8 @@ berikutnya.
 Pemetaan berikut berasal dari `api.php`, `app/classes.php`, `app/admin.php`,
 `app/frequency.php`, `app/period.php`, dan `app/transfer.php`. Mode default masih
 menjalankan database lokal. Mode API opt-in memisahkan dispatcher sebelum
-`app/bootstrap.php`, sehingga request API-only tidak membuka koneksi PDO. Route
+`app/bootstrap.php`, sehingga request API-only tidak membuka koneksi PDO; installer
+`setup.php` juga ditutup sebelum bootstrap lokal. Route
 yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 
 | Area native | Perilaku yang harus dipertahankan | Dukungan API saat ini / gap |
@@ -281,7 +283,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API di image test `iclabs-test-php83:local` lulus **255 tests / 1.589 assertions**, termasuk pencarian calon Mahasiswa, penolakan duplikasi lintas frekuensi, penambahan/import anggota-roster atomik, import jadwal, dan rollback batch. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup pratinjau/commit import jadwal serta anggota, ekspor XLSX/PDF, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Bukti mock bukan UAT VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API di image test `iclabs-test-php83:local` lulus **255 tests / 1.589 assertions**, termasuk pencarian calon Mahasiswa, penolakan duplikasi lintas frekuensi, penambahan/import anggota-roster atomik, import jadwal, dan rollback batch. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture/setup, dan `node --check assets/app.js`; mock mencakup pratinjau/commit import jadwal serta anggota, ekspor XLSX/PDF, workflow, peserta, nilai Mahasiswa, serta penolakan installer lokal tanpa PDO. Bukti mock bukan UAT VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 

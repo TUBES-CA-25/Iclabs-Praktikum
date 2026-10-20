@@ -1,5 +1,15 @@
 <?php
 
+// The installer provisions only the legacy local database. In API-only mode,
+// account and role management belong to the central ICLabs API; do not open a
+// PDO connection or create a second local administrator.
+$setupConfig = require __DIR__ . '/config.php';
+if (!empty($setupConfig['iclabs_api_mode'])) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Not found.');
+}
+
 header('Cache-Control: no-store');
 header('X-Frame-Options: DENY');
 
