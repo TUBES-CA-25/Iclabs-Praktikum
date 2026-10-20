@@ -8,7 +8,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
-- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, dan tulis nilai mentah pada branch terpisah `feature/praktikum-read-api`, HEAD `4fba88d`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
+- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, tulis nilai mentah, dan operasi simpan gabungan atomik pada branch terpisah `feature/praktikum-read-api`, HEAD `4adbff4`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
 - [ ] Mutasi jadwal/pengajar, pengelolaan/perpindahan peserta, workflow verifikasi, kalkulasi nilai akhir, laporan, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
 - [ ] Legacy menyimpan perubahan pertemuan, kehadiran, dan nilai melalui satu transaksi. API saat ini menyediakan tulis kehadiran dan nilai melalui endpoint terpisah; jangan memigrasikan tombol simpan gabungan sebelum endpoint atomik gabungan tersedia atau perilaku transaksi dipertahankan.
 
@@ -74,6 +74,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `PATCH /v1/praktikum/kelas/{classId}` | Hanya admin pusat; ubah kode/nama kelompok, jumlah pertemuan, atau catatan dengan `versi` wajib. Menolak stale version, kode ganda dalam periode/prodi/mata kuliah, jumlah pertemuan di bawah sesi yang sudah tercatat, dan workflow yang sudah maju. | Implementasi lokal, diuji untuk update/version conflict dan null catatan. |
 | `POST /v1/praktikum/kelas/{classId}/peserta/sinkronisasi` | Admin pusat atau Asisten yang ditugaskan pada kelas; menambahkan peserta dari anggota kelompok berstatus aktif dan Mahasiswa aktif. Idempotent; tidak menghapus peserta lama dan tidak mengaktifkan ulang status nonaktif. Ditolak jika workflow jadwal sudah diajukan; response mengembalikan `versi` kelompok terbaru. | Implementasi lokal; diuji untuk idempotensi, preservasi peserta mengundurkan diri, dan audit. |
 | `PUT /v1/praktikum/kelas/{classId}/pertemuan/{meetingNumber}/kehadiran` | Admin pusat atau Asisten yang ditugaskan; menyimpan tanggal/materi sesi dan batch status kehadiran dalam satu transaksi. Jika kelas memiliki beberapa jadwal, wajib menyertakan `id_jadwal_kelas_kuliah`. Menerima status `HADIR`, `IZIN`, `SAKIT`, `ALPA`, `TERLAMBAT`; `status: null` menghapus catatan kehadiran yang dipilih, mengikuti perilaku simpan lama. Memerlukan `versi` kelompok dan menolak workflow yang sudah diajukan. | Implementasi lokal; diuji untuk atomicity, peserta valid, optimistic version, scope Asisten, audit, dan status `TERLAMBAT`. Belum dipasang ke adapter/aplikasi. |
+| `PUT /v1/praktikum/kelas/{classId}/perubahan` | Operasi simpan atomik meniru `/classes/{id}/save`. Memerlukan `versi`; dapat membawa objek `pertemuan` (`nomor_pertemuan`, `tanggal_sesi`, `materi`, opsional `id_jadwal_kelas_kuliah`), array `kehadiran` dan/atau array `nilai`. Jika satu bagian gagal validasi, semua bagian dalam permintaan di-rollback. Versi kelompok naik satu kali untuk keseluruhan permintaan. Otorisasi mengikuti admin pusat atau Asisten yang ditugaskan; workflow yang telah diajukan menolak perubahan. | Implementasi lokal; test membuktikan perubahan sesi/presensi rollback bersama ketika batch nilai invalid. Belum dipasang ke adapter/aplikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/komponen-nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi`, `jumlah_evaluasi`, `jumlah_asistensi`. Membentuk `EVALUASI_N` dan `ASISTENSI_N` dengan bobot total masing-masing 20%; `MID` dan `UAS` tetap 30%. Komponen berisi nilai tidak bisa dinonaktifkan. Ditolak bila workflow telah diajukan. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi` dan array `perubahan` berisi `id_mahasiswa`, `kode_komponen`, `nilai` (0–100 atau `null` untuk menghapus), opsional `catatan`. Semua peserta dan komponen divalidasi sebelum perubahan; stale version ditolak. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
 
@@ -81,6 +82,46 @@ Endpoint kehadiran mengandalkan referensi baru `mst_status_kehadiran_mahasiswa.K
 Di server, endpoint ini belum siap sampai kode API dirilis dan referensi ditambahkan
 secara idempotent melalui `php8.3 artisan db:seed --class=ReferenceDataSeeder --force`.
 Tidak ada migration schema baru untuk slice ini.
+
+### Contoh simpan satu formulir Praktikum secara atomik
+
+Untuk meniru satu submit lama yang mengubah materi sesi, presensi, dan nilai
+sekaligus, kirim seluruh perubahan melalui endpoint gabungan. Jangan pecah
+formulir yang sama menjadi beberapa HTTP request karena antarkeduanya tidak
+akan berbagi satu transaksi.
+
+```http
+PUT /api/v1/praktikum/kelas/10/perubahan
+Authorization: Bearer <token-sesi-pusat>
+Content-Type: application/json
+```
+
+```json
+{
+  "versi": 4,
+  "pertemuan": {
+    "nomor_pertemuan": 1,
+    "tanggal_sesi": "2026-10-21",
+    "materi": "Pengenalan Praktikum",
+    "id_jadwal_kelas_kuliah": 21
+  },
+  "kehadiran": [
+    { "id_mahasiswa": 40, "status": "HADIR", "catatan": null },
+    { "id_mahasiswa": 41, "status": "TERLAMBAT", "catatan": "Terlambat 10 menit" }
+  ],
+  "nilai": [
+    { "id_mahasiswa": 40, "kode_komponen": "EVALUASI_1", "nilai": 85 },
+    { "id_mahasiswa": 41, "kode_komponen": "MID", "nilai": 0 }
+  ]
+}
+```
+
+`pertemuan` dapat dihilangkan untuk simpan nilai saja. `nilai[].nilai: null`
+menghapus nilai; `kehadiran[].status: null` menghapus catatan kehadiran sesi
+tersebut. `versi` adalah versi kelompok dari detail kelas terakhir yang dibaca;
+response mengembalikan versi baru. Pada kegagalan satu bagian, tidak ada bagian
+permintaan yang tersimpan. Endpoint tetap memerlukan otorisasi pusat dan belum
+dipasang ke route PHP native.
 
 ## Audit cakupan route native dan gap cutover
 
