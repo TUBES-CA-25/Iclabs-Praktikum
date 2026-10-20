@@ -8,7 +8,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
-- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, tulis nilai mentah, dan operasi simpan gabungan atomik pada branch terpisah `feature/praktikum-read-api`, HEAD `4adbff4`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
+- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, tulis nilai mentah, operasi simpan gabungan atomik, serta workflow dan riwayat verifikasi pada branch terpisah `feature/praktikum-read-api`, HEAD `b413b5d`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
 - [ ] Mutasi jadwal/pengajar, pengelolaan/perpindahan peserta, workflow verifikasi, kalkulasi nilai akhir, laporan, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
 - [ ] Legacy menyimpan perubahan pertemuan, kehadiran, dan nilai melalui satu transaksi. API saat ini menyediakan tulis kehadiran dan nilai melalui endpoint terpisah; jangan memigrasikan tombol simpan gabungan sebelum endpoint atomik gabungan tersedia atau perilaku transaksi dipertahankan.
 
@@ -68,7 +68,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | --- | --- | --- |
 | `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, dan status referensi. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. Health API pusat merespons HTTP 200 dari host lokal. |
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
-| `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran dan nilai komponen; Mahasiswa hanya menerima sesi serta kehadiran/nilai miliknya. | Implementasi lokal; diuji untuk detail kosong dan detail terisi Mahasiswa/staf. Nilai akhir/huruf belum dihitung sampai konfigurasi rentang nilai canonical disepakati. |
+| `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran, nilai komponen, status workflow dan histori per jadwal; Mahasiswa hanya menerima sesi serta kehadiran/nilai miliknya. | Implementasi lokal; diuji untuk detail kosong dan detail terisi Mahasiswa/staf. Nilai akhir/huruf belum dihitung sampai konfigurasi rentang nilai canonical disepakati. |
 | `GET /v1/praktikum/nilai/saya` | Hanya Mahasiswa; nilai komponen mentah dan metadata periode/kelas milik akun sendiri. API belum menghitung nilai akhir karena kontrak konfigurasi/bobot dan rentang nilai masih perlu validasi terhadap aturan lama. | Implementasi lokal; detail fixture nilai masih perlu dilengkapi. |
 | `POST /v1/praktikum/kelas` | Hanya `ADMIN_ICLABS`/`SUPER_ADMIN`; membuat kelas berjenis `PRAKTIKUM` dan kelompok terkait memakai ID periode, prodi, dan mata kuliah canonical. Status awal kelas `DRAF`, jumlah pertemuan 1–14. | Implementasi lokal, diuji dengan fixture dan audit log. |
 | `PATCH /v1/praktikum/kelas/{classId}` | Hanya admin pusat; ubah kode/nama kelompok, jumlah pertemuan, atau catatan dengan `versi` wajib. Menolak stale version, kode ganda dalam periode/prodi/mata kuliah, jumlah pertemuan di bawah sesi yang sudah tercatat, dan workflow yang sudah maju. | Implementasi lokal, diuji untuk update/version conflict dan null catatan. |
@@ -77,6 +77,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `PUT /v1/praktikum/kelas/{classId}/perubahan` | Operasi simpan atomik meniru `/classes/{id}/save`. Memerlukan `versi`; dapat membawa objek `pertemuan` (`nomor_pertemuan`, `tanggal_sesi`, `materi`, opsional `id_jadwal_kelas_kuliah`), array `kehadiran` dan/atau array `nilai`. Jika satu bagian gagal validasi, semua bagian dalam permintaan di-rollback. Versi kelompok naik satu kali untuk keseluruhan permintaan. Otorisasi mengikuti admin pusat atau Asisten yang ditugaskan; workflow yang telah diajukan menolak perubahan. | Implementasi lokal; test membuktikan perubahan sesi/presensi rollback bersama ketika batch nilai invalid. Belum dipasang ke adapter/aplikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/komponen-nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi`, `jumlah_evaluasi`, `jumlah_asistensi`. Membentuk `EVALUASI_N` dan `ASISTENSI_N` dengan bobot total masing-masing 20%; `MID` dan `UAS` tetap 30%. Komponen berisi nilai tidak bisa dinonaktifkan. Ditolak bila workflow telah diajukan. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi` dan array `perubahan` berisi `id_mahasiswa`, `kode_komponen`, `nilai` (0–100 atau `null` untuk menghapus), opsional `catatan`. Semua peserta dan komponen divalidasi sebelum perubahan; stale version ditolak. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
+| `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}/workflow` | Admin/Asisten yang ditugaskan dapat mengajukan; Dosen pengampu jadwal dapat memberi `PERLU_REVISI`/`TERVERIFIKASI`, lalu mengunci; Admin dapat mengembalikan status ke `DRAF` dengan alasan. Payload wajib `versi`, `versi_workflow`, `status`; alasan wajib untuk revisi/reset. Pengajuan menolak data tidak lengkap dan semua perubahan masuk histori append-only. | Implementasi lokal; diuji untuk kelengkapan, transisi role, stale versions, audit/histori, serta pembacaan status/riwayat pada detail. Belum dipasang ke adapter/aplikasi. |
 
 Endpoint kehadiran mengandalkan referensi baru `mst_status_kehadiran_mahasiswa.KODE = TERLAMBAT`.
 Di server, endpoint ini belum siap sampai kode API dirilis dan referensi ditambahkan
@@ -123,6 +124,31 @@ response mengembalikan versi baru. Pada kegagalan satu bagian, tidak ada bagian
 permintaan yang tersimpan. Endpoint tetap memerlukan otorisasi pusat dan belum
 dipasang ke route PHP native.
 
+### Contoh workflow verifikasi
+
+```http
+PATCH /api/v1/praktikum/kelas/10/jadwal/21/workflow
+Authorization: Bearer <token-sesi-pusat>
+Content-Type: application/json
+```
+
+```json
+{
+  "versi": 5,
+  "versi_workflow": 0,
+  "status": "DIAJUKAN"
+}
+```
+
+Asisten hanya dapat mengajukan jadwal yang memang menugaskannya; Dosen pengampu
+yang ditugaskan dapat mengembalikan ke `PERLU_REVISI`, menetapkan
+`TERVERIFIKASI`, lalu `DIKUNCI`. Admin pusat dapat mengajukan dan mengembalikan
+status ke `DRAF` dengan alasan. Pengajuan otomatis menolak sesi/presensi/nilai
+yang belum lengkap. Detail kelas mengembalikan `status_workflow`,
+`versi_workflow`, serta histori untuk staf. Setiap transisi menaikkan versi
+workflow dan versi kelompok; setelah mutasi, muat ulang detail sebelum mutasi
+berikutnya.
+
 ## Audit cakupan route native dan gap cutover
 
 Pemetaan berikut berasal dari `api.php`, `app/classes.php`, `app/admin.php`,
@@ -135,10 +161,10 @@ beralih ke API.
 | Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | API pusat menyediakan login, profil sesi, logout, dan ganti/reset password. Adapter Praktikum belum meneruskan request atau menyimpan token/session pusat. |
 | Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` tersedia. Endpoint baca periode aktif spesifik dan pemakaian oleh aplikasi belum dialihkan. |
 | Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | List/detail kelas tersedia; fixture rincian jadwal/peserta/nilai belum lengkap. |
-| Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui; komponen nilai dan nilai mentah dapat ditulis. Transisi workflow belum tersedia. |
+| Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui; komponen/nilai mentah dan transisi workflow tersedia di branch API lokal. Belum dipasang ke adapter/aplikasi. |
 | Sinkron peserta | Tambah peserta dari anggota frekuensi tanpa duplikasi; jangan menghapus peserta lama | Endpoint additive sinkronisasi tersedia. Perpindahan frekuensi harus mempertahankan status dan histori; belum tersedia. |
 | Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Jadwal masih belum dapat dikelola melalui API. Satu endpoint tulis materi sesi dan absensi tersedia, tetapi pembacaan detail sesi/absensi, CRUD sesi/jadwal, dan pengelolaan penugasan belum tersedia. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
-| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | API dapat membaca nilai sendiri dan menulis komponen/nilai mentah. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; workflow, agregat laporan, dan ekspor belum tersedia. |
+| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | API dapat membaca nilai sendiri, menulis komponen/nilai mentah, dan mengelola workflow verifikasi. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; agregat laporan dan ekspor belum tersedia. |
 | Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Master canonical harus dibaca/dikelola melalui API pusat. Endpoint admin domain Praktikum, import, transfer, dan ekspor/audit khusus belum tersedia. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
