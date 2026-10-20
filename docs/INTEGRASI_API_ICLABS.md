@@ -59,6 +59,7 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 ### D. Verifikasi dan cutover staging
 
 - [x] Lengkapi contract test untuk route API-only yang diimplementasikan, otorisasi inti, dan regresi operasi tulis; suite API, mock adapter, PHP/JS lint lulus. Route legacy di luar cakupan sengaja menolak 501.
+- [x] Verifikasi ulang lokal 21 Oktober 2026: `bash tests/api_mode_mock_test.sh`, `php -l setup.php`, `php -l app/iclabs_api_mode.php`, `node --check assets/app.js`, dan `git diff --check` lulus. Suite backend pusat pada branch `feature/praktikum-read-api` lulus 255 test / 1.589 assertion dalam container PHP 8.3.
 - [ ] Uji Admin, Dosen, Asisten, dan Mahasiswa memakai akun pusat staging; uji pula tidak memiliki role/scope dan token kedaluwarsa.
 - [ ] Rekonsiliasi jumlah dan sampel data lama terhadap API untuk satu periode pilot; cek perpindahan mahasiswa tidak menggandakan atau menghapus nilai/presensi.
 - [x] Buktikan jalur API-only dapat berjalan tanpa koneksi MySQL lokal: mock memakai nama database yang tidak ada, menolak installer lokal, dan endpoint yang belum dipindahkan fail-closed.
