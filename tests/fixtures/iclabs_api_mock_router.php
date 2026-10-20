@@ -171,6 +171,25 @@ if ($path === '/api/v1/praktikum/kelas/10/peserta/sinkronisasi' && $method === '
     echo json_encode(array('data' => array('id_kelas_kuliah' => 10, 'jumlah_peserta_baru' => 1, 'versi' => 2, 'peserta_dihapus' => false)));
     return;
 }
+if ($path === '/api/v1/praktikum/kelas/10/calon-peserta' && $method === 'GET') {
+    if (strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('a', 64)) !== 0) {
+        http_response_code(401);
+        echo json_encode(array('message' => 'Unauthenticated.'));
+        return;
+    }
+    echo json_encode(array('data' => array(array('id_mahasiswa' => 701, 'nim' => '13020260001', 'nama' => 'Mahasiswa Kandidat', 'kode_prodi' => 'TI'))));
+    return;
+}
+if ($path === '/api/v1/praktikum/kelas/10/anggota' && $method === 'POST') {
+    if (strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('a', 64)) !== 0) {
+        http_response_code(401);
+        echo json_encode(array('message' => 'Unauthenticated.'));
+        return;
+    }
+    http_response_code(201);
+    echo json_encode(array('data' => array('id_kelas_kuliah' => 10, 'id_mahasiswa' => (int) ($request['id_mahasiswa'] ?? 0), 'tanggal_mulai' => $request['tanggal_mulai'] ?? null, 'versi' => (int) ($request['versi'] ?? 0) + 1)));
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas/10/peserta/pindah' && $method === 'POST') {
     echo json_encode(array('data' => array('id_mahasiswa' => (int) ($request['id_mahasiswa'] ?? 0), 'id_kelas_tujuan' => (int) ($request['id_kelas_tujuan'] ?? 0), 'versi_sumber' => 2, 'versi_tujuan' => 2)));
     return;

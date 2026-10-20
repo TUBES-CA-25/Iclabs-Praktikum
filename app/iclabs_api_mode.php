@@ -605,6 +605,32 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if (preg_match('#\A/classes/(\d+)/prospective-participants\z#', $route, $match) && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Pencarian Mahasiswa hanya dapat dilakukan administrator.'), 403);
+        }
+        $query = trim((string) ($_GET['query'] ?? ''));
+        if (mb_strlen($query) < 2 || mb_strlen($query) > 100) {
+            api_mode_json(array('error' => 'Masukkan minimal 2 dan maksimal 100 karakter untuk mencari Mahasiswa.'), 422);
+        }
+        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1] . '/calon-peserta?cari=' . rawurlencode($query));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Daftar calon Mahasiswa tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/members\z#', $route, $match) && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Penambahan anggota kelompok hanya dapat dilakukan administrator.'), 403);
+        }
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/anggota', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Mahasiswa tidak dapat ditambahkan ke kelompok.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if (preg_match('#\A/classes/(\d+)/participants/transfer\z#', $route, $match) && $method === 'POST') {
         $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/peserta/pindah', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
