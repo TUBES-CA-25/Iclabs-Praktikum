@@ -5,6 +5,12 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
 
+$runtimeConfig = require __DIR__ . '/config.php';
+if (!empty($runtimeConfig['iclabs_api_mode'])) {
+    require __DIR__ . '/app/iclabs_api_mode.php';
+    exit;
+}
+
 try {
     require __DIR__ . '/app/bootstrap.php';
     require __DIR__ . '/app/classes.php';

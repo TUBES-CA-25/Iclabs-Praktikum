@@ -1,0 +1,199 @@
+<?php
+
+/** API-only authentication bridge. This file intentionally never loads PDO/bootstrap.php. */
+$config = require dirname(__DIR__) . '/config.php';
+require_once __DIR__ . '/iclabs_api_client.php';
+
+header('Cache-Control: no-store');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: same-origin');
+
+function api_mode_json($data, $status = 200)
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function api_mode_request($method, $path, array $payload = null, $authenticated = true)
+{
+    global $config;
+    $client = new IclabsApiClient($config);
+    $token = $authenticated ? ($_SESSION['iclabs_bearer'] ?? null) : null;
+    return $client->request($method, $path, $payload, $token);
+}
+
+function api_mode_error_message(array $body, $fallback)
+{
+    if (isset($body['message']) && is_string($body['message'])) {
+        return $body['message'];
+    }
+    if (isset($body['error']) && is_string($body['error'])) {
+        return $body['error'];
+    }
+    return $fallback;
+}
+
+function api_mode_open_session()
+{
+    global $config;
+
+    if ($config['iclabs_session_path'] !== '') {
+        $path = $config['iclabs_session_path'];
+        if (!is_dir($path) || !is_writable($path)) {
+            throw new RuntimeException('Direktori session Praktikum tidak tersedia atau tidak dapat ditulis oleh PHP.');
+        }
+        session_save_path($path);
+    }
+
+    // Manage a SameSite cookie explicitly so this remains compatible with PHP 7.1.
+    ini_set('session.use_cookies', '0');
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_strict_mode', '1');
+    session_name('iclabs_praktikum_sid');
+
+    $id = $_COOKIE[session_name()] ?? '';
+    if (is_string($id) && preg_match('/\A[a-zA-Z0-9,-]{16,128}\z/', $id)) {
+        session_id($id);
+    }
+    if (!session_start()) {
+        throw new RuntimeException('Session Praktikum tidak dapat dibuka.');
+    }
+}
+
+function api_mode_cookie($clear = false)
+{
+    global $config;
+    $path = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/api.php')), '/');
+    $path = ($path === '' ? '/' : $path . '/');
+    $value = $clear ? '' : session_id();
+    $maxAge = $clear ? 0 : 28800;
+    header('Set-Cookie: ' . session_name() . '=' . $value . '; Path=' . $path . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Strict' . ($config['secure_cookie'] ? '; Secure' : ''), false);
+}
+
+function api_mode_role(array $roles)
+{
+    $codes = array_column($roles, 'kode');
+    foreach (array('ADMIN_ICLABS', 'SUPER_ADMIN', 'DOSEN', 'ASISTEN', 'MAHASISWA') as $candidate) {
+        if (in_array($candidate, $codes, true)) {
+            return array(
+                'ADMIN_ICLABS' => 'admin', 'SUPER_ADMIN' => 'admin',
+                'DOSEN' => 'dosen', 'ASISTEN' => 'asisten', 'MAHASISWA' => 'mahasiswa'
+            )[$candidate];
+        }
+    }
+    return null;
+}
+
+function api_mode_user(array $user)
+{
+    $role = api_mode_role($user['peran'] ?? array());
+    if ($role === null) {
+        throw new RuntimeException('Akun pusat belum memiliki role yang didukung Praktikum.');
+    }
+    $profile = $user['profil'] ?? array();
+    return array(
+        'id' => (int) ($user['id'] ?? 0),
+        'name' => trim(($profile['gelar_depan'] ?? '') . ' ' . ($profile['nama_lengkap'] ?? '') . ' ' . ($profile['gelar_belakang'] ?? '')),
+        'email' => $user['email_login'] ?? '',
+        'role' => $role,
+    );
+}
+
+try {
+    if (!$config['iclabs_api_mode']) {
+        api_mode_json(array('error' => 'Mode API Praktikum belum diaktifkan.'), 503);
+    }
+    if ($config['iclabs_api_base_url'] === '') {
+        api_mode_json(array('error' => 'ICLABS_API_BASE_URL belum dikonfigurasi.'), 503);
+    }
+
+    api_mode_open_session();
+    $route = $_GET['route'] ?? '';
+    $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    $payload = json_decode(file_get_contents('php://input') ?: '{}', true);
+    if (!is_array($payload)) {
+        api_mode_json(array('error' => 'JSON tidak valid.'), 400);
+    }
+
+    if ($route === '/login') {
+        if ($method !== 'POST') api_mode_json(array('error' => 'Metode tidak diizinkan.'), 405);
+        $response = api_mode_request('POST', 'auth/login', array(
+            'identitas' => trim((string) ($payload['email'] ?? '')),
+            'password' => $payload['password'] ?? '',
+            'nama_perangkat' => 'ICLabs Praktikum'
+        ), false);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Email/identitas atau password tidak valid.')), $response['status']);
+        }
+        $data = $response['data']['data'] ?? array();
+        if (empty($data['token']) || empty($data['user'])) {
+            api_mode_json(array('error' => 'Response autentikasi API pusat tidak lengkap.'), 502);
+        }
+        session_regenerate_id(true);
+        $normalizedUser = api_mode_user($data['user']);
+        $_SESSION['iclabs_bearer'] = $data['token'];
+        $_SESSION['iclabs_expires_at'] = $data['kadaluarsa_pada'] ?? null;
+        $_SESSION['iclabs_user'] = $normalizedUser;
+        $_SESSION['iclabs_csrf'] = bin2hex(random_bytes(24));
+        api_mode_cookie();
+        api_mode_json(array('ok' => true));
+    }
+
+    if (empty($_SESSION['iclabs_bearer'])) {
+        api_mode_json(array('error' => 'Silakan login.'), 401);
+    }
+    if (!empty($_SESSION['iclabs_expires_at']) && strtotime($_SESSION['iclabs_expires_at']) <= time()) {
+        $_SESSION = array();
+        session_destroy();
+        api_mode_cookie(true);
+        api_mode_json(array('error' => 'Sesi telah kedaluwarsa. Silakan login kembali.'), 401);
+    }
+
+    if (!in_array($method, array('GET', 'HEAD'), true)
+        && !hash_equals($_SESSION['iclabs_csrf'] ?? '', $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '')) {
+        api_mode_json(array('error' => 'Token CSRF tidak valid.'), 403);
+    }
+
+    if ($route === '/me' && $method === 'GET') {
+        $response = api_mode_request('GET', 'auth/me');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Sesi pusat tidak valid.')), $response['status']);
+        }
+        $centralUser = $response['data']['data'] ?? null;
+        if (!is_array($centralUser)) api_mode_json(array('error' => 'Response profil API pusat tidak valid.'), 502);
+        $_SESSION['iclabs_user'] = api_mode_user($centralUser);
+        api_mode_json(array_merge($_SESSION['iclabs_user'], array('csrf' => $_SESSION['iclabs_csrf'])));
+    }
+
+    if ($route === '/logout' && $method === 'POST') {
+        $response = api_mode_request('POST', 'auth/logout', array());
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Logout API pusat gagal.')), $response['status']);
+        }
+        $_SESSION = array();
+        session_destroy();
+        api_mode_cookie(true);
+        api_mode_json(array('ok' => true));
+    }
+
+    if ($route === '/password' && $method === 'POST') {
+        $response = api_mode_request('POST', 'auth/ganti-password', array(
+            'password_lama' => $payload['current'] ?? '',
+            'password_baru' => $payload['password'] ?? '',
+            'password_baru_confirmation' => $payload['password'] ?? '',
+        ));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Perubahan password ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json(array('ok' => true));
+    }
+
+    // Explicitly fail closed while each application route is migrated; never query the legacy DB here.
+    api_mode_json(array('error' => 'Fitur ini belum dialihkan ke API pusat; data lokal tidak digunakan dalam mode API.'), 501);
+} catch (Throwable $exception) {
+    error_log('ICLabs Praktikum API mode: ' . $exception->getMessage());
+    api_mode_json(array('error' => 'Layanan API pusat belum dapat diproses. Periksa koneksi, session path, dan konfigurasi API.'), 503);
+}

@@ -39,7 +39,7 @@ API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 - [x] Buat fondasi adapter HTTP server-side `app/iclabs_api_client.php` yang kompatibel PHP 7.1.11; endpoint belum dialihkan ke adapter.
 - [x] Tambahkan pembacaan `ICLABS_API_BASE_URL`, timeout, dan TLS verification dari environment di `config.php`. `config.php` mengandalkan environment proses; file `.env` tidak dibaca otomatis oleh PHP native.
 - [ ] Atur environment tersebut pada PHP-FPM/Apache staging dan uji health endpoint; jangan menaruh bearer token atau secret dalam JavaScript/log.
-- [ ] Tukar login lokal ke autentikasi pusat dan simpan bearer token hanya pada session server yang aman; terapkan expiry, logout/revocation, CSRF, dan cookie aman.
+- [x] Tukar login lokal ke autentikasi pusat dalam mode opt-in; bearer token hanya berada di session PHP server, `/me` memvalidasi ulang token ke API pusat, logout mencabut session pusat, ganti password diteruskan ke pusat, dan mutasi dilindungi CSRF.
 - [ ] Normalisasi response API pada adapter tanpa mengubah aturan bisnis/controller lebih dari yang diperlukan.
 - [ ] Tampilkan keadaan kosong yang sah secara berbeda dari API timeout, 401/403, dan error validasi; jangan menyamarkan gangguan sebagai data kosong.
 
@@ -185,13 +185,14 @@ berikutnya.
 ## Audit cakupan route native dan gap cutover
 
 Pemetaan berikut berasal dari `api.php`, `app/classes.php`, `app/admin.php`,
-`app/frequency.php`, `app/period.php`, dan `app/transfer.php`. Route PHP native
-masih menjalankan database lokal; daftar ini bukan klaim bahwa aplikasi sudah
-beralih ke API.
+`app/frequency.php`, `app/period.php`, dan `app/transfer.php`. Mode default masih
+menjalankan database lokal. Mode API opt-in memisahkan dispatcher sebelum
+`app/bootstrap.php`, sehingga request API-only tidak membuka koneksi PDO. Route
+yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 
 | Area native | Perilaku yang harus dipertahankan | Dukungan API saat ini / gap |
 | --- | --- | --- |
-| Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | API pusat menyediakan login, profil sesi, logout, dan ganti/reset password. Adapter Praktikum belum meneruskan request atau menyimpan token/session pusat. |
+| Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | Implementasi API-only meneruskan ke endpoint pusat, menyimpan bearer token pada session server, memetakan role pusat ke role UI, dan gagal tertutup jika role tidak didukung. Belum ada UI alur aktivasi/reset password. |
 | Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` tersedia. Endpoint baca periode aktif spesifik dan pemakaian oleh aplikasi belum dialihkan. |
 | Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | List/detail kelas tersedia; fixture rincian jadwal/peserta/nilai belum lengkap. |
 | Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui; komponen/nilai mentah dan transisi workflow tersedia di branch API lokal. Belum dipasang ke adapter/aplikasi. |
@@ -216,14 +217,24 @@ Suite backend pada container lulus 240 tests / 1.503 assertions; Pint dan
 route registration juga lulus. Tes ini bukan UAT VPS maupun pengujian seluruh
 route Praktikum.
 
-Contoh konfigurasi proses PHP (bukan isi file `.env` yang dibaca otomatis):
+Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
 ```text
 ICLABS_API_BASE_URL=https://iclabs.fikom.umi.ac.id/api/v1
 ICLABS_API_CONNECT_TIMEOUT_SECONDS=3
 ICLABS_API_TIMEOUT_SECONDS=10
 ICLABS_API_TLS_VERIFY=true
+ICLABS_PRAKTIKUM_API_MODE=true
+ICLABS_PRAKTIKUM_SESSION_PATH=/var/lib/iclabs-praktikum/sessions
+ICLABS_PRAKTIKUM_SECURE_COOKIE=true
 ```
+
+`ICLABS_PRAKTIKUM_API_MODE` harus tetap `false` sampai endpoint data Praktikum
+yang dipakai UI selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
+batasi aksesnya hanya untuk user PHP-FPM (mode `0700`), dan pastikan direktori
+dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini hanya
+autentikasi pusat (`/login`, `/me`, `/logout`, `/password`) tersedia; semua route
+lainnya sengaja mengembalikan `501` tanpa mengakses database lokal.
 
 Kredensial aplikasi belum diperlukan untuk endpoint baca ini: setiap permintaan
 terproteksi menggunakan Bearer token akun pusat. Setelah alur login dipindahkan,
