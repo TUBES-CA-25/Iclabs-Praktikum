@@ -7,8 +7,9 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Branch lokal `staging` dibuat dari `origin/main` (`7ced4dc`) dalam keadaan working tree bersih.
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
-- [x] API pusat sudah memiliki schema Praktikum tahap P3-A; model, policy, service, request, resource, dan Feature Test P3-B masih belum tersedia menurut `backend-iclabs/api/docs/PRAKTIKUM_IMPLEMENTATION_PLAN.md`.
-- [x] Pada checkout API saat audit tidak ditemukan route `v1/praktikum`; kontrak endpoint belum tersedia. Jangan mulai mengganti call site dengan URL rekaan.
+- [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
+- [x] Backend lokal mencatat kontrak baca awal pada branch terpisah `feature/praktikum-read-api`, HEAD `39d9fd1`: `GET /api/v1/praktikum/referensi`, `GET /api/v1/praktikum/kelas`, `GET /api/v1/praktikum/kelas/{classId}`, dan `GET /api/v1/praktikum/nilai/saya`. Belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
+- [ ] Belum ada kontrak mutasi Praktikum. Jangan mengganti operasi tulis lama dengan endpoint rekaan atau menganggap API baca ini sudah cukup untuk cutover.
 
 ## Prinsip integrasi yang disepakati
 
@@ -31,8 +32,9 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 
 ### B. Adapter dan autentikasi aplikasi
 
-- [ ] Buat adapter HTTP server-side yang kompatibel PHP 7.1.11; hindari syntax/API PHP yang lebih baru dari runtime project.
-- [ ] Simpan base URL, timeout, TLS verification, dan konfigurasi environment di luar Git; jangan menaruh secret/token dalam JavaScript atau log.
+- [x] Buat fondasi adapter HTTP server-side `app/iclabs_api_client.php` yang kompatibel PHP 7.1.11; endpoint belum dialihkan ke adapter.
+- [x] Tambahkan pembacaan `ICLABS_API_BASE_URL`, timeout, dan TLS verification dari environment di `config.php`. `config.php` mengandalkan environment proses; file `.env` tidak dibaca otomatis oleh PHP native.
+- [ ] Atur environment tersebut pada PHP-FPM/Apache staging dan uji health endpoint; jangan menaruh bearer token atau secret dalam JavaScript/log.
 - [ ] Tukar login lokal ke autentikasi pusat dan simpan bearer token hanya pada session server yang aman; terapkan expiry, logout/revocation, CSRF, dan cookie aman.
 - [ ] Normalisasi response API pada adapter tanpa mengubah aturan bisnis/controller lebih dari yang diperlukan.
 - [ ] Tampilkan keadaan kosong yang sah secara berbeda dari API timeout, 401/403, dan error validasi; jangan menyamarkan gangguan sebagai data kosong.
@@ -53,6 +55,40 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [ ] Rekonsiliasi jumlah dan sampel data lama terhadap API untuk satu periode pilot; cek perpindahan mahasiswa tidak menggandakan atau menghapus nilai/presensi.
 - [ ] Buktikan aplikasi dapat berjalan tanpa koneksi MySQL lokal hanya setelah seluruh route pada cakupan cutover memakai API.
 - [ ] Lengkapi dokumentasi `.env`, endpoint, deploy/rollback, dan checklist UAT sebelum meminta pull ke server.
+
+## Kontrak baca API pusat yang tersedia di branch kerja
+
+Prefix publik VPS adalah `/api`, sehingga URL lengkap memakai
+`https://iclabs.fikom.umi.ac.id/api/v1/...`. Semua endpoint berikut perlu Bearer
+token hasil login pusat. Saat ini baru ada di branch lokal backend
+`feature/praktikum-read-api`; jangan dipakai dari VPS sebelum rilis branch itu.
+
+| Endpoint | Akses dan isi | Status |
+| --- | --- | --- |
+| `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, dan status referensi. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. Health API pusat merespons HTTP 200 dari host lokal. |
+| `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
+| `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil. Data peserta disembunyikan untuk role Mahasiswa. | Implementasi lokal; detail kosong diuji, detail dengan jadwal dan peserta belum diuji. |
+| `GET /v1/praktikum/nilai/saya` | Hanya Mahasiswa; nilai komponen mentah dan metadata periode/kelas milik akun sendiri. API belum menghitung nilai akhir karena kontrak konfigurasi/bobot dan rentang nilai masih perlu validasi terhadap aturan lama. | Implementasi lokal; belum diuji dengan fixture nilai. |
+
+Bentuk response menggunakan Laravel JSON Resource (`data`; daftar juga
+memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
+dan `422`. Pada tahap ini aplikasi legacy tetap berjalan seperti sebelumnya;
+tidak ada akses atau perubahan database yang dialihkan ke API.
+
+Contoh konfigurasi proses PHP (bukan isi file `.env` yang dibaca otomatis):
+
+```text
+ICLABS_API_BASE_URL=https://iclabs.fikom.umi.ac.id/api/v1
+ICLABS_API_CONNECT_TIMEOUT_SECONDS=3
+ICLABS_API_TIMEOUT_SECONDS=10
+ICLABS_API_TLS_VERIFY=true
+```
+
+Kredensial aplikasi belum diperlukan untuk endpoint baca ini: setiap permintaan
+terproteksi menggunakan Bearer token akun pusat. Setelah alur login dipindahkan,
+token harus disimpan di session server dengan cookie aman; jangan pernah
+menyisipkannya pada bundle/browser JavaScript. Endpoint aktivasi/reset tetap
+memakai mekanisme email pusat.
 
 ## Gerbang yang tidak boleh dilewati
 

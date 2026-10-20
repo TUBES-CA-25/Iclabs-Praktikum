@@ -2,6 +2,7 @@
 
 // PHP 7.1 compatible native application services.
 $config = require dirname(__DIR__) . '/config.php';
+require_once __DIR__ . '/iclabs_api_client.php';
 
 date_default_timezone_set($config['timezone']);
 
