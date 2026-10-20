@@ -262,7 +262,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API sebelum penambahan bulk import lulus 246 tests / 1.538 assertions di image test proyek. Target suite `PraktikumReadApiTest` memuat uji bulk import sukses, rollback atomik, dan penolakan non-admin; jalankan ulang pada environment dengan `pdo_sqlite` sebelum rilis. Pada workspace ini PHP tidak memiliki `pdo_sqlite`, sehingga PHPUnit menandai 35 test suite ini skipped. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup ambang nilai Admin, audit, CRUD, ekspor XLSX/PDF valid, penolakan ekspor Mahasiswa, import jadwal preview/commit, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API di image test `iclabs-test-php83:local` lulus 250 tests / 1.556 assertions, termasuk uji import jadwal sukses, rollback atomik, role admin, dan referensi email personel. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup ambang nilai Admin, audit, CRUD, ekspor XLSX/PDF valid, penolakan ekspor Mahasiswa, import jadwal preview/commit, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
