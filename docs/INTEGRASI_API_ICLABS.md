@@ -195,10 +195,10 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | Implementasi API-only meneruskan ke endpoint pusat, menyimpan bearer token pada session server, memetakan role pusat ke role UI, dan gagal tertutup jika role tidak didukung. Belum ada UI alur aktivasi/reset password. |
 | Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` dipakai untuk membaca periode aktif pada mode API. Pengubahan periode tetap tidak tersedia di Praktikum (periode dikelola pusat). |
 | Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | Adapter memuat daftar kelas berhalaman dan detail canonical; UI mode API menampilkan jadwal, sesi, komponen nilai, roster yang diizinkan, dan ringkasan Mahasiswa. Operasi tulis belum dipasang pada UI. |
-| Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui; komponen/nilai mentah dan transisi workflow tersedia di branch API lokal. Belum dipasang ke adapter/aplikasi. |
+| Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | UI API-only menyimpan sesi, batch presensi, dan nilai melalui endpoint gabungan atomik dengan versi kelompok; UI workflow mendukung pengajuan, revisi, verifikasi, penguncian, dan reset sesuai role/status. Pembuatan/edit kelompok serta konfigurasi jumlah komponen belum dipasang ke UI. |
 | Sinkron peserta | Tambah peserta dari anggota frekuensi tanpa duplikasi; jangan menghapus peserta lama | Endpoint additive sinkronisasi dan pindah peserta yang mempertahankan histori tersedia di backend API. UI mode API belum menyediakan tindakan tersebut. |
 | Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Baca jadwal/sesi dan CRUD jadwal serta penugasan tersedia di backend API; tulis sesi/presensi juga tersedia. Adapter UI baru membaca. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
-| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | API dapat membaca nilai sendiri, menulis komponen/nilai mentah, dan mengelola workflow verifikasi. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; agregat laporan dan ekspor belum tersedia. |
+| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | UI API-only dapat menyimpan nilai komponen untuk Admin/Asisten yang berwenang dan menampilkan workflow role-based. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; agregat laporan dan ekspor belum tersedia. |
 | Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | API pindah peserta tersedia, tetapi belum dipasang pada UI; workflow import, administrasi domain, laporan, dan ekspor belum dialihkan ke mode API. Master canonical tidak boleh diduplikasi di database aplikasi. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
@@ -215,10 +215,10 @@ jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
 Suite backend pada container lulus 240 tests / 1.503 assertions; Pint dan
 route registration juga lulus. `bash tests/api_mode_mock_test.sh` lulus untuk
-login Admin/Mahasiswa, sesi, periode, daftar/detail kelas, nilai Mahasiswa,
-logout, serta penolakan route yang belum tersedia tanpa PDO. UI daftar kelas
-API juga diperiksa di Chrome headless dengan mock. Bukti ini bukan UAT VPS
-maupun pengujian seluruh route Praktikum.
+login Admin/Mahasiswa, sesi, periode, daftar/detail kelas, simpan atomik
+sesi-presensi-nilai, workflow, nilai Mahasiswa, logout, serta penolakan route yang belum
+tersedia tanpa PDO. UI daftar/detail dan simpan diperiksa di Chrome headless
+dengan mock API. Bukti ini bukan UAT VPS maupun pengujian seluruh route Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
@@ -236,9 +236,11 @@ ICLABS_PRAKTIKUM_SECURE_COOKIE=true
 untuk UAT selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
 batasi aksesnya hanya untuk user PHP-FPM (mode `0700`), dan pastikan direktori
 dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini
-autentikasi, referensi/periode baca, daftar/detail kelas, dan nilai komponen
-Mahasiswa sudah terhubung. Route tulis, admin, import, laporan, dan ekspor yang
-belum dialihkan sengaja mengembalikan `501` tanpa mengakses database lokal.
+autentikasi, referensi/periode baca, daftar/detail kelas, nilai komponen
+Mahasiswa, simpan gabungan sesi-presensi-nilai, serta transisi workflow
+sudah terhubung. Route jadwal, konfigurasi nilai, pindah/sinkron peserta, admin, import,
+laporan, dan ekspor yang belum dialihkan sengaja mengembalikan `501` tanpa
+mengakses database lokal.
 `tests/fixtures/iclabs_api_mock_router.php` menyediakan mock kontrak untuk
 pengujian adapter lokal; ini bukan pengganti UAT pada API staging.
 

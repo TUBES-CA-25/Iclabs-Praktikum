@@ -65,9 +65,25 @@ if ($path === '/api/v1/praktikum/kelas/10') {
         'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
         'mata_kuliah' => array('id' => 20, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'),
         'kelompok' => array('id' => 30, 'kode' => 'TI_ALPRO-1', 'nama' => 'Frekuensi 1', 'versi' => 1),
-        'jadwal' => array(), 'sesi' => array(), 'komponen_nilai' => array(), 'peserta' => array(),
+        'jadwal' => array(array('id' => 99, 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '11:00', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12', 'pola_perulangan' => 'MINGGUAN', 'status' => 'AKTIF', 'nama_laboratorium' => 'Laboratorium Uji', 'status_workflow' => 'TERVERIFIKASI', 'versi_workflow' => 1, 'pengajar' => array())),
+        'sesi' => array(),
+        'komponen_nilai' => array(array('id' => 1, 'kode' => 'MID', 'nama' => 'Ujian Tengah Semester', 'bobot_persen' => 30, 'urutan' => 1, 'aktif' => true)),
+        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(), 'nilai' => array())),
     );
     echo json_encode(array('data' => $class));
+    return;
+}
+if ($path === '/api/v1/praktikum/kelas/10/perubahan' && $method === 'PUT') {
+    if (strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('a', 64)) !== 0) {
+        http_response_code(401);
+        echo json_encode(array('message' => 'Unauthenticated.'));
+        return;
+    }
+    echo json_encode(array('data' => array('id_kelas_kuliah' => 10, 'versi' => (int) ($request['versi'] ?? 0) + 1)));
+    return;
+}
+if ($path === '/api/v1/praktikum/kelas/10/jadwal/99/workflow' && $method === 'PATCH') {
+    echo json_encode(array('data' => array('id_jadwal_kelas_kuliah' => 99, 'status' => $request['status'] ?? null, 'versi_workflow' => (int) ($request['versi_workflow'] ?? 0) + 1)));
     return;
 }
 if ($path === '/api/v1/praktikum/nilai/saya') {

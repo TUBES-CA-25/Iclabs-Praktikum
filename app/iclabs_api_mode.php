@@ -27,13 +27,24 @@ function api_mode_request($method, $path, array $payload = null, $authenticated 
 
 function api_mode_error_message(array $body, $fallback)
 {
+    $messages = array();
     if (isset($body['message']) && is_string($body['message'])) {
-        return $body['message'];
+        $messages[] = $body['message'];
+    }
+    if (isset($body['errors']) && is_array($body['errors'])) {
+        foreach ($body['errors'] as $fieldMessages) {
+            foreach ((array) $fieldMessages as $message) {
+                if (is_string($message) && $message !== '') {
+                    $messages[] = $message;
+                }
+            }
+        }
     }
     if (isset($body['error']) && is_string($body['error'])) {
-        return $body['error'];
+        $messages[] = $body['error'];
     }
-    return $fallback;
+    $message = implode(' ', array_unique($messages));
+    return $message === '' ? $fallback : substr($message, 0, 1000);
 }
 
 function api_mode_open_session()
@@ -241,6 +252,22 @@ try {
             api_mode_json(array('error' => 'Daftar kelas melebihi batas halaman aman. Gunakan filter periode.'), 502);
         }
         api_mode_json($classes);
+    }
+
+    if (preg_match('#\A/classes/(\d+)/changes\z#', $route, $match) && $method === 'PUT') {
+        $response = api_mode_request('PUT', 'praktikum/kelas/' . (int) $match[1] . '/perubahan', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Perubahan Praktikum ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array('ok' => true));
+    }
+
+    if (preg_match('#\A/classes/(\d+)/schedules/(\d+)/workflow\z#', $route, $match) && $method === 'PATCH') {
+        $response = api_mode_request('PATCH', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/' . (int) $match[2] . '/workflow', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Transisi workflow ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array('ok' => true));
     }
 
     if (preg_match('#\A/classes/(\d+)\z#', $route, $match) && $method === 'GET') {
