@@ -53,6 +53,10 @@ if ($path === '/api/v1/praktikum/referensi') {
     )));
     return;
 }
+if ($path === '/api/v1/praktikum/ringkasan') {
+    echo json_encode(array('data' => array('jumlah_kelas' => 2, 'jumlah_peserta_aktif' => 18, 'pertemuan_direncanakan' => 28, 'pertemuan_tercatat' => 4, 'presensi_terisi' => 40, 'presensi_diharapkan' => 252, 'persentase_presensi' => 15.9, 'nilai_terisi' => 15, 'nilai_diharapkan' => 252, 'persentase_nilai' => 6.0, 'jadwal_perlu_perhatian' => 1)));
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,

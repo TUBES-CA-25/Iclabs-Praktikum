@@ -231,6 +231,14 @@ try {
         ));
     }
 
+    if ($route === '/dashboard' && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/ringkasan');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Ringkasan Praktikum tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if ($route === '/references' && $method === 'GET') {
         $response = api_mode_request('GET', 'praktikum/referensi');
         if ($response['status'] < 200 || $response['status'] >= 300) {

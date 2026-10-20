@@ -8,6 +8,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] Backend API pusat menyediakan baca dan mutasi inti kelas/kelompok, peserta, presensi/nilai, workflow, jadwal/penugasan; frontend native memakai adapter API-only tanpa PDO lokal pada request mode tersebut.
+- [x] Dashboard API mode menampilkan agregat kelas/peserta/presensi/nilai/workflow yang dihitung API sesuai ruang akses role, tanpa identitas pribadi mahasiswa.
 - [x] UI mode API memiliki form admin membuat/mengubah kelas/kelompok, mengatur jumlah komponen nilai, dan CRUD jadwal/penugasan; ada tindakan sinkron/pindah peserta.
 - [ ] Perubahan status peserta selain sinkron/pindah, konfigurasi nilai akhir, laporan/ekspor, audit penuh, regresi seluruh aturan legacy dan cutover semua route belum selesai. Jangan menganggap aplikasi siap cutover.
 - [x] Simpan sesi, presensi dan nilai tetap menggunakan satu endpoint gabungan atomik; UI API-only memuat hanya field presensi/nilai yang diubah agar tidak menimpa data tanpa perubahan.
@@ -68,6 +69,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 
 | Endpoint | Akses dan isi | Status |
 | --- | --- | --- |
+| `GET /v1/praktikum/ringkasan` | Admin/Dosen/Asisten; agregat kelas dan peserta aktif, progres presensi/nilai, pertemuan tercatat, serta jadwal yang perlu perhatian. Mengikuti scope akses kelas dan tidak mengembalikan NIM/nama. | Implementasi lokal; diuji memakai fixture kelas, peserta, sesi, presensi, nilai, dan workflow. |
 | `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, status/pola jadwal. Data picker Dosen/Asisten aktif hanya disertakan untuk admin. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. |
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
 | `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran, nilai komponen, status workflow dan histori per jadwal; Mahasiswa hanya menerima sesi serta kehadiran/nilai miliknya. | Implementasi lokal; diuji untuk detail kosong dan detail terisi Mahasiswa/staf. Nilai akhir/huruf belum dihitung sampai konfigurasi rentang nilai canonical disepakati. |
@@ -212,7 +214,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API `php artisan test` lulus di image Docker repo: 240 tests / 1.503 assertions. Suite khusus Praktikum lulus 25 tests / 143 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, dan form jadwal. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API `php artisan test` lulus di image Docker repo: 241 tests / 1.511 assertions. Suite khusus Praktikum lulus 26 tests / 151 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, dashboard, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, dan form jadwal. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
