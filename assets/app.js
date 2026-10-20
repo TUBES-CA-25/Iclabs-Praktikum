@@ -327,7 +327,7 @@ async function apiAddGroupMember(classId){
 
 const apiRosterObserver=new MutationObserver(()=>{
   if(!user?.api_mode||user.role!=='admin')return;
-  const heading=[...document.querySelectorAll('#api-view .card-head h2')].find(item=>item.textContent.startsWith('Peserta aktif'));
+  const heading=[...document.querySelectorAll('#api-view .card-head h2')].find(item=>/^(?:Peserta aktif|Roster peserta)/.test(item.textContent.trim()));
   if(!heading)return;
   if(!heading.parentElement.querySelector('#api-add-group-member')){const button=document.createElement('button');button.id='api-add-group-member';button.type='button';button.className='primary small';button.textContent='+ Tambah Mahasiswa';button.onclick=()=>apiAddGroupMember(apiCurrent);heading.parentElement.append(button)}
   if(!heading.parentElement.querySelector('#api-import-group-members')){const importButton=document.createElement('button');importButton.id='api-import-group-members';importButton.type='button';importButton.className='small';importButton.textContent='↑ Import XLSX';importButton.onclick=()=>apiImportGroupMembers(apiCurrent);heading.parentElement.append(importButton)}
