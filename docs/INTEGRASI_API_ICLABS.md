@@ -9,11 +9,11 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
 - [x] Backend lokal menyediakan API baca, kelas/kelompok, sinkronisasi peserta, kehadiran/nilai, simpan gabungan atomik, workflow, serta CRUD jadwal/penugasan dalam branch terpisah `feature/praktikum-read-api`; belum tersedia di VPS sampai branch ini ditinjau dan dirilis.
-- [ ] Pengelolaan/perpindahan status peserta, konfigurasi nilai akhir, laporan/ekspor, integrasi autentikasi, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
+- [ ] Pindah peserta sudah tersedia di API branch, tetapi UI belum dipasang. Perubahan status peserta lain, konfigurasi nilai akhir, laporan/ekspor, integrasi autentikasi, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
 - [x] API menyediakan endpoint atomik gabungan untuk sesi, kehadiran, dan nilai yang meniru transaksi penyimpanan legacy; tombol lama tetap belum dialihkan ke adapter.
 
-Status branch API lokal terakhir saat kontrak ini diperbarui: `feature/praktikum-read-api`.
-CRUD jadwal sudah ada di branch, tetapi belum dapat dipakai staging VPS sampai kode dirilis.
+Status branch API lokal terakhir saat kontrak ini diperbarui: `feature/praktikum-read-api`, HEAD `0736f96` (termasuk CRUD jadwal dan pindah peserta).
+API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 
 ## Prinsip integrasi yang disepakati
 
