@@ -10,6 +10,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
 - [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, dan tulis nilai mentah pada branch terpisah `feature/praktikum-read-api`, HEAD `4fba88d`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
 - [ ] Mutasi jadwal/pengajar, pengelolaan/perpindahan peserta, workflow verifikasi, kalkulasi nilai akhir, laporan, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
+- [ ] Legacy menyimpan perubahan pertemuan, kehadiran, dan nilai melalui satu transaksi. API saat ini menyediakan tulis kehadiran dan nilai melalui endpoint terpisah; jangan memigrasikan tombol simpan gabungan sebelum endpoint atomik gabungan tersedia atau perilaku transaksi dipertahankan.
 
 ## Prinsip integrasi yang disepakati
 
