@@ -96,9 +96,10 @@ function api_mode_user(array $user)
     $profile = $user['profil'] ?? array();
     return array(
         'id' => (int) ($user['id'] ?? 0),
-        'name' => trim(($profile['gelar_depan'] ?? '') . ' ' . ($profile['nama_lengkap'] ?? '') . ' ' . ($profile['gelar_belakang'] ?? '')),
+        'name' => trim(($profile['gelar_depan'] ?? '') . ' ' . ($profile['nama_lengkap'] ?? ($user['username'] ?? $user['email_login'] ?? 'Pengguna ICLabs')) . ' ' . ($profile['gelar_belakang'] ?? '')),
         'email' => $user['email_login'] ?? '',
         'role' => $role,
+        'api_mode' => true,
     );
 }
 
@@ -133,7 +134,13 @@ try {
             api_mode_json(array('error' => 'Response autentikasi API pusat tidak lengkap.'), 502);
         }
         session_regenerate_id(true);
-        $normalizedUser = api_mode_user($data['user']);
+        try {
+            $normalizedUser = api_mode_user($data['user']);
+        } catch (RuntimeException $roleException) {
+            $client = new IclabsApiClient($config);
+            $client->request('POST', 'auth/logout', array(), $data['token']);
+            api_mode_json(array('error' => 'Role akun pusat belum didukung oleh ICLabs Praktikum.'), 403);
+        }
         $_SESSION['iclabs_bearer'] = $data['token'];
         $_SESSION['iclabs_expires_at'] = $data['kadaluarsa_pada'] ?? null;
         $_SESSION['iclabs_user'] = $normalizedUser;
@@ -189,6 +196,73 @@ try {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Perubahan password ditolak API pusat.')), $response['status']);
         }
         api_mode_json(array('ok' => true));
+    }
+
+    if ($route === '/active-period' && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/referensi');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Referensi periode tidak dapat dimuat.')), $response['status']);
+        }
+        $periods = $response['data']['data']['periode_akademik'] ?? array();
+        $period = is_array($periods) && isset($periods[0]) ? $periods[0] : null;
+        if ($period === null) {
+            api_mode_json(null);
+        }
+        api_mode_json(array(
+            'id' => (int) ($period['id'] ?? 0),
+            'tahun_id' => (int) ($period['id'] ?? 0),
+            'semester_id' => $period['kode_semester'] ?? '',
+            'academic_year' => $period['tahun_akademik'] ?? '',
+            'semester' => $period['semester'] ?? $period['nama_semester'] ?? '',
+            'start_date' => $period['tanggal_mulai'] ?? null,
+            'end_date' => $period['tanggal_selesai'] ?? null,
+            'version' => 0,
+        ));
+    }
+
+    if ($route === '/classes' && $method === 'GET') {
+        $classes = array();
+        $page = 1;
+        $lastPage = 1;
+        do {
+            $response = api_mode_request('GET', 'praktikum/kelas?per_page=100&page=' . $page);
+            if ($response['status'] < 200 || $response['status'] >= 300) {
+                api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Daftar kelas Praktikum tidak dapat dimuat.')), $response['status']);
+            }
+            $body = $response['data'];
+            if (!isset($body['data']) || !is_array($body['data'])) {
+                api_mode_json(array('error' => 'Format daftar kelas dari API pusat tidak valid.'), 502);
+            }
+            $classes = array_merge($classes, $body['data']);
+            $lastPage = max(1, (int) ($body['meta']['last_page'] ?? 1));
+            $page++;
+        } while ($page <= $lastPage && $page <= 100);
+        if ($page <= $lastPage) {
+            api_mode_json(array('error' => 'Daftar kelas melebihi batas halaman aman. Gunakan filter periode.'), 502);
+        }
+        api_mode_json($classes);
+    }
+
+    if (preg_match('#\A/classes/(\d+)\z#', $route, $match) && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1]);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Detail kelas tidak dapat dimuat.')), $response['status']);
+        }
+        if (!isset($response['data']['data']) || !is_array($response['data']['data'])) {
+            api_mode_json(array('error' => 'Format detail kelas dari API pusat tidak valid.'), 502);
+        }
+        api_mode_json($response['data']['data']);
+    }
+
+    if ($route === '/student/grades' && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'mahasiswa') {
+            api_mode_json(array('error' => 'Akses khusus mahasiswa.'), 403);
+        }
+        $response = api_mode_request('GET', 'praktikum/nilai/saya');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Nilai Praktikum tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
     }
 
     // Explicitly fail closed while each application route is migrated; never query the legacy DB here.

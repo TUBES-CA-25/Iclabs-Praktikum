@@ -9,10 +9,10 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
 - [x] Backend lokal menyediakan API baca, kelas/kelompok, sinkronisasi peserta, kehadiran/nilai, simpan gabungan atomik, workflow, serta CRUD jadwal/penugasan dalam branch terpisah `feature/praktikum-read-api`; belum tersedia di VPS sampai branch ini ditinjau dan dirilis.
-- [ ] Pindah peserta sudah tersedia di API branch, tetapi UI belum dipasang. Perubahan status peserta lain, konfigurasi nilai akhir, laporan/ekspor, integrasi autentikasi, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
-- [x] API menyediakan endpoint atomik gabungan untuk sesi, kehadiran, dan nilai yang meniru transaksi penyimpanan legacy; tombol lama tetap belum dialihkan ke adapter.
+- [ ] Pindah peserta sudah tersedia di API branch, tetapi UI belum dipasang. Perubahan status peserta lain, konfigurasi nilai akhir, laporan/ekspor, mutasi transaksi dari UI, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
+- [x] API menyediakan endpoint atomik gabungan untuk sesi, kehadiran, dan nilai yang meniru transaksi penyimpanan legacy. Mode API frontend kini memiliki halaman baca terpisah; alur tulis legacy belum dialihkan.
 
-Status branch API lokal terakhir saat kontrak ini diperbarui: `feature/praktikum-read-api`, HEAD `0736f96` (termasuk CRUD jadwal dan pindah peserta).
+Status branch API lokal terakhir saat kontrak ini diperbarui: `feature/praktikum-read-api`, HEAD `24b502c` (termasuk CRUD jadwal, pindah peserta, dan validasi konflik jadwal berulang).
 API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 
 ## Prinsip integrasi yang disepakati
@@ -29,7 +29,7 @@ API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 
 - [ ] Inventaris seluruh halaman, query PDO, form, import/export, proses cron, dan relasi tabel; bedakan master canonical dari transaksi Praktikum.
 - [ ] Cocokkan setiap field legacy dengan schema pusat; catat transformasi, data yang tidak punya padanan, dan keputusan yang memerlukan pemilik proses.
-- [ ] Sepakati kontrak autentikasi/session pusat untuk Admin, Dosen, Asisten, dan Mahasiswa; akses Mahasiswa harus terbatas pada datanya sendiri.
+- [x] Cocokkan kontrak autentikasi/session pusat dan pemetaan role Admin, Dosen, Asisten, serta Mahasiswa; endpoint pusat membatasi data Mahasiswa ke akun sendiri.
 - [ ] Minta/implementasikan API pusat untuk: referensi akademik; pencarian Mahasiswa/Dosen/Asisten; kelompok Praktikum; jadwal dan penugasan; peserta; pertemuan dan presensi; komponen/evaluasi dan nilai; workflow verifikasi; laporan/ekspor; audit.
 - [ ] Tetapkan pagination, filter periode, sort order, bentuk error validasi, optimistic locking/version, serta konsistensi ekspor pada kontrak API.
 - [ ] Pastikan semua endpoint mutasi melakukan otorisasi ulang di backend berdasarkan role dan relasi aktual, bukan hanya menu yang disembunyikan di UI.
@@ -40,7 +40,7 @@ API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 - [x] Tambahkan pembacaan `ICLABS_API_BASE_URL`, timeout, dan TLS verification dari environment di `config.php`. `config.php` mengandalkan environment proses; file `.env` tidak dibaca otomatis oleh PHP native.
 - [ ] Atur environment tersebut pada PHP-FPM/Apache staging dan uji health endpoint; jangan menaruh bearer token atau secret dalam JavaScript/log.
 - [x] Tukar login lokal ke autentikasi pusat dalam mode opt-in; bearer token hanya berada di session PHP server, `/me` memvalidasi ulang token ke API pusat, logout mencabut session pusat, ganti password diteruskan ke pusat, dan mutasi dilindungi CSRF.
-- [ ] Normalisasi response API pada adapter tanpa mengubah aturan bisnis/controller lebih dari yang diperlukan.
+- [x] Alihkan response baca referensi/periode, daftar/detail kelas, dan nilai komponen Mahasiswa ke UI mode API tanpa mengubah aturan domain; response tetap dari API canonical.
 - [ ] Tampilkan keadaan kosong yang sah secara berbeda dari API timeout, 401/403, dan error validasi; jangan menyamarkan gangguan sebagai data kosong.
 
 ### C. Migrasi bertahap per alur
@@ -54,7 +54,7 @@ API tersebut belum dapat dipakai staging VPS sampai branch ditinjau dan dirilis.
 
 ### D. Verifikasi dan cutover staging
 
-- [ ] Tambahkan unit/contract test adapter, test authorization per role, serta regression test alur lama.
+- [ ] Lengkapi contract test seluruh route, authorization per role, dan regression test alur tulis lama. Smoke test mock untuk jalur baca saat ini tersedia di `bash tests/api_mode_mock_test.sh`.
 - [ ] Uji Admin, Dosen, Asisten, dan Mahasiswa memakai akun pusat staging; uji pula tidak memiliki role/scope dan token kedaluwarsa.
 - [ ] Rekonsiliasi jumlah dan sampel data lama terhadap API untuk satu periode pilot; cek perpindahan mahasiswa tidak menggandakan atau menghapus nilai/presensi.
 - [ ] Buktikan aplikasi dapat berjalan tanpa koneksi MySQL lokal hanya setelah seluruh route pada cakupan cutover memakai API.
@@ -193,13 +193,13 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Area native | Perilaku yang harus dipertahankan | Dukungan API saat ini / gap |
 | --- | --- | --- |
 | Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | Implementasi API-only meneruskan ke endpoint pusat, menyimpan bearer token pada session server, memetakan role pusat ke role UI, dan gagal tertutup jika role tidak didukung. Belum ada UI alur aktivasi/reset password. |
-| Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` tersedia. Endpoint baca periode aktif spesifik dan pemakaian oleh aplikasi belum dialihkan. |
-| Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | List/detail kelas tersedia; fixture rincian jadwal/peserta/nilai belum lengkap. |
+| Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` dipakai untuk membaca periode aktif pada mode API. Pengubahan periode tetap tidak tersedia di Praktikum (periode dikelola pusat). |
+| Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | Adapter memuat daftar kelas berhalaman dan detail canonical; UI mode API menampilkan jadwal, sesi, komponen nilai, roster yang diizinkan, dan ringkasan Mahasiswa. Operasi tulis belum dipasang pada UI. |
 | Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui; komponen/nilai mentah dan transisi workflow tersedia di branch API lokal. Belum dipasang ke adapter/aplikasi. |
-| Sinkron peserta | Tambah peserta dari anggota frekuensi tanpa duplikasi; jangan menghapus peserta lama | Endpoint additive sinkronisasi tersedia. Perpindahan frekuensi harus mempertahankan status dan histori; belum tersedia. |
-| Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Jadwal masih belum dapat dikelola melalui API. Satu endpoint tulis materi sesi dan absensi tersedia, tetapi pembacaan detail sesi/absensi, CRUD sesi/jadwal, dan pengelolaan penugasan belum tersedia. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
+| Sinkron peserta | Tambah peserta dari anggota frekuensi tanpa duplikasi; jangan menghapus peserta lama | Endpoint additive sinkronisasi dan pindah peserta yang mempertahankan histori tersedia di backend API. UI mode API belum menyediakan tindakan tersebut. |
+| Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Baca jadwal/sesi dan CRUD jadwal serta penugasan tersedia di backend API; tulis sesi/presensi juga tersedia. Adapter UI baru membaca. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
 | Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | API dapat membaca nilai sendiri, menulis komponen/nilai mentah, dan mengelola workflow verifikasi. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; agregat laporan dan ekspor belum tersedia. |
-| Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Master canonical harus dibaca/dikelola melalui API pusat. Endpoint admin domain Praktikum, import, transfer, dan ekspor/audit khusus belum tersedia. |
+| Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | API pindah peserta tersedia, tetapi belum dipasang pada UI; workflow import, administrasi domain, laporan, dan ekspor belum dialihkan ke mode API. Master canonical tidak boleh diduplikasi di database aplikasi. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
 jadwal/penugasan/pertemuan → peserta dan perpindahan → kehadiran → komponen/nilai
@@ -210,12 +210,15 @@ lulus. Jangan mematikan database lokal atau menambahkan dual-write di tengah cut
 POST/PATCH mengembalikan resource detail kelas. Bentuk response menggunakan
 Laravel JSON Resource (`data`; daftar juga
 memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
-dan `422`. Pada tahap ini aplikasi legacy tetap berjalan seperti sebelumnya;
-tidak ada akses atau perubahan database yang dialihkan ke API.
+dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
+jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
 Suite backend pada container lulus 240 tests / 1.503 assertions; Pint dan
-route registration juga lulus. Tes ini bukan UAT VPS maupun pengujian seluruh
-route Praktikum.
+route registration juga lulus. `bash tests/api_mode_mock_test.sh` lulus untuk
+login Admin/Mahasiswa, sesi, periode, daftar/detail kelas, nilai Mahasiswa,
+logout, serta penolakan route yang belum tersedia tanpa PDO. UI daftar kelas
+API juga diperiksa di Chrome headless dengan mock. Bukti ini bukan UAT VPS
+maupun pengujian seluruh route Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
@@ -229,17 +232,19 @@ ICLABS_PRAKTIKUM_SESSION_PATH=/var/lib/iclabs-praktikum/sessions
 ICLABS_PRAKTIKUM_SECURE_COOKIE=true
 ```
 
-`ICLABS_PRAKTIKUM_API_MODE` harus tetap `false` sampai endpoint data Praktikum
-yang dipakai UI selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
+`ICLABS_PRAKTIKUM_API_MODE` harus tetap `false` sampai seluruh alur yang dibutuhkan
+untuk UAT selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
 batasi aksesnya hanya untuk user PHP-FPM (mode `0700`), dan pastikan direktori
-dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini hanya
-autentikasi pusat (`/login`, `/me`, `/logout`, `/password`) tersedia; semua route
-lainnya sengaja mengembalikan `501` tanpa mengakses database lokal.
+dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini
+autentikasi, referensi/periode baca, daftar/detail kelas, dan nilai komponen
+Mahasiswa sudah terhubung. Route tulis, admin, import, laporan, dan ekspor yang
+belum dialihkan sengaja mengembalikan `501` tanpa mengakses database lokal.
+`tests/fixtures/iclabs_api_mock_router.php` menyediakan mock kontrak untuk
+pengujian adapter lokal; ini bukan pengganti UAT pada API staging.
 
-Kredensial aplikasi belum diperlukan untuk endpoint baca ini: setiap permintaan
-terproteksi menggunakan Bearer token akun pusat. Setelah alur login dipindahkan,
-token harus disimpan di session server dengan cookie aman; jangan pernah
-menyisipkannya pada bundle/browser JavaScript. Endpoint aktivasi/reset tetap
+Tidak diperlukan API key aplikasi untuk endpoint ini. Login memakai identitas akun
+pusat, dan bearer token disimpan hanya di session server dengan cookie aman; token
+tidak boleh masuk bundle/browser JavaScript atau log. Endpoint aktivasi/reset tetap
 memakai mekanisme email pusat.
 
 ## Gerbang yang tidak boleh dilewati
