@@ -70,7 +70,7 @@ function api_mode_cookie($clear = false)
     $path = ($path === '' ? '/' : $path . '/');
     $value = $clear ? '' : session_id();
     $maxAge = $clear ? 0 : 28800;
-    header('Set-Cookie: ' . session_name() . '=' . $value . '; Path=' . $path . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Strict' . ($config['secure_cookie'] ? '; Secure' : ''), false);
+    header('Set-Cookie: ' . session_name() . '=' . $value . '; Path=' . $path . '; Max-Age=' . $maxAge . '; HttpOnly; SameSite=Strict' . ($config['iclabs_secure_cookie'] ? '; Secure' : ''), false);
 }
 
 function api_mode_role(array $roles)
