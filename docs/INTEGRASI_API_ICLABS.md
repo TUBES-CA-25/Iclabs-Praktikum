@@ -8,9 +8,12 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
-- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, tulis nilai mentah, operasi simpan gabungan atomik, serta workflow dan riwayat verifikasi pada branch terpisah `feature/praktikum-read-api`, HEAD `b413b5d`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
-- [ ] Mutasi jadwal/pengajar, pengelolaan/perpindahan peserta, workflow verifikasi, kalkulasi nilai akhir, laporan, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
-- [ ] Legacy menyimpan perubahan pertemuan, kehadiran, dan nilai melalui satu transaksi. API saat ini menyediakan tulis kehadiran dan nilai melalui endpoint terpisah; jangan memigrasikan tombol simpan gabungan sebelum endpoint atomik gabungan tersedia atau perilaku transaksi dipertahankan.
+- [x] Backend lokal menyediakan API baca, kelas/kelompok, sinkronisasi peserta, kehadiran/nilai, simpan gabungan atomik, workflow, serta CRUD jadwal/penugasan dalam branch terpisah `feature/praktikum-read-api`; belum tersedia di VPS sampai branch ini ditinjau dan dirilis.
+- [ ] Pengelolaan/perpindahan status peserta, konfigurasi nilai akhir, laporan/ekspor, integrasi autentikasi, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
+- [x] API menyediakan endpoint atomik gabungan untuk sesi, kehadiran, dan nilai yang meniru transaksi penyimpanan legacy; tombol lama tetap belum dialihkan ke adapter.
+
+Status branch API lokal terakhir saat kontrak ini diperbarui: `feature/praktikum-read-api`.
+CRUD jadwal sudah ada di branch, tetapi belum dapat dipakai staging VPS sampai kode dirilis.
 
 ## Prinsip integrasi yang disepakati
 
@@ -66,7 +69,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 
 | Endpoint | Akses dan isi | Status |
 | --- | --- | --- |
-| `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, dan status referensi. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. Health API pusat merespons HTTP 200 dari host lokal. |
+| `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, status/pola jadwal. Data picker Dosen/Asisten aktif hanya disertakan untuk admin. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. |
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
 | `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran, nilai komponen, status workflow dan histori per jadwal; Mahasiswa hanya menerima sesi serta kehadiran/nilai miliknya. | Implementasi lokal; diuji untuk detail kosong dan detail terisi Mahasiswa/staf. Nilai akhir/huruf belum dihitung sampai konfigurasi rentang nilai canonical disepakati. |
 | `GET /v1/praktikum/nilai/saya` | Hanya Mahasiswa; nilai komponen mentah dan metadata periode/kelas milik akun sendiri. API belum menghitung nilai akhir karena kontrak konfigurasi/bobot dan rentang nilai masih perlu validasi terhadap aturan lama. | Implementasi lokal; detail fixture nilai masih perlu dilengkapi. |
@@ -78,6 +81,35 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `PUT /v1/praktikum/kelas/{classId}/komponen-nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi`, `jumlah_evaluasi`, `jumlah_asistensi`. Membentuk `EVALUASI_N` dan `ASISTENSI_N` dengan bobot total masing-masing 20%; `MID` dan `UAS` tetap 30%. Komponen berisi nilai tidak bisa dinonaktifkan. Ditolak bila workflow telah diajukan. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi` dan array `perubahan` berisi `id_mahasiswa`, `kode_komponen`, `nilai` (0–100 atau `null` untuk menghapus), opsional `catatan`. Semua peserta dan komponen divalidasi sebelum perubahan; stale version ditolak. | Implementasi lokal dan lulus test; belum dipasang ke adapter/aplikasi. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}/workflow` | Admin/Asisten yang ditugaskan dapat mengajukan; Dosen pengampu jadwal dapat memberi `PERLU_REVISI`/`TERVERIFIKASI`, lalu mengunci; Admin dapat mengembalikan status ke `DRAF` dengan alasan. Payload wajib `versi`, `versi_workflow`, `status`; alasan wajib untuk revisi/reset. Pengajuan menolak data tidak lengkap dan semua perubahan masuk histori append-only. | Implementasi lokal; diuji untuk kelengkapan, transisi role, stale versions, audit/histori, serta pembacaan status/riwayat pada detail. Belum dipasang ke adapter/aplikasi. |
+| `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu dan Asisten utama/opsional pendamping. Menolak personel tanpa master/role aktif atau konflik ruang/pengajar/jadwal kuliah pribadi Asisten. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Implementasi lokal pada branch API; test create, tanggal periode, jadwal pribadi Asisten, dan versi lulus. Belum dipasang ke adapter/aplikasi atau dirilis VPS. |
+| `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}` | Hanya admin; mengubah subset detail jadwal dan/atau assignment dengan `versi` wajib. Menolak jadwal bukan milik kelas, stale version, tanggal/jam tidak sah, konflik, atau workflow yang sudah diajukan. Detail kelas mengembalikan pola, status, dan assignment aktif. | Implementasi lokal pada branch API; test create/update/version dan detail. Belum dipasang ke adapter/aplikasi atau dirilis VPS. |
+
+Contoh payload pembuatan jadwal (ID user adalah ID akun pusat; jangan mengirim email/NIM sebagai identitas relasi):
+
+```json
+{
+  "versi": 4,
+  "id_laboratorium": 1,
+  "hari_ke": 2,
+  "jam_mulai": "08:00",
+  "jam_selesai": "10:00",
+  "tanggal_mulai": "2026-09-07",
+  "tanggal_selesai": "2026-12-12",
+  "pola_perulangan": "MINGGUAN",
+  "status": "AKTIF",
+  "id_user_dosen": 20,
+  "id_user_asisten_utama": 21,
+  "id_user_asisten_pendamping": null
+}
+```
+
+Gunakan `GET /api/v1/praktikum/referensi` untuk daftar referensi; pilihan
+`dosen`/`asisten` hanya tersedia untuk admin. `POST` dan `PATCH` jadwal
+mengembalikan `data.id_jadwal_kelas_kuliah` serta `data.versi` kelompok baru.
+Setelah sukses, muat ulang detail kelas (`GET /api/v1/praktikum/kelas/{id}`)
+agar UI mengambil jadwal, penugasan aktif, dan versi terbaru. PATCH menerima
+subset field selain `versi`; untuk menghapus pendamping kirim field pendamping
+dengan nilai `null`.
 
 Endpoint kehadiran mengandalkan referensi baru `mst_status_kehadiran_mahasiswa.KODE = TERLAMBAT`.
 Di server, endpoint ini belum siap sampai kode API dirilis dan referensi ditambahkan
@@ -179,7 +211,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Pada tahap ini aplikasi legacy tetap berjalan seperti sebelumnya;
 tidak ada akses atau perubahan database yang dialihkan ke API.
 
-Suite backend pada container lulus 231 tests / 1.433 assertions; Pint dan
+Suite backend pada container lulus 238 tests / 1.495 assertions; Pint dan
 route registration juga lulus. Tes ini bukan UAT VPS maupun pengujian seluruh
 route Praktikum.
 
