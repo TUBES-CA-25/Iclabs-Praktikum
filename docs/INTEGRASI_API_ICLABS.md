@@ -8,7 +8,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
-- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, dan tulis nilai mentah pada branch terpisah `feature/praktikum-read-api`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
+- [x] Backend lokal menyediakan empat GET, create/update identitas kelas/kelompok, sinkronisasi peserta, tulis sesi/kehadiran, detail kelas, konfigurasi komponen nilai, dan tulis nilai mentah pada branch terpisah `feature/praktikum-read-api`, HEAD `4fba88d`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
 - [ ] Mutasi jadwal/pengajar, pengelolaan/perpindahan peserta, workflow verifikasi, kalkulasi nilai akhir, laporan, dan cutover seluruh aplikasi belum selesai. Jangan menganggap aplikasi siap cutover.
 
 ## Prinsip integrasi yang disepakati
