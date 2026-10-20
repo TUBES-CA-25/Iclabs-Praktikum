@@ -73,6 +73,30 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `PATCH /v1/praktikum/kelas/{classId}` | Hanya admin pusat; ubah kode/nama kelompok, jumlah pertemuan, atau catatan dengan `versi` wajib. Menolak stale version, kode ganda dalam periode/prodi/mata kuliah, jumlah pertemuan di bawah sesi yang sudah tercatat, dan workflow yang sudah maju. | Implementasi lokal, diuji untuk update/version conflict dan null catatan. |
 | `POST /v1/praktikum/kelas/{classId}/peserta/sinkronisasi` | Admin pusat atau Asisten yang ditugaskan pada kelas; menambahkan peserta dari anggota kelompok berstatus aktif dan Mahasiswa aktif. Idempotent; tidak menghapus peserta lama dan tidak mengaktifkan ulang status nonaktif. Ditolak jika workflow jadwal sudah diajukan. | Implementasi lokal; diuji untuk idempotensi, preservasi peserta mengundurkan diri, dan audit. |
 
+## Audit cakupan route native dan gap cutover
+
+Pemetaan berikut berasal dari `api.php`, `app/classes.php`, `app/admin.php`,
+`app/frequency.php`, `app/period.php`, dan `app/transfer.php`. Route PHP native
+masih menjalankan database lokal; daftar ini bukan klaim bahwa aplikasi sudah
+beralih ke API.
+
+| Area native | Perilaku yang harus dipertahankan | Dukungan API saat ini / gap |
+| --- | --- | --- |
+| Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | API pusat menyediakan login, profil sesi, logout, dan ganti/reset password. Adapter Praktikum belum meneruskan request atau menyimpan token/session pusat. |
+| Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` tersedia. Endpoint baca periode aktif spesifik dan pemakaian oleh aplikasi belum dialihkan. |
+| Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | List/detail kelas tersedia; fixture rincian jadwal/peserta/nilai belum lengkap. |
+| Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | Identitas kelas/kelompok dapat dibuat/diperbarui. Komponen nilai dan transisi workflow belum tersedia. |
+| Sinkron peserta | Tambah peserta dari anggota frekuensi tanpa duplikasi; jangan menghapus peserta lama | Endpoint additive sinkronisasi tersedia. Perpindahan frekuensi harus mempertahankan status dan histori; belum tersedia. |
+| Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Belum ada endpoint domain jadwal Praktikum, pertemuan, atau presensi. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
+| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | Mahasiswa baru dapat membaca komponen nilai miliknya; kalkulasi nilai akhir, input nilai, workflow, agregat laporan, dan ekspor belum tersedia. |
+| Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Master canonical harus dibaca/dikelola melalui API pusat. Endpoint admin domain Praktikum, import, transfer, dan ekspor/audit khusus belum tersedia. |
+
+Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
+jadwal/penugasan/pertemuan → peserta dan perpindahan → kehadiran → komponen/nilai
+→ workflow/verifikasi → laporan/export → admin/import. Tiap area baru dicentang
+setelah kontrak, otorisasi, test regresi terhadap aturan legacy, dan UAT staging
+lulus. Jangan mematikan database lokal atau menambahkan dual-write di tengah cutover.
+
 POST/PATCH mengembalikan resource detail kelas. Bentuk response menggunakan
 Laravel JSON Resource (`data`; daftar juga
 memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
