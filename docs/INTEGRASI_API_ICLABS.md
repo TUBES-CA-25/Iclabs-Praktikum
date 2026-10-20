@@ -217,7 +217,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API `php artisan test` lulus di image Docker repo: 242 tests / 1.518 assertions. Suite khusus Praktikum lulus 27 tests / 158 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, dashboard, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, dan form jadwal. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API `php artisan test` lulus di image Docker repo: 242 tests / 1.518 assertions. Suite khusus Praktikum lulus 27 tests / 158 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, dashboard, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, form jadwal, dan halaman Log Aktivitas untuk Admin. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
