@@ -50,6 +50,8 @@ period_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php
 grep -q '"academic_year":"2026' <<<"$period_response" || { echo "FAIL: pemetaan periode"; exit 1; }
 dashboard_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fdashboard")"
 grep -q '"jumlah_kelas":2' <<<"$dashboard_response" || { echo "FAIL: ringkasan dashboard"; exit 1; }
+audit_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
+grep -q '"trx_kelas_kuliah:10 · UPDATE"' <<<"$audit_response" || { echo "FAIL: audit aktivitas Praktikum"; exit 1; }
 references_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Freferences")"
 grep -q '"kode":"LAB-UJI"' <<<"$references_response" || { echo "FAIL: referensi form jadwal"; exit 1; }
 grep -q '"kode":"TI"' <<<"$references_response" || { echo "FAIL: referensi form kelas"; exit 1; }
@@ -91,5 +93,7 @@ student_me="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php
 grep -q '"role":"mahasiswa"' <<<"$student_me" || { echo "FAIL: role Mahasiswa"; exit 1; }
 student_grades="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fstudent%2Fgrades")"
 grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai pribadi Mahasiswa"; exit 1; }
+student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
+[[ "$student_audit_status" == 403 ]] || { echo "FAIL: audit harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit admin, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"

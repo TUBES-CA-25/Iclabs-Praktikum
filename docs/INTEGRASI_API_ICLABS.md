@@ -10,7 +10,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Backend API pusat menyediakan baca dan mutasi inti kelas/kelompok, peserta, presensi/nilai, workflow, jadwal/penugasan; frontend native memakai adapter API-only tanpa PDO lokal pada request mode tersebut.
 - [x] Dashboard API mode menampilkan agregat kelas/peserta/presensi/nilai/workflow yang dihitung API sesuai ruang akses role, tanpa identitas pribadi mahasiswa.
 - [x] UI mode API memiliki form admin membuat/mengubah kelas/kelompok, mengatur jumlah komponen nilai, dan CRUD jadwal/penugasan; ada tindakan sinkron/pindah peserta.
-- [ ] Perubahan status peserta selain sinkron/pindah, konfigurasi nilai akhir, laporan/ekspor, audit penuh, regresi seluruh aturan legacy dan cutover semua route belum selesai. Jangan menganggap aplikasi siap cutover.
+- [ ] Perubahan status peserta selain sinkron/pindah, konfigurasi nilai akhir, laporan/ekspor, migrasi histori audit legacy, regresi seluruh aturan legacy dan cutover semua route belum selesai. Pembacaan 1.000 audit Praktikum canonical sudah tersedia. Jangan menganggap aplikasi siap cutover.
 - [x] Simpan sesi, presensi dan nilai tetap menggunakan satu endpoint gabungan atomik; UI API-only memuat hanya field presensi/nilai yang diubah agar tidak menimpa data tanpa perubahan.
 
 Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelompok, komponen, jadwal, sinkron/pindah peserta dan workflow. Backend API berada di branch `feature/praktikum-read-api`; deploy dan UAT VPS belum dibuktikan.
@@ -30,7 +30,8 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 - [ ] Inventaris seluruh halaman, query PDO, form, import/export, proses cron, dan relasi tabel; bedakan master canonical dari transaksi Praktikum.
 - [ ] Cocokkan setiap field legacy dengan schema pusat; catat transformasi, data yang tidak punya padanan, dan keputusan yang memerlukan pemilik proses.
 - [x] Cocokkan kontrak autentikasi/session pusat dan pemetaan role Admin, Dosen, Asisten, serta Mahasiswa; endpoint pusat membatasi data Mahasiswa ke akun sendiri.
-- [ ] Minta/implementasikan API pusat untuk: referensi akademik; pencarian Mahasiswa/Dosen/Asisten; kelompok Praktikum; jadwal dan penugasan; peserta; pertemuan dan presensi; komponen/evaluasi dan nilai; workflow verifikasi; laporan/ekspor; audit.
+- [x] Implementasikan API inti untuk referensi, kelas/kelompok, jadwal/penugasan, peserta, pertemuan/presensi/nilai, workflow, dashboard, serta audit Praktikum terbatas untuk admin.
+- [ ] Lengkapi pencarian/administrasi domain, konfigurasi nilai akhir, laporan/ekspor, migrasi histori, dan regresi semua perilaku legacy.
 - [ ] Tetapkan pagination, filter periode, sort order, bentuk error validasi, optimistic locking/version, serta konsistensi ekspor pada kontrak API.
 - [ ] Pastikan semua endpoint mutasi melakukan otorisasi ulang di backend berdasarkan role dan relasi aktual, bukan hanya menu yang disembunyikan di UI.
 
@@ -48,7 +49,8 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 - [ ] Alihkan login, profil, role, dan periode setelah kontraknya siap.
 - [ ] Alihkan master kelompok/frekuensi dan referensi akademik tanpa menyimpan master canonical ganda di MySQL aplikasi.
 - [ ] Alihkan jadwal/penugasan dan peserta; pertahankan urutan sinkronisasi serta aturan pindah frekuensi dan histori.
-- [ ] Alihkan pertemuan, presensi, evaluasi, nilai, penguncian/verifikasi, serta audit secara transaksional.
+- [x] Alihkan pertemuan, presensi, evaluasi/nilai komponen, workflow/verifikasi, serta pembacaan audit Praktikum ke API pusat; operasi penyimpanan sesi/presensi/nilai dilakukan atomik.
+- [ ] Alihkan konfigurasi nilai akhir, laporan/ekspor, import legacy, serta audit historis setelah kontrak dan aturan legacy direkonsiliasi.
 - [ ] Alihkan laporan dan ekspor setelah aturan filter/status/periodenya sama dengan aplikasi lama.
 - [ ] Hapus akses tulis lokal per modul hanya setelah UAT modul tersebut lulus; jangan hapus database atau data historis dalam tahap ini.
 
@@ -70,6 +72,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | Endpoint | Akses dan isi | Status |
 | --- | --- | --- |
 | `GET /v1/praktikum/ringkasan` | Admin/Dosen/Asisten; agregat kelas dan peserta aktif, progres presensi/nilai, pertemuan tercatat, serta jadwal yang perlu perhatian. Mengikuti scope akses kelas dan tidak mengembalikan NIM/nama. | Implementasi lokal; diuji memakai fixture kelas, peserta, sesi, presensi, nilai, dan workflow. |
+| `GET /v1/praktikum/audit?limit=1000` | Hanya `ADMIN_ICLABS`/`SUPER_ADMIN`; maksimal 1.000 audit terbaru untuk entitas transaksi Praktikum. Mengambil nama dari profil canonical, menampilkan aksi serta data sebelum/sesudah, dan tidak mengubah audit lama. Audit non-Praktikum tidak ikut ditampilkan. | Endpoint pusat dan halaman Log Aktivitas API-only tersedia; regresi role dan adapter mock diuji. Riwayat `log_aktivitas` legacy belum diimpor. |
 | `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, status/pola jadwal. Data picker Dosen/Asisten aktif hanya disertakan untuk admin. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. |
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
 | `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran, nilai komponen, status workflow dan histori per jadwal; Mahasiswa hanya menerima sesi serta kehadiran/nilai miliknya. | Implementasi lokal; diuji untuk detail kosong dan detail terisi Mahasiswa/staf. Nilai akhir/huruf belum dihitung sampai konfigurasi rentang nilai canonical disepakati. |
@@ -200,7 +203,7 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Sinkron/pindah peserta | Tambahkan peserta dari anggota aktif tanpa menghapus histori; perpindahan satu mahasiswa ke kelas paralel | UI menyediakan sinkronisasi additive untuk Admin/Asisten dan pemindahan untuk Admin; API tetap memvalidasi versi, periode, prodi, mata kuliah, histori dan tanggal efektif. |
 | Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Admin dapat membuat/mengedit jadwal/penugasan; penulisan sesi/presensi memakai transaksi gabungan. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
 | Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | UI API-only dapat menyimpan nilai komponen untuk Admin/Asisten yang berwenang dan menampilkan workflow role-based. Kalkulasi nilai akhir/huruf masih menunggu padanan kanonik `konfigurasi_nilai`; agregat laporan dan ekspor belum tersedia. |
-| Administrasi, import, transfer | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Transfer peserta tersedia untuk Admin di UI; workflow import, administrasi domain, audit historis penuh, laporan, dan ekspor belum dialihkan ke mode API. Master canonical tidak boleh diduplikasi di database aplikasi. |
+| Administrasi, import, transfer, audit | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Transfer peserta dan pembacaan audit transaksi Praktikum canonical tersedia. Import, administrasi domain, laporan/ekspor, dan migrasi historis `log_aktivitas` belum dialihkan. Master canonical tidak boleh diduplikasi di database aplikasi. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
 jadwal/penugasan/pertemuan → peserta dan perpindahan → kehadiran → komponen/nilai
@@ -214,7 +217,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API `php artisan test` lulus di image Docker repo: 241 tests / 1.511 assertions. Suite khusus Praktikum lulus 26 tests / 151 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, dashboard, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, dan form jadwal. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API `php artisan test` lulus di image Docker repo: 242 tests / 1.518 assertions. Suite khusus Praktikum lulus 27 tests / 158 assertions. Di frontend, `node --check assets/app.js`, PHP lint adapter/fixture, `bash tests/api_mode_mock_test.sh`, dan Chrome headless dengan mock API lulus; cakupan UI browser mencakup login, dashboard, daftar kelas, dialog buat kelompok, form edit kelompok, form komponen, detail, dan form jadwal. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 

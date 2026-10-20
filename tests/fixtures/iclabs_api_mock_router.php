@@ -57,6 +57,19 @@ if ($path === '/api/v1/praktikum/ringkasan') {
     echo json_encode(array('data' => array('jumlah_kelas' => 2, 'jumlah_peserta_aktif' => 18, 'pertemuan_direncanakan' => 28, 'pertemuan_tercatat' => 4, 'presensi_terisi' => 40, 'presensi_diharapkan' => 252, 'persentase_presensi' => 15.9, 'nilai_terisi' => 15, 'nilai_diharapkan' => 252, 'persentase_nilai' => 6.0, 'jadwal_perlu_perhatian' => 1)));
     return;
 }
+if ($path === '/api/v1/praktikum/audit') {
+    echo json_encode(array('data' => array(array(
+        'id' => 1,
+        'created_at' => '2026-10-21 10:00:00',
+        'name' => 'Admin Uji',
+        'role' => null,
+        'entity' => 'trx_kelas_kuliah:10 · UPDATE',
+        'action' => 'UPDATE',
+        'old_value' => '{"status":"DRAF"}',
+        'new_value' => '{"status":"AKTIF"}',
+    ))));
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,

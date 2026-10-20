@@ -239,6 +239,17 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/admin/audit' && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Akses khusus administrator.'), 403);
+        }
+        $response = api_mode_request('GET', 'praktikum/audit?limit=1000');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Log aktivitas tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if ($route === '/references' && $method === 'GET') {
         $response = api_mode_request('GET', 'praktikum/referensi');
         if ($response['status'] < 200 || $response['status'] >= 300) {
