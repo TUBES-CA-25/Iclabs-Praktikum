@@ -126,6 +126,160 @@ function api_mode_export_report(array $class, array $schedule, $format)
     exit;
 }
 
+function api_mode_find_reference(array $items, $value, $field, $label)
+{
+    $needle = mb_strtolower(trim((string) $value), 'UTF-8');
+    $matches = array_values(array_filter($items, static function (array $item) use ($field, $needle): bool {
+        return mb_strtolower(trim((string) ($item[$field] ?? '')), 'UTF-8') === $needle;
+    }));
+    if (count($matches) !== 1) {
+        throw new RuntimeException($label . ' tidak ditemukan atau tidak unik: ' . trim((string) $value));
+    }
+    return $matches[0];
+}
+
+function api_mode_load_practicum_classes()
+{
+    $classes = array();
+    $page = 1;
+    $lastPage = 1;
+    do {
+        $response = api_mode_request('GET', 'praktikum/kelas?per_page=100&page=' . $page);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Data kelas tidak dapat dimuat untuk validasi import.')), $response['status']);
+        }
+        $body = $response['data'];
+        if (!is_array($body['data'] ?? null)) {
+            api_mode_json(array('error' => 'Format daftar kelas dari API pusat tidak valid.'), 502);
+        }
+        $classes = array_merge($classes, $body['data']);
+        $lastPage = max(1, (int) ($body['meta']['last_page'] ?? 1));
+        $page++;
+    } while ($page <= $lastPage && $page <= 100);
+    if ($page <= $lastPage) {
+        api_mode_json(array('error' => 'Jumlah kelas melebihi batas aman untuk import. Batasi berkas per periode.'), 502);
+    }
+    return $classes;
+}
+
+function api_mode_parse_schedule_import($base64)
+{
+    require_once __DIR__ . '/exchange.php';
+    $data = read_xlsx($base64);
+    $headers = array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'hari', 'jam', 'aktif', 'frekuensi');
+    $missing = array_diff(array_diff($headers, array('email asisten 2')), $data['headers']);
+    if ($missing !== array()) {
+        return array('rows' => array(), 'errors' => array(array('line' => 1, 'error' => 'Kolom wajib tidak ditemukan: ' . implode(', ', $missing))));
+    }
+    if ($data['rows'] === array()) {
+        return array('rows' => array(), 'errors' => array(array('line' => 1, 'error' => 'File kosong.')));
+    }
+
+    $referencesResponse = api_mode_request('GET', 'praktikum/referensi');
+    if ($referencesResponse['status'] < 200 || $referencesResponse['status'] >= 300) {
+        api_mode_json(array('error' => api_mode_error_message($referencesResponse['data'] ?? array(), 'Referensi Praktikum tidak dapat dimuat untuk validasi import.')), $referencesResponse['status']);
+    }
+    $references = $referencesResponse['data']['data'] ?? array();
+    $classes = api_mode_load_practicum_classes();
+    $resolved = array();
+    $errors = array();
+    $seenClasses = array();
+    $weekday = array('senin' => 1, 'selasa' => 2, 'rabu' => 3, 'kamis' => 4, 'jumat' => 5, 'sabtu' => 6, 'minggu' => 7);
+    $activeMap = array('aktif' => 'AKTIF', 'nonaktif' => 'NONAKTIF', '1' => 'AKTIF', '0' => 'NONAKTIF');
+
+    foreach ($data['rows'] as $sourceRow) {
+        $line = (int) $sourceRow['line'];
+        $values = $sourceRow['values'];
+        try {
+            foreach (array_diff($headers, array('email asisten 2')) as $header) {
+                if (trim((string) ($values[$header] ?? '')) === '') {
+                    throw new RuntimeException('Kolom ' . $header . ' wajib diisi.');
+                }
+            }
+            $frequency = trim((string) $values['frekuensi']);
+            $program = api_mode_find_reference($references['program_studi'] ?? array(), $values['prodi'], 'nama', 'Program Studi');
+            $course = api_mode_find_reference($references['mata_kuliah'] ?? array(), $values['kode mk'], 'kode', 'Kode Mata Kuliah');
+            $laboratory = api_mode_find_reference($references['laboratorium'] ?? array(), $values['laboratorium'], 'nama', 'Laboratorium');
+            $lecturer = api_mode_find_reference($references['dosen'] ?? array(), $values['email dosen'], 'email', 'Email Dosen');
+            $assistant = api_mode_find_reference($references['asisten'] ?? array(), $values['email asisten 1'], 'email', 'Email Asisten 1');
+            $assistant2 = trim((string) ($values['email asisten 2'] ?? '')) === ''
+                ? null
+                : api_mode_find_reference($references['asisten'] ?? array(), $values['email asisten 2'], 'email', 'Email Asisten 2');
+
+            $programName = mb_strtolower(trim((string) $program['nama']), 'UTF-8');
+            $year = mb_strtolower(trim((string) $values['tahun akademik']), 'UTF-8');
+            $semester = mb_strtolower(trim((string) $values['semester']), 'UTF-8');
+            $courseCode = mb_strtolower(trim((string) $course['kode']), 'UTF-8');
+            $groupCode = mb_strtolower($frequency, 'UTF-8');
+            $classMatches = array_values(array_filter($classes, static function (array $class) use ($programName, $year, $semester, $courseCode, $groupCode): bool {
+                return mb_strtolower(trim((string) ($class['periode']['tahun_akademik'] ?? '')), 'UTF-8') === $year
+                    && mb_strtolower(trim((string) ($class['periode']['semester'] ?? '')), 'UTF-8') === $semester
+                    && mb_strtolower(trim((string) ($class['program_studi']['nama'] ?? '')), 'UTF-8') === $programName
+                    && mb_strtolower(trim((string) ($class['mata_kuliah']['kode'] ?? '')), 'UTF-8') === $courseCode
+                    && mb_strtolower(trim((string) ($class['kelompok']['kode'] ?? '')), 'UTF-8') === $groupCode;
+            }));
+            if (count($classMatches) !== 1) {
+                throw new RuntimeException('Kelompok Praktikum canonical tidak ditemukan atau tidak unik. Buat/pastikan kelas dengan periode, prodi, mata kuliah, dan kode frekuensi ini terlebih dahulu.');
+            }
+            $class = $classMatches[0];
+            $classId = (int) $class['id_kelas_kuliah'];
+            if (isset($seenClasses[$classId])) {
+                throw new RuntimeException('Kelas/frekuensi yang sama muncul lebih dari sekali dalam file.');
+            }
+            if ((int) ($class['jumlah_jadwal'] ?? 0) > 0) {
+                throw new RuntimeException('Jadwal untuk kelas/frekuensi ini sudah ada; jadwal lama tidak ditimpa.');
+            }
+            $dayKey = mb_strtolower(trim((string) $values['hari']), 'UTF-8');
+            if (!isset($weekday[$dayKey])) {
+                throw new RuntimeException('Hari harus Senin sampai Minggu.');
+            }
+            $time = str_replace(array('–', '—'), '-', trim((string) $values['jam']));
+            if (preg_match('/^([01]?[0-9]|2[0-3])[.:]([0-5][0-9])\s*-\s*([01]?[0-9]|2[0-3])[.:]([0-5][0-9])$/u', $time, $timeParts) !== 1) {
+                throw new RuntimeException('Jam harus berformat HH.MM-HH.MM.');
+            }
+            $startMinutes = ((int) $timeParts[1] * 60) + (int) $timeParts[2];
+            $endMinutes = ((int) $timeParts[3] * 60) + (int) $timeParts[4];
+            if ($endMinutes <= $startMinutes) {
+                throw new RuntimeException('Jam selesai harus setelah jam mulai.');
+            }
+            $statusKey = mb_strtolower(trim((string) $values['aktif']), 'UTF-8');
+            if (!isset($activeMap[$statusKey])) {
+                throw new RuntimeException('Status aktif harus Aktif, Nonaktif, 1, atau 0.');
+            }
+            $periodStart = $class['periode']['tanggal_mulai'] ?? null;
+            $periodEnd = $class['periode']['tanggal_selesai'] ?? null;
+            if (!$periodStart || !$periodEnd) {
+                throw new RuntimeException('Tanggal periode canonical tidak tersedia.');
+            }
+            $resolvedValues = array(
+                'id_kelas_kuliah' => $classId,
+                'versi' => (int) $class['kelompok']['versi'],
+                'id_laboratorium' => (int) $laboratory['id'],
+                'hari_ke' => $weekday[$dayKey],
+                'jam_mulai' => sprintf('%02d:%02d', (int) $timeParts[1], (int) $timeParts[2]),
+                'jam_selesai' => sprintf('%02d:%02d', (int) $timeParts[3], (int) $timeParts[4]),
+                'tanggal_mulai' => $periodStart,
+                'tanggal_selesai' => $periodEnd,
+                'pola_perulangan' => 'MINGGUAN',
+                'status' => $activeMap[$statusKey],
+                'id_user_dosen' => (int) $lecturer['id_user'],
+                'id_user_asisten_utama' => (int) $assistant['id_user'],
+                'id_user_asisten_pendamping' => $assistant2 === null ? null : (int) $assistant2['id_user'],
+                'frequency' => $frequency,
+                'day' => trim((string) $values['hari']),
+                'time' => str_replace(':', '.', sprintf('%02d:%02d-%02d:%02d', (int) $timeParts[1], (int) $timeParts[2], (int) $timeParts[3], (int) $timeParts[4])),
+            );
+            $display = $values;
+            $display['kelas'] = $class['kelompok']['kode'];
+            $resolved[] = array('line' => $line, 'values' => $resolvedValues, 'display' => $display);
+            $seenClasses[$classId] = true;
+        } catch (Throwable $exception) {
+            $errors[] = array('line' => $line, 'error' => $exception->getMessage());
+        }
+    }
+    return array('rows' => $resolved, 'errors' => $errors);
+}
+
 function api_mode_request($method, $path, array $payload = null, $authenticated = true)
 {
     global $config;
@@ -368,6 +522,47 @@ try {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Konfigurasi nilai tidak dapat dimuat atau disimpan.')), $response['status']);
         }
         api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if ($route === '/admin/schedule-template' && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Template jadwal hanya dapat diakses administrator.'), 403);
+        }
+        require_once __DIR__ . '/exchange.php';
+        xlsx_download(array(
+            array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'hari', 'jam', 'aktif', 'frekuensi'),
+            array('2026/2027', 'Ganjil', 'Teknik Informatika', '130106RP4', 'Lab Startup', 'dosen@fikom.umi.ac.id', 'asisten1@fikom.umi.ac.id', '', 'Selasa', '07.00-10.20', 'Aktif', 'TI_ALPRO-1'),
+        ), 'template-jadwal.xlsx', 1);
+        exit;
+    }
+
+    if ($route === '/admin/import-schedule' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Import jadwal hanya dapat dilakukan administrator.'), 403);
+        }
+        if (!is_string($payload['base64'] ?? null) || $payload['base64'] === '') {
+            api_mode_json(array('error' => 'Berkas XLSX wajib dikirim.'), 422);
+        }
+        $preview = api_mode_parse_schedule_import($payload['base64']);
+        if (($payload['preview'] ?? false) === true) {
+            api_mode_json($preview);
+        }
+        if ($preview['errors'] !== array()) {
+            api_mode_json(array('error' => 'Import dibatalkan. Perbaiki semua baris bermasalah sebelum mencoba kembali.', 'errors' => $preview['errors']), 422);
+        }
+        $schedules = array_map(static function (array $row): array {
+            return array_intersect_key($row['values'], array_flip(array(
+                'id_kelas_kuliah', 'versi', 'id_laboratorium', 'hari_ke', 'jam_mulai', 'jam_selesai',
+                'tanggal_mulai', 'tanggal_selesai', 'pola_perulangan', 'status', 'id_user_dosen',
+                'id_user_asisten_utama', 'id_user_asisten_pendamping',
+            )));
+        }, $preview['rows']);
+        $response = api_mode_request('POST', 'praktikum/jadwal/import', array('jadwal' => $schedules));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Import jadwal ditolak API pusat. Tidak ada baris yang disimpan.')), $response['status']);
+        }
+        $result = $response['data']['data'] ?? array();
+        api_mode_json(array('count' => (int) ($result['jumlah_diimpor'] ?? 0), 'jadwal' => $result['jadwal'] ?? array()), $response['status']);
     }
 
     if ($route === '/references' && $method === 'GET') {

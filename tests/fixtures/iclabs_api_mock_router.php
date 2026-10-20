@@ -45,11 +45,11 @@ if ($path === '/api/v1/praktikum/referensi') {
         'tanggal_selesai' => '2026-12-12', 'aktif' => true,
     )), 'periode_akademik' => array(array('id' => 1, 'tahun_akademik' => '2026/2027', 'nama_semester' => 'Ganjil', 'aktif' => true)),
         'program_studi' => array(array('id' => 1, 'kode' => 'TI', 'nama' => 'Teknik Informatika')),
-        'mata_kuliah' => array(array('id' => 2, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman')),
-        'laboratorium' => array(array('id' => 2, 'kode' => 'LAB-UJI', 'nama' => 'Laboratorium Uji')),
+        'mata_kuliah' => array(array('id' => 2, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'), array('id' => 3, 'kode' => '130106RP4', 'nama' => 'Pemrograman')),
+        'laboratorium' => array(array('id' => 2, 'kode' => 'LAB-UJI', 'nama' => 'Laboratorium Uji'), array('id' => 3, 'kode' => 'LAB-STARTUP', 'nama' => 'Lab Startup')),
         'pola_perulangan' => array(array('kode' => 'MINGGUAN', 'nama' => 'Mingguan')),
-        'dosen' => array(array('id_user' => 300, 'nama' => 'Dosen Uji')),
-        'asisten' => array(array('id_user' => 400, 'nama' => 'Asisten Uji')),
+        'dosen' => array(array('id_user' => 300, 'nama' => 'Dosen Uji', 'email' => 'dosen@fikom.umi.ac.id')),
+        'asisten' => array(array('id_user' => 400, 'nama' => 'Asisten Uji', 'email' => 'asisten1@fikom.umi.ac.id')),
     )));
     return;
 }
@@ -85,6 +85,11 @@ if ($path === '/api/v1/praktikum/konfigurasi-nilai') {
     echo json_encode(array('data' => array('versi' => $method === 'PUT' ? (int) ($request['versi'] ?? 0) + 1 : 1, 'rentang' => $method === 'PUT' ? ($request['rentang'] ?? $bands) : $bands)));
     return;
 }
+if ($path === '/api/v1/praktikum/jadwal/import' && $method === 'POST') {
+    $schedules = $request['jadwal'] ?? array();
+    echo json_encode(array('data' => array('jumlah_diimpor' => count($schedules), 'jadwal' => $schedules)), JSON_UNESCAPED_UNICODE);
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,
@@ -93,6 +98,15 @@ if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
         'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
         'mata_kuliah' => array('id' => 20, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'),
         'kelompok' => array('id' => 30, 'kode' => 'TI_ALPRO-1', 'nama' => 'Frekuensi 1', 'versi' => 1),
+        'jumlah_jadwal' => 0,
+    ), array(
+        'id_kelas_kuliah' => 12, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,
+        'catatan' => null,
+        'periode' => array('id' => 1, 'tahun_akademik' => '2026/2027', 'kode_semester' => 'GANJIL', 'semester' => 'Ganjil', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12'),
+        'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
+        'mata_kuliah' => array('id' => 21, 'kode' => '130106RP4', 'nama' => 'Pemrograman'),
+        'kelompok' => array('id' => 32, 'kode' => 'TI_ALPRO-1', 'nama' => 'Frekuensi 1', 'versi' => 1),
+        'jumlah_jadwal' => 0,
     )), 'meta' => array('last_page' => 1)));
     return;
 }
