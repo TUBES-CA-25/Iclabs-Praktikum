@@ -63,6 +63,19 @@ classes_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.ph
 grep -q '"id_kelas_kuliah":10' <<<"$classes_response" || { echo "FAIL: daftar kelas"; exit 1; }
 detail_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
 grep -q '"kode":"TI_ALPRO-1"' <<<"$detail_response" || { echo "FAIL: detail kelas"; exit 1; }
+xlsx_status="$(curl -sS -o "$test_dir/report.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
+[[ "$xlsx_status" == 200 ]] || { echo "FAIL: ekspor Excel status $xlsx_status"; exit 1; }
+php -r '$f=fopen($argv[1],"rb"); exit(fread($f,2)==="PK"?0:1);' "$test_dir/report.xlsx" || { echo "FAIL: berkas Excel tidak valid"; exit 1; }
+php -r '$z=new ZipArchive(); exit($z->open($argv[1])===true && $z->locateName("xl/worksheets/sheet1.xml")!==false && $z->locateName("[Content_Types].xml")!==false?0:1);' "$test_dir/report.xlsx" || { echo "FAIL: struktur XLSX tidak valid"; exit 1; }
+pdf_status="$(curl -sS -o "$test_dir/report.pdf" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=pdf&schedule_id=99")"
+[[ "$pdf_status" == 200 ]] || { echo "FAIL: ekspor PDF status $pdf_status"; exit 1; }
+php -r '$f=fopen($argv[1],"rb"); exit(fread($f,5)==="%PDF-"?0:1);' "$test_dir/report.pdf" || { echo "FAIL: berkas PDF tidak valid"; exit 1; }
+php -r '$b=file_get_contents($argv[1]); exit(strpos($b,"(50.0) Tj")!==false?0:1);' "$test_dir/report.pdf" || { echo "FAIL: persentase hadir tidak memakai jumlah sesi yang tercatat"; exit 1; }
+php -r '$b=file_get_contents($argv[1]); exit(strpos($b,"/Type /Catalog")!==false && strpos($b,"%%EOF")!==false?0:1);' "$test_dir/report.pdf" || { echo "FAIL: struktur PDF tidak valid"; exit 1; }
+bad_format_status="$(curl -sS -o "$test_dir/bad-format.json" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=csv&schedule_id=99")"
+[[ "$bad_format_status" == 422 ]] || { echo "FAIL: format ekspor tidak didukung harus ditolak"; exit 1; }
+bad_schedule_status="$(curl -sS -o "$test_dir/bad-schedule.json" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=999")"
+[[ "$bad_schedule_status" == 422 ]] || { echo "FAIL: jadwal laporan tidak dikenal harus ditolak"; exit 1; }
 class_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"id_periode_akademik":1,"id_program_studi":1,"id_mata_kuliah":2,"kode_kelompok":"TI_ALPRO-2","nama_kelompok":"Algoritma Kelompok 2","jumlah_pertemuan_rencana":14,"catatan":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
 grep -q '"id_kelas_kuliah":12' <<<"$class_create" || { echo "FAIL: pembuatan kelas"; exit 1; }
 class_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nama_kelompok":"Algoritma Kelompok 1","jumlah_pertemuan_rencana":14,"catatan":"Uji perubahan"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
@@ -99,5 +112,7 @@ student_grades="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api
 grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai pribadi Mahasiswa"; exit 1; }
 student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
 [[ "$student_audit_status" == 403 ]] || { echo "FAIL: audit harus ditolak untuk Mahasiswa"; exit 1; }
+student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
+[[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit admin, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit admin, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"

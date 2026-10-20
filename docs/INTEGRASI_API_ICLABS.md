@@ -90,6 +90,18 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu dan Asisten utama/opsional pendamping. Menolak personel tanpa master/role aktif atau konflik ruang/pengajar/jadwal kuliah pribadi Asisten. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Form UI Admin membuat jadwal/penugasan dan mock bridge lulus; UAT API server belum dilakukan. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}` | Hanya admin; mengubah subset detail jadwal dan/atau assignment dengan `versi` wajib. Menolak jadwal bukan milik kelas, stale version, tanggal/jam tidak sah, konflik, atau workflow yang sudah diajukan. Detail kelas mengembalikan pola, status, dan assignment aktif. | Form UI Admin mengubah jadwal/penugasan dan mock bridge lulus; UAT API server belum dilakukan. |
 
+Ekspor laporan tidak membaca DB legacy dan tidak menambah salinan data: adapter
+API-only memuat `GET /v1/praktikum/kelas/{classId}` menggunakan bearer token
+server-side, lalu memakai generator XLSX/PDF yang sama seperti mode lama. Di
+browser, tombol ekspor ada per jadwal dan memanggil
+`GET api.php?route=/classes/{classId}/export&format=xlsx|pdf&schedule_id={id}`.
+API pusat tetap menjadi otoritas scope; roster yang disertakan hanya roster
+aktif yang boleh diakses akun tersebut. Mahasiswa ditolak untuk ekspor laporan.
+Jika satu kelompok memiliki beberapa jadwal, `schedule_id` wajib dipilih agar
+metadata dosen/asisten, ruang, hari, dan waktu laporan tidak ambigu.
+Persentase kehadiran memakai jumlah sesi yang benar-benar tercatat (bukan jumlah
+pertemuan yang direncanakan), sama seperti implementasi legacy.
+
 Contoh payload pembuatan jadwal (ID user adalah ID akun pusat; jangan mengirim email/NIM sebagai identitas relasi):
 
 ```json
@@ -203,7 +215,7 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | UI API-only mendukung buat/edit kelompok, atur jumlah komponen, simpan atomik sesi/presensi/nilai dan workflow role-based. Otorisasi final ada di API. |
 | Sinkron/pindah peserta | Tambahkan peserta dari anggota aktif tanpa menghapus histori; perpindahan satu mahasiswa ke kelas paralel | UI menyediakan sinkronisasi additive untuk Admin/Asisten dan pemindahan untuk Admin; API tetap memvalidasi versi, periode, prodi, mata kuliah, histori dan tanggal efektif. |
 | Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Admin dapat membuat/mengedit jadwal/penugasan; penulisan sesi/presensi memakai transaksi gabungan. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
-| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | UI API-only menyimpan nilai komponen, menampilkan nilai akhir/predikat dengan bobot dan ambang legacy yang dapat dikelola Admin, serta workflow role-based. Laporan dan ekspor XLSX/PDF belum tersedia. |
+| Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | UI API-only menampilkan nilai akhir/predikat, dan staf dapat mengunduh laporan XLSX/PDF per jadwal. Data diambil dari detail kelas API pusat yang sudah membatasi scope; generator laporan legacy dipakai ulang tanpa koneksi DB lokal. Mock menguji validitas ZIP/PDF dan penolakan ekspor untuk Mahasiswa. |
 | Administrasi, import, transfer, audit | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Transfer peserta dan pembacaan audit transaksi Praktikum canonical tersedia. Import, administrasi domain, laporan/ekspor, dan migrasi historis `log_aktivitas` belum dialihkan. Master canonical tidak boleh diduplikasi di database aplikasi. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
@@ -218,7 +230,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API `php artisan test` lulus di image Docker repo: 246 tests / 1.538 assertions. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter, dan `node --check assets/app.js`; mock mencakup konfigurasi ambang nilai Admin, audit, referensi, CRUD, penyimpanan atomik, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Chrome headless sebelumnya memverifikasi halaman Admin/Audit dan nilai Mahasiswa; browser smoke untuk perubahan ambang nilai terbaru perlu dijalankan ulang. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API `php artisan test` lulus di image Docker repo: 246 tests / 1.538 assertions. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup ambang nilai Admin, audit, CRUD, ekspor XLSX/PDF valid, penolakan ekspor Mahasiswa, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Chrome headless sebelumnya memverifikasi halaman Admin/Audit dan nilai Mahasiswa; browser smoke ekspor terbaru perlu dijalankan ulang. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
@@ -239,8 +251,8 @@ dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini
 autentikasi, referensi/periode baca, daftar/detail/CRUD kelas, jadwal,
 komponen, sinkron/pindah peserta, nilai komponen dan ringkasan nilai akhir,
 konfigurasi ambang predikat Admin, simpan gabungan sesi-presensi-nilai, serta
-transisi workflow sudah terhubung. Administrasi domain tambahan, import, laporan,
-dan ekspor yang belum dialihkan
+transisi workflow serta laporan XLSX/PDF per jadwal sudah terhubung. Administrasi
+domain tambahan, import, dan migrasi historis audit yang belum dialihkan
 sengaja mengembalikan `501` tanpa mengakses database lokal.
 `tests/fixtures/iclabs_api_mock_router.php` menyediakan mock kontrak untuk
 pengujian adapter lokal; ini bukan pengganti UAT pada API staging.

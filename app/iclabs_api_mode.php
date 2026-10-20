@@ -17,6 +17,115 @@ function api_mode_json($data, $status = 200)
     exit;
 }
 
+function api_mode_reject($message, $status = 400)
+{
+    api_mode_json(array('error' => $message), $status);
+}
+
+if (!function_exists('reject')) {
+    function reject($message, $status = 400)
+    {
+        api_mode_reject($message, $status);
+    }
+}
+
+function api_mode_export_report(array $class, array $schedule, $format)
+{
+    require_once __DIR__ . '/exchange.php';
+
+    if (!in_array($format, array('xlsx', 'pdf'), true)) {
+        api_mode_reject('Format laporan tidak valid.', 422);
+    }
+
+    $weekday = array(1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu');
+    $teachers = array('DOSEN_PENGAMPU' => '', 'ASISTEN_UTAMA' => '', 'ASISTEN_PENDAMPING' => '');
+    foreach (($schedule['pengajar'] ?? array()) as $teacher) {
+        $role = $teacher['peran'] ?? '';
+        if (array_key_exists($role, $teachers)) {
+            $teachers[$role] = $teacher['nama'] ?? '';
+        }
+    }
+
+    $evaluations = array();
+    $assistance = array();
+    foreach (($class['komponen_nilai'] ?? array()) as $component) {
+        if (empty($component['aktif'])) {
+            continue;
+        }
+        if (preg_match('/^EVALUASI_([1-9][0-9]*)$/', $component['kode'] ?? '', $match) === 1) {
+            $evaluations[] = (int) $match[1];
+        } elseif (preg_match('/^ASISTENSI_([1-9][0-9]*)$/', $component['kode'] ?? '', $match) === 1) {
+            $assistance[] = (int) $match[1];
+        }
+    }
+    sort($evaluations);
+    sort($assistance);
+
+    $legacyClass = array(
+        'id' => (int) ($schedule['id'] ?? 0),
+        'semester' => $class['periode']['semester'] ?? '',
+        'year' => $class['periode']['tahun_akademik'] ?? '',
+        'code' => $class['mata_kuliah']['kode'] ?? '',
+        'course' => $class['mata_kuliah']['nama'] ?? '',
+        'class' => $class['kelompok']['kode'] ?? '',
+        'day' => $weekday[(int) ($schedule['hari_ke'] ?? 0)] ?? 'Hari belum ditentukan',
+        'time' => substr((string) ($schedule['jam_mulai'] ?? ''), 0, 5) . '–' . substr((string) ($schedule['jam_selesai'] ?? ''), 0, 5),
+        'lab' => $schedule['nama_laboratorium'] ?? $schedule['nama_ruang'] ?? $schedule['kode_ruang'] ?? '',
+        'lecturer' => $teachers['DOSEN_PENGAMPU'],
+        'assistant1' => $teachers['ASISTEN_UTAMA'],
+        'assistant2' => $teachers['ASISTEN_PENDAMPING'],
+        'meeting_count' => (int) ($class['jumlah_pertemuan_rencana'] ?? 0),
+        'evaluation_count' => $evaluations === array() ? 0 : max($evaluations),
+        'assistance_count' => $assistance === array() ? 0 : max($assistance),
+        'state' => $schedule['status_workflow'] ?? $schedule['status'] ?? '',
+    );
+
+    $statusMap = array('HADIR' => 'H', 'IZIN' => 'I', 'SAKIT' => 'S', 'ALPA' => 'A', 'TERLAMBAT' => 'T');
+    $students = array();
+    foreach (($class['peserta'] ?? array()) as $participant) {
+        $attendance = array();
+        foreach (($participant['kehadiran'] ?? array()) as $record) {
+            $status = $record['status'] ?? '';
+            if (isset($statusMap[$status])) {
+                $attendance[] = array('number' => (int) ($record['nomor_pertemuan'] ?? 0), 'value' => $statusMap[$status]);
+            }
+        }
+
+        $gradeValues = array('evaluations' => array(), 'assistance' => array(), 'mid' => null, 'uas' => null);
+        foreach (($participant['nilai'] ?? array()) as $grade) {
+            $code = $grade['kode_komponen'] ?? '';
+            $value = isset($grade['nilai']) ? (float) $grade['nilai'] : null;
+            if (preg_match('/^EVALUASI_([1-9][0-9]*)$/', $code, $match) === 1) {
+                $gradeValues['evaluations'][] = array('number' => (int) $match[1], 'value' => $value);
+            } elseif (preg_match('/^ASISTENSI_([1-9][0-9]*)$/', $code, $match) === 1) {
+                $gradeValues['assistance'][] = array('number' => (int) $match[1], 'value' => $value);
+            } elseif ($code === 'MID') {
+                $gradeValues['mid'] = $value;
+            } elseif ($code === 'UAS') {
+                $gradeValues['uas'] = $value;
+            }
+        }
+        $summary = $participant['ringkasan_nilai'] ?? array();
+        $students[] = array_merge(array(
+            'nim' => $participant['nim'] ?? '',
+            'name' => $participant['nama'] ?? '',
+            'attendance' => $attendance,
+            'presence' => count($class['sesi'] ?? array()) > 0
+                ? count(array_filter($attendance, static function (array $record): bool { return $record['value'] === 'H'; })) / count($class['sesi']) * 100
+                : 0,
+            'ev' => $summary['rata_evaluasi'] ?? null,
+            'as' => $summary['rata_asistensi'] ?? null,
+            'mid' => $gradeValues['mid'],
+            'uas' => $gradeValues['uas'],
+            'na' => $summary['nilai_akhir'] ?? null,
+            'letter' => $summary['predikat'] ?? '—',
+        ), $gradeValues);
+    }
+
+    export_report(array('class' => $legacyClass, 'students' => $students), $format);
+    exit;
+}
+
 function api_mode_request($method, $path, array $payload = null, $authenticated = true)
 {
     global $config;
@@ -362,6 +471,42 @@ try {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Transisi workflow ditolak API pusat.')), $response['status']);
         }
         api_mode_json($response['data']['data'] ?? array('ok' => true));
+    }
+
+    if (preg_match('#\A/classes/(\d+)/export\z#', $route, $match) && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') === 'mahasiswa') {
+            api_mode_json(array('error' => 'Ekspor laporan hanya dapat diakses staf Praktikum.'), 403);
+        }
+        $format = $_GET['format'] ?? '';
+        if (!in_array($format, array('xlsx', 'pdf'), true)) {
+            api_mode_json(array('error' => 'Format laporan harus xlsx atau pdf.'), 422);
+        }
+        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1]);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Laporan tidak dapat dimuat dari API pusat.')), $response['status']);
+        }
+        $class = $response['data']['data'] ?? null;
+        if (!is_array($class) || !is_array($class['peserta'] ?? null)) {
+            api_mode_json(array('error' => 'API pusat tidak mengembalikan roster yang diperlukan untuk laporan.'), 502);
+        }
+        $schedules = $class['jadwal'] ?? array();
+        $scheduleId = (int) ($_GET['schedule_id'] ?? 0);
+        if ($scheduleId === 0 && count($schedules) === 1) {
+            $scheduleId = (int) ($schedules[0]['id'] ?? 0);
+        }
+        $schedule = null;
+        foreach ($schedules as $candidate) {
+            if ((int) ($candidate['id'] ?? 0) === $scheduleId) {
+                $schedule = $candidate;
+                break;
+            }
+        }
+        if ($schedule === null) {
+            api_mode_json(array('error' => count($schedules) > 1
+                ? 'Pilih salah satu jadwal untuk membuat laporan.'
+                : 'Jadwal kelas tidak ditemukan.'), 422);
+        }
+        api_mode_export_report($class, $schedule, $format);
     }
 
     if (preg_match('#\A/classes/(\d+)\z#', $route, $match) && $method === 'GET') {

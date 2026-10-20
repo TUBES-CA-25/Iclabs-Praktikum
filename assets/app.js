@@ -258,11 +258,14 @@ function apiClassEditor(c, selectedMeeting){
   $('#api-back').onclick=()=>{apiCurrent=null;apiClassList()};
   schedules.forEach((schedule,index)=>{
     const row=document.querySelectorAll('#api-view .api-detail-row')[index];if(!row)return;
-    const actions=apiWorkflowActions(c,schedule);if(!actions.length)return;
+    const actions=apiWorkflowActions(c,schedule);
     const controls=document.createElement('div');controls.className='row';
     actions.forEach(action=>{const button=document.createElement('button');button.type='button';button.className='small'+(action.target==='TERVERIFIKASI'?' primary':'');button.textContent=action.label;button.onclick=()=>apiWorkflowChange(c,schedule,action.target,action.needsNote);controls.appendChild(button)});
     if(user.role==='admin'){const edit=document.createElement('button');edit.type='button';edit.className='small';edit.textContent='Edit jadwal';edit.onclick=()=>apiScheduleForm(c,schedule);controls.appendChild(edit)}
-    row.appendChild(controls);
+    if(['admin','dosen','asisten'].includes(user.role)){
+      ['xlsx','pdf'].forEach(format=>{const button=document.createElement('button');button.type='button';button.className='small';button.textContent=format==='xlsx'?'Unduh Excel':'Unduh PDF';button.onclick=()=>downloadApiReport(classId,Number(schedule.id),format);controls.appendChild(button)});
+    }
+    if(controls.childElementCount)row.appendChild(controls);
   });
   if(user.role==='admin'){
     const heading=[...document.querySelectorAll('#api-view .card-head h2')].find(x=>x.textContent==='Jadwal dan penugasan');
@@ -302,5 +305,12 @@ function apiClassEditor(c, selectedMeeting){
 async function apiClassDetailWithEntry(id, selectedMeeting){
   apiCurrent=id;const view=$('#api-view');view.innerHTML='<div class="empty">Memuat detail kelas…</div>';
   try{const c=await api('/classes/'+id);apiClassEditor(c,selectedMeeting)}catch(e){apiCurrent=null;view.innerHTML=`<div class="error" role="alert">${esc(e.message)}</div><button class="small" id="api-back">← Kembali</button>`;$('#api-back').onclick=apiClassList}
+}
+async function downloadApiReport(classId,scheduleId,format){
+  try{
+    const response=await fetch(apiUrl(`/classes/${classId}/export?format=${encodeURIComponent(format)}&schedule_id=${scheduleId}`),{credentials:'same-origin'});
+    if(!response.ok){let message='Laporan tidak dapat dibuat.';try{message=(await response.json()).error||message}catch(e){}throw Error(message)}
+    const blob=await response.blob(),url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=`Praktikum-${classId}-${scheduleId}.${format}`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }catch(error){toast(error.message)}
 }
 document.addEventListener('click',function(event){const button=event.target.closest('[data-api-class]');if(!button||!user?.api_mode)return;event.preventDefault();event.stopImmediatePropagation();apiClassDetailWithEntry(Number(button.dataset.apiClass))},true);

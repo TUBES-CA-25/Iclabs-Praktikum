@@ -116,10 +116,18 @@ if ($path === '/api/v1/praktikum/kelas/10') {
         'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
         'mata_kuliah' => array('id' => 20, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'),
         'kelompok' => array('id' => 30, 'kode' => 'TI_ALPRO-1', 'nama' => 'Frekuensi 1', 'versi' => 1),
-        'jadwal' => array(array('id' => 99, 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '11:00', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12', 'pola_perulangan' => 'MINGGUAN', 'status' => 'AKTIF', 'nama_laboratorium' => 'Laboratorium Uji', 'status_workflow' => 'TERVERIFIKASI', 'versi_workflow' => 1, 'pengajar' => array())),
-        'sesi' => array(),
-        'komponen_nilai' => array(array('id' => 1, 'kode' => 'MID', 'nama' => 'Ujian Tengah Semester', 'bobot_persen' => 30, 'urutan' => 1, 'aktif' => true)),
-        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(), 'nilai' => array(), 'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'))),
+        'jadwal' => array(array('id' => 99, 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '11:00', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12', 'pola_perulangan' => 'MINGGUAN', 'status' => 'AKTIF', 'nama_laboratorium' => 'Laboratorium Uji', 'status_workflow' => 'TERVERIFIKASI', 'versi_workflow' => 1, 'pengajar' => array(array('peran' => 'DOSEN_PENGAMPU', 'nama' => 'Dosen Uji'), array('peran' => 'ASISTEN_UTAMA', 'nama' => 'Asisten Uji')))),
+        'sesi' => array(
+            array('id' => 90, 'nomor_pertemuan' => 1, 'tanggal_sesi' => '2026-09-14', 'status' => 'TERLAKSANA'),
+            array('id' => 91, 'nomor_pertemuan' => 2, 'tanggal_sesi' => '2026-09-21', 'status' => 'TERLAKSANA')
+        ),
+        'komponen_nilai' => array(
+            array('id' => 1, 'kode' => 'EVALUASI_1', 'nama' => 'Evaluasi 1', 'bobot_persen' => 20, 'urutan' => 1, 'aktif' => true),
+            array('id' => 2, 'kode' => 'ASISTENSI_1', 'nama' => 'Asistensi 1', 'bobot_persen' => 20, 'urutan' => 2, 'aktif' => true),
+            array('id' => 3, 'kode' => 'MID', 'nama' => 'Ujian Tengah Semester', 'bobot_persen' => 30, 'urutan' => 3, 'aktif' => true),
+            array('id' => 4, 'kode' => 'UAS', 'nama' => 'Ujian Akhir Semester', 'bobot_persen' => 30, 'urutan' => 4, 'aktif' => true)
+        ),
+        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(array('nomor_pertemuan' => 1, 'status' => 'HADIR'), array('nomor_pertemuan' => 2, 'status' => 'IZIN')), 'nilai' => array(array('kode_komponen' => 'EVALUASI_1', 'nilai' => 80), array('kode_komponen' => 'ASISTENSI_1', 'nilai' => 90), array('kode_komponen' => 'MID', 'nilai' => 85), array('kode_komponen' => 'UAS', 'nilai' => 85)), 'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'))),
     );
     echo json_encode(array('data' => $class));
     return;
