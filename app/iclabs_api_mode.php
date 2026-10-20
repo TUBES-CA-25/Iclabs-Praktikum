@@ -231,6 +231,70 @@ try {
         ));
     }
 
+    if ($route === '/references' && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/referensi');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Referensi Praktikum tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if ($route === '/classes' && $method === 'POST') {
+        $response = api_mode_request('POST', 'praktikum/kelas', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Kelas Praktikum tidak dapat dibuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if (preg_match('#\A/classes/(\d+)\z#', $route, $match) && $method === 'PATCH') {
+        $response = api_mode_request('PATCH', 'praktikum/kelas/' . (int) $match[1], $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Kelompok Praktikum tidak dapat diperbarui.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/components\z#', $route, $match) && $method === 'PUT') {
+        $response = api_mode_request('PUT', 'praktikum/kelas/' . (int) $match[1] . '/komponen-nilai', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Komponen penilaian tidak dapat diperbarui.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/participants/sync\z#', $route, $match) && $method === 'POST') {
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/peserta/sinkronisasi', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Peserta tidak dapat disinkronkan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/participants/transfer\z#', $route, $match) && $method === 'POST') {
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/peserta/pindah', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Mahasiswa tidak dapat dipindahkan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/schedules\z#', $route, $match) && $method === 'POST') {
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/jadwal', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Jadwal Praktikum tidak dapat dibuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if (preg_match('#\A/classes/(\d+)/schedules/(\d+)\z#', $route, $match) && $method === 'PATCH') {
+        $response = api_mode_request('PATCH', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/' . (int) $match[2], $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Jadwal Praktikum tidak dapat diperbarui.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if ($route === '/classes' && $method === 'GET') {
         $classes = array();
         $page = 1;

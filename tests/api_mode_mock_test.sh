@@ -48,14 +48,31 @@ csrf="$(printf '%s' "$me_response" | php -r '$data=json_decode(stream_get_conten
 
 period_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Factive-period")"
 grep -q '"academic_year":"2026' <<<"$period_response" || { echo "FAIL: pemetaan periode"; exit 1; }
+references_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Freferences")"
+grep -q '"kode":"LAB-UJI"' <<<"$references_response" || { echo "FAIL: referensi form jadwal"; exit 1; }
+grep -q '"kode":"TI"' <<<"$references_response" || { echo "FAIL: referensi form kelas"; exit 1; }
 classes_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
 grep -q '"id_kelas_kuliah":10' <<<"$classes_response" || { echo "FAIL: daftar kelas"; exit 1; }
 detail_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
 grep -q '"kode":"TI_ALPRO-1"' <<<"$detail_response" || { echo "FAIL: detail kelas"; exit 1; }
+class_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"id_periode_akademik":1,"id_program_studi":1,"id_mata_kuliah":2,"kode_kelompok":"TI_ALPRO-2","nama_kelompok":"Algoritma Kelompok 2","jumlah_pertemuan_rencana":14,"catatan":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
+grep -q '"id_kelas_kuliah":12' <<<"$class_create" || { echo "FAIL: pembuatan kelas"; exit 1; }
+class_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nama_kelompok":"Algoritma Kelompok 1","jumlah_pertemuan_rencana":14,"catatan":"Uji perubahan"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
+grep -q '"versi":2' <<<"$class_update" || { echo "FAIL: pembaruan kelas"; exit 1; }
+component_update="$(curl -sS -b "$cookie_jar" -X PUT -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"jumlah_evaluasi":3,"jumlah_asistensi":2}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fcomponents")"
+grep -q '"versi":2' <<<"$component_update" || { echo "FAIL: konfigurasi komponen nilai"; exit 1; }
 changes_response="$(curl -sS -b "$cookie_jar" -X PUT -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"pertemuan":{"nomor_pertemuan":1,"tanggal_sesi":"2026-10-21","materi":"Uji API"},"kehadiran":[{"id_mahasiswa":700,"status":"HADIR","catatan":null}],"nilai":[{"id_mahasiswa":700,"kode_komponen":"MID","nilai":85}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fchanges")"
 grep -q '"versi":2' <<<"$changes_response" || { echo "FAIL: simpan sesi/presensi/nilai atomik"; exit 1; }
 workflow_response="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"versi_workflow":1,"status":"DRAF","catatan":"Uji reset"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules%2F99%2Fworkflow")"
 grep -q '"versi_workflow":2' <<<"$workflow_response" || { echo "FAIL: transisi workflow"; exit 1; }
+schedule_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pendamping":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules")"
+grep -q '"id_jadwal_kelas_kuliah":100' <<<"$schedule_create" || { echo "FAIL: pembuatan jadwal"; exit 1; }
+schedule_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"status":"NONAKTIF"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules%2F99")"
+grep -q '"id_jadwal_kelas_kuliah":99' <<<"$schedule_update" || { echo "FAIL: pembaruan jadwal"; exit 1; }
+sync_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fparticipants%2Fsync")"
+grep -q '"jumlah_peserta_baru":1' <<<"$sync_response" || { echo "FAIL: sinkron peserta"; exit 1; }
+transfer_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi_sumber":1,"versi_tujuan":1,"id_kelas_tujuan":11,"id_mahasiswa":700,"tanggal_efektif":"2026-10-21","alasan":"Uji perpindahan"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fparticipants%2Ftransfer")"
+grep -q '"id_kelas_tujuan":11' <<<"$transfer_response" || { echo "FAIL: pindah peserta"; exit 1; }
 
 unsupported_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fusers")"
 grep -q '"error":"Fitur ini belum dialihkan ke API pusat' <<<"$unsupported_response" || { echo "FAIL: route belum siap tidak gagal tertutup"; exit 1; }
@@ -73,4 +90,4 @@ grep -q '"role":"mahasiswa"' <<<"$student_me" || { echo "FAIL: role Mahasiswa"; 
 student_grades="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fstudent%2Fgrades")"
 grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai pribadi Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (Admin/Mahasiswa login, sesi, periode, kelas, simpan atomik, workflow, nilai pribadi, fail-closed, logout; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, referensi, CRUD kelas/jadwal/komponen, simpan atomik, workflow, sinkron/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
