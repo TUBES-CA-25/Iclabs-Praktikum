@@ -190,6 +190,20 @@ if ($path === '/api/v1/praktikum/kelas/10/anggota' && $method === 'POST') {
     echo json_encode(array('data' => array('id_kelas_kuliah' => 10, 'id_mahasiswa' => (int) ($request['id_mahasiswa'] ?? 0), 'tanggal_mulai' => $request['tanggal_mulai'] ?? null, 'versi' => (int) ($request['versi'] ?? 0) + 1)));
     return;
 }
+if ($path === '/api/v1/praktikum/kelas/10/anggota/import' && $method === 'POST') {
+    if (strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('a', 64)) !== 0) {
+        http_response_code(401);
+        echo json_encode(array('message' => 'Unauthenticated.'));
+        return;
+    }
+    if (!empty($request['pratinjau'])) {
+        echo json_encode(array('data' => array('pratinjau' => true, 'jumlah_baris' => count($request['anggota'] ?? array()), 'jumlah_valid' => count($request['anggota'] ?? array()), 'jumlah_konflik' => 0, 'baris' => array())));
+        return;
+    }
+    http_response_code(201);
+    echo json_encode(array('data' => array('pratinjau' => false, 'jumlah_diimpor' => count($request['anggota'] ?? array()), 'id_kelas_kuliah' => 10, 'versi' => (int) ($request['versi'] ?? 0) + 1)));
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas/10/peserta/pindah' && $method === 'POST') {
     echo json_encode(array('data' => array('id_mahasiswa' => (int) ($request['id_mahasiswa'] ?? 0), 'id_kelas_tujuan' => (int) ($request['id_kelas_tujuan'] ?? 0), 'versi_sumber' => 2, 'versi_tujuan' => 2)));
     return;

@@ -104,6 +104,13 @@ candidate_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.
 grep -q '"nim":"13020260001"' <<<"$candidate_response" || { echo "FAIL: pencarian calon Mahasiswa canonical: $candidate_response"; exit 1; }
 member_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_mahasiswa":701,"tanggal_mulai":"2026-09-07","catatan":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fmembers")"
 grep -q '"id_mahasiswa":701' <<<"$member_response" || { echo "FAIL: tambah anggota canonical: $member_response"; exit 1; }
+frequency_template_status="$(curl -sS -o "$test_dir/frequency-template.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Ffrequency-template")"
+[[ "$frequency_template_status" == 200 ]] || { echo "FAIL: template import anggota frekuensi"; exit 1; }
+frequency_template_base64="$(base64 -w 0 "$test_dir/frequency-template.xlsx")"
+frequency_preview="$(curl -sS -b "$cookie_jar" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "{\"id_kelas_kuliah\":10,\"versi\":1,\"base64\":\"$frequency_template_base64\",\"preview\":true}" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fimport-frequency")"
+grep -q '"pratinjau":true' <<<"$frequency_preview" || { echo "FAIL: pratinjau import anggota frekuensi: $frequency_preview"; exit 1; }
+frequency_import="$(curl -sS -b "$cookie_jar" -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d "{\"id_kelas_kuliah\":10,\"versi\":1,\"base64\":\"$frequency_template_base64\",\"preview\":false}" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fimport-frequency")"
+grep -q '"jumlah_diimpor":1' <<<"$frequency_import" || { echo "FAIL: commit import anggota frekuensi: $frequency_import"; exit 1; }
 transfer_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi_sumber":1,"versi_tujuan":1,"id_kelas_tujuan":11,"id_mahasiswa":700,"tanggal_efektif":"2026-10-21","alasan":"Uji perpindahan"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fparticipants%2Ftransfer")"
 grep -q '"id_kelas_tujuan":11' <<<"$transfer_response" || { echo "FAIL: pindah peserta"; exit 1; }
 
@@ -127,4 +134,4 @@ student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_co
 student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit admin, template/pratinjau/commit import jadwal, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit admin, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"

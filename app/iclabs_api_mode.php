@@ -573,6 +573,51 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/admin/frequency-template' && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Template anggota frekuensi hanya dapat diakses administrator.'), 403);
+        }
+        require_once __DIR__ . '/exchange.php';
+        xlsx_download(array(array('nim', 'tanggal_mulai', 'catatan'), array('13020260049', 'YYYY-MM-DD', 'Catatan opsional')), 'template-anggota-frekuensi.xlsx', 1);
+        exit;
+    }
+
+    if ($route === '/admin/import-frequency' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Import anggota frekuensi hanya dapat dilakukan administrator.'), 403);
+        }
+        $classId = filter_var($payload['id_kelas_kuliah'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        $version = filter_var($payload['versi'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if ($classId === false || $version === false || !is_string($payload['base64'] ?? null) || $payload['base64'] === '') {
+            api_mode_json(array('error' => 'Kelas, versi, dan file XLSX wajib dikirim.'), 422);
+        }
+        require_once __DIR__ . '/exchange.php';
+        $file = read_xlsx($payload['base64']);
+        $requiredHeaders = array('nim', 'tanggal_mulai');
+        $missingHeaders = array_diff($requiredHeaders, $file['headers']);
+        if ($missingHeaders !== array() || $file['rows'] === array() || count($file['rows']) > 500) {
+            api_mode_json(array('error' => $missingHeaders !== array() ? 'Kolom wajib: nim dan tanggal_mulai.' : 'File harus berisi 1–500 baris anggota.'), 422);
+        }
+        $members = array();
+        foreach ($file['rows'] as $row) {
+            $members[] = array(
+                'nim' => trim((string) ($row['values']['nim'] ?? '')),
+                'tanggal_mulai' => trim((string) ($row['values']['tanggal_mulai'] ?? '')),
+                'catatan' => trim((string) ($row['values']['catatan'] ?? '')) ?: null,
+            );
+        }
+        $preview = filter_var($payload['preview'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $response = api_mode_request('POST', 'praktikum/kelas/' . $classId . '/anggota/import', array(
+            'versi' => (int) $version,
+            'pratinjau' => $preview,
+            'anggota' => $members,
+        ));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Import anggota frekuensi ditolak API pusat. Tidak ada baris yang disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/classes' && $method === 'POST') {
         $response = api_mode_request('POST', 'praktikum/kelas', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {

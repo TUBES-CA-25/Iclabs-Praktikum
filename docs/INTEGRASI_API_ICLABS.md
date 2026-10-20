@@ -84,6 +84,7 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `POST /v1/praktikum/kelas/{classId}/peserta/sinkronisasi` | Admin pusat atau Asisten yang ditugaskan pada kelas; menambahkan peserta dari anggota kelompok berstatus aktif dan Mahasiswa aktif. Idempotent; tidak menghapus peserta lama dan tidak mengaktifkan ulang status nonaktif. Ditolak jika workflow jadwal sudah diajukan; response mengembalikan `versi` kelompok terbaru. | Implementasi lokal; diuji untuk idempotensi, preservasi peserta mengundurkan diri, dan audit. |
 | `GET /v1/praktikum/kelas/{classId}/calon-peserta?cari={nim_atau_nama}` | Hanya Admin pusat; cari minimal 2 karakter. Mengembalikan maksimal 20 Mahasiswa canonical berstatus aktif dalam Program Studi kelas, yang belum memiliki keanggotaan aktif untuk Mata Kuliah dan periode yang sama. Tidak membuat atau mengubah akun/master. | Implementasi API dan adapter frontend selesai; filter role, pencarian, serta flow form diuji dengan fixture. |
 | `POST /v1/praktikum/kelas/{classId}/anggota` | Hanya Admin pusat. Payload: `versi`, `id_mahasiswa`, tanggal `tanggal_mulai` wajib eksplisit dan berada dalam periode canonical, `catatan` opsional. Dalam satu transaksi membuat keanggotaan kelompok aktif dan peserta kelas aktif; tidak membuat Mahasiswa/akun, menolak beda Prodi, nonaktif, duplikasi/riwayat, keanggotaan aktif pada frekuensi lain untuk Mata Kuliah-periode yang sama, stale version, atau workflow terkunci. Versi kelompok naik dan audit dicatat. | Implementasi API dan form Admin selesai; API memastikan relasi anggota dan roster tercatat atomik. Tidak memakai waktu import/tanggal default sebagai riwayat. |
+| `POST /v1/praktikum/kelas/{classId}/anggota/import` | Hanya Admin pusat; payload `versi`, `anggota` (1–500 baris berisi `nim`, tanggal `tanggal_mulai`, opsional `catatan`), dan `pratinjau`. `pratinjau=true` read-only mengembalikan hasil validasi setiap baris; `false` mengulang validasi dan menulis seluruh batch atomik. NIM harus sudah ada sebagai Mahasiswa canonical aktif dan satu Prodi; tidak membuat akun/master. Menolak NIM duplikat, mahasiswa yang sudah punya keanggotaan/riwayat untuk mata kuliah-periode, tanggal di luar periode, stale version, atau workflow terkunci. Sukses mencatat audit dan menaikkan versi sekali. | UI menyediakan template XLSX dan pratinjau/commit; mock adapter dan uji API mencakup no-write preview, import sukses, dan rollback seluruh batch saat ada baris konflik. |
 | `POST /v1/praktikum/kelas/{classId}/peserta/pindah` | Admin pusat; memindahkan satu Mahasiswa ke kelas Praktikum dengan periode/Prodi/Mata Kuliah yang sama. Payload wajib `versi_sumber`, `versi_tujuan`, `id_kelas_tujuan`, `id_mahasiswa`, `tanggal_efektif`, `alasan`. Menutup keanggotaan asal sehari sebelum tanggal efektif, mempertahankan peserta lama berstatus `DIPINDAHKAN` (presensi/nilai tidak disentuh), membuat relasi peserta/anggota baru, menaikkan dua versi, dan menulis audit. Menolak status/workflow tak dapat diedit, Mahasiswa nonaktif, atau riwayat di kelas tujuan. | Adapter UI Admin mengirim perpindahan dengan kedua versi; mock bridge test lulus. UAT API server belum dilakukan. |
 | `PUT /v1/praktikum/kelas/{classId}/pertemuan/{meetingNumber}/kehadiran` | Admin pusat atau Asisten yang ditugaskan; menyimpan tanggal/materi sesi dan batch status kehadiran dalam satu transaksi. Jika kelas memiliki beberapa jadwal, wajib menyertakan `id_jadwal_kelas_kuliah`. Menerima status `HADIR`, `IZIN`, `SAKIT`, `ALPA`, `TERLAMBAT`; `status: null` menghapus catatan kehadiran yang dipilih, mengikuti perilaku simpan lama. Memerlukan `versi` kelompok dan menolak workflow yang sudah diajukan. | Implementasi API tersedia; UI memilih endpoint gabungan atomik di bawah. |
 | `PUT /v1/praktikum/kelas/{classId}/perubahan` | Operasi simpan atomik meniru `/classes/{id}/save`. Memerlukan `versi`; dapat membawa objek `pertemuan` (`nomor_pertemuan`, `tanggal_sesi`, `materi`, opsional `id_jadwal_kelas_kuliah`), array `kehadiran` dan/atau array `nilai`. Jika satu bagian gagal validasi, semua bagian dalam permintaan di-rollback. Versi kelompok naik satu kali untuk keseluruhan permintaan. Otorisasi mengikuti admin pusat atau Asisten yang ditugaskan; workflow yang telah diajukan menolak perubahan. | Adapter UI menulis sesi, hanya presensi/nilai yang berubah, dalam satu request; mock bridge dan regresi tanpa PDO lulus. |
@@ -123,6 +124,22 @@ Jika frekuensi sumber tidak bisa dipetakan, kelompok canonical belum tersedia,
 atau ada jadwal canonical yang sudah ada, hentikan import dan rekonsiliasi
 mapping terlebih dahulu. Jangan mengatasi konflik dengan menambah kelompok
 duplikat atau menulis ke database lokal.
+
+### Import anggota frekuensi (API-only)
+
+Pada detail kelas/frekuensi, Admin dapat mengunduh template anggota, mengunggah
+XLSX, memeriksa NIM/tanggal tanpa menulis, lalu melakukan commit. Header wajib
+`nim` dan `tanggal_mulai`; `catatan` opsional. Isi tanggal sebagai teks ISO
+`YYYY-MM-DD` di dalam periode canonical. Semua NIM harus sudah menjadi Mahasiswa
+aktif canonical dan sesuai Prodi. File tidak boleh digunakan untuk membuat akun
+atau master Mahasiswa. Commit mengulang seluruh validasi dalam transaksi dan
+membatalkan seluruh batch jika ada satu konflik.
+
+Route frontend `GET api.php?route=/admin/frequency-template` mengunduh template;
+`POST api.php?route=/admin/import-frequency` menerima `id_kelas_kuliah`, `versi`,
+file `base64`, dan `preview` boolean. Versi yang sama dipakai saat preview dan
+commit; bila ada perubahan setelah preview, API menolak stale version dan Admin
+harus memuat ulang kelas serta memeriksa file lagi.
 
 Ekspor laporan tidak membaca DB legacy dan tidak menambah salinan data: adapter
 API-only memuat `GET /v1/praktikum/kelas/{classId}` menggunakan bearer token
@@ -250,7 +267,7 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Sinkron/pindah peserta | Tambahkan peserta dari anggota aktif tanpa menghapus histori; perpindahan satu mahasiswa ke kelas paralel | UI menyediakan sinkronisasi additive untuk Admin/Asisten dan pemindahan untuk Admin; API tetap memvalidasi versi, periode, prodi, mata kuliah, histori dan tanggal efektif. |
 | Jadwal, penugasan, pertemuan, presensi | Penugasan Dosen/Asisten, sesi berurutan, foto/absensi dan audit | Admin dapat membuat/mengedit jadwal/penugasan; penulisan sesi/presensi memakai transaksi gabungan. Jangan gunakan jadwal tugas Monitoring Asisten sebagai pengganti jadwal kelas Praktikum. |
 | Nilai, evaluasi, laporan/export | Rumus nilai lama, evaluasi, verifikasi, ekspor XLSX/PDF | UI API-only menampilkan nilai akhir/predikat, dan staf dapat mengunduh laporan XLSX/PDF per jadwal. Data diambil dari detail kelas API pusat yang sudah membatasi scope; generator laporan legacy dipakai ulang tanpa koneksi DB lokal. Mock menguji validitas ZIP/PDF dan penolakan ekspor untuk Mahasiswa. |
-| Administrasi, import, transfer, audit | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Import jadwal tersedia untuk kelompok canonical yang telah ada; Admin dapat mencari Mahasiswa canonical lalu menambah anggota ke frekuensi, dan menyinkronkan roster; transfer peserta serta pembacaan audit transaksi Praktikum canonical tersedia. Import massal peserta, administrasi domain, dan migrasi historis `log_aktivitas` belum dialihkan. Master canonical tidak boleh diduplikasi di database aplikasi. |
+| Administrasi, import, transfer, audit | Master peran aplikasi lama, impor jadwal/peserta, transfer frekuensi, audit | Import jadwal tersedia untuk kelompok canonical yang telah ada; Admin dapat mencari/menambah Mahasiswa satu per satu atau mengimpor XLSX ke frekuensi canonical, menyinkronkan roster, dan memindahkan Mahasiswa dengan histori; audit transaksi Praktikum canonical tersedia. Administrasi akun/master canonical tetap dikelola Sumber Daya; migrasi historis `log_aktivitas` belum dialihkan dan tidak dicampur ke audit canonical baru. |
 
 Urutan cutover: autentikasi/session → baca referensi dan daftar/detail →
 jadwal/penugasan/pertemuan → peserta dan perpindahan → kehadiran → komponen/nilai
@@ -264,7 +281,7 @@ memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Mode legacy tetap default dan tidak diubah. Jika mode API diaktifkan,
 jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
-Suite backend API di image test `iclabs-test-php83:local` lulus 253 tests / 1.571 assertions, termasuk uji pencarian calon Mahasiswa, penolakan duplikasi lintas frekuensi, penambahan anggota/roster atomik, import jadwal dan rollback batch. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup ambang nilai Admin, audit, CRUD, ekspor XLSX/PDF valid, penolakan ekspor Mahasiswa, import jadwal preview/commit, pencarian/tambah anggota, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Bukti ini bukan UAT terhadap VPS maupun regresi seluruh route legacy Praktikum.
+Suite backend API di image test `iclabs-test-php83:local` lulus **255 tests / 1.589 assertions**, termasuk pencarian calon Mahasiswa, penolakan duplikasi lintas frekuensi, penambahan/import anggota-roster atomik, import jadwal, dan rollback batch. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture, dan `node --check assets/app.js`; mock mencakup pratinjau/commit import jadwal serta anggota, ekspor XLSX/PDF, workflow, peserta, dan nilai Mahasiswa tanpa PDO. Bukti mock bukan UAT VPS maupun regresi seluruh route legacy Praktikum.
 
 Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
 
@@ -282,7 +299,7 @@ ICLABS_PRAKTIKUM_SECURE_COOKIE=true
 minimum alur UAT yang disepakati selesai dialihkan. Saat `true`, buat direktori session lebih dulu,
 batasi aksesnya hanya untuk user PHP-FPM (mode `0700`), dan pastikan direktori
 dapat ditulis oleh proses PHP. Jangan gunakan folder publik. Dalam tahap ini
-autentikasi, referensi/periode, kelas, jadwal, komponen, penambahan/sinkron/pindah peserta,
+autentikasi, referensi/periode, kelas, jadwal, komponen, tambah/import/sinkron/pindah peserta,
 nilai, workflow, laporan XLSX/PDF, dan import jadwal sudah terhubung. Import
 peserta, administrasi domain, dan histori audit legacy yang belum dialihkan
 sengaja mengembalikan `501` tanpa mengakses database lokal.
