@@ -8,8 +8,8 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Aplikasi saat ini PHP native 7.1.11 dan endpoint `api.php` masih memakai cookie `sid`, token CSRF lokal, fungsi query PDO, serta tabel lokal.
 - [x] Alur lama yang terlihat mencakup login/session, periode aktif, profil pengguna, nilai mahasiswa, daftar/detail kelas praktikum, simpan kelas/komponen/workflow, sinkron peserta, ekspor laporan, transfer frekuensi, serta route admin.
 - [x] API pusat sudah memiliki schema Praktikum tahap P3-A; backend kini mulai memiliki fondasi baca P3-B di branch kerja, tetapi operasi mutasi dan sebagian besar test domain belum tersedia.
-- [x] Backend lokal mencatat kontrak baca awal pada branch terpisah `feature/praktikum-read-api`, HEAD `39d9fd1`: `GET /api/v1/praktikum/referensi`, `GET /api/v1/praktikum/kelas`, `GET /api/v1/praktikum/kelas/{classId}`, dan `GET /api/v1/praktikum/nilai/saya`. Belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
-- [ ] Belum ada kontrak mutasi Praktikum. Jangan mengganti operasi tulis lama dengan endpoint rekaan atau menganggap API baca ini sudah cukup untuk cutover.
+- [x] Backend lokal menyediakan read endpoints dan create/update identitas kelas/kelompok pada branch terpisah `feature/praktikum-read-api`, HEAD `9963138`; belum tersedia di VPS sampai branch ini ditinjau, digabungkan, dan dirilis.
+- [ ] Mutasi jadwal, pengajar, peserta, presensi, nilai, workflow, dan laporan belum tersedia. Jangan menganggap aplikasi siap cutover.
 
 ## Prinsip integrasi yang disepakati
 
@@ -56,7 +56,7 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [ ] Buktikan aplikasi dapat berjalan tanpa koneksi MySQL lokal hanya setelah seluruh route pada cakupan cutover memakai API.
 - [ ] Lengkapi dokumentasi `.env`, endpoint, deploy/rollback, dan checklist UAT sebelum meminta pull ke server.
 
-## Kontrak baca API pusat yang tersedia di branch kerja
+## Kontrak API Praktikum yang tersedia di branch kerja
 
 Prefix publik VPS adalah `/api`, sehingga URL lengkap memakai
 `https://iclabs.fikom.umi.ac.id/api/v1/...`. Semua endpoint berikut perlu Bearer
@@ -69,11 +69,18 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
 | `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil. Data peserta disembunyikan untuk role Mahasiswa. | Implementasi lokal; detail kosong diuji, detail dengan jadwal dan peserta belum diuji. |
 | `GET /v1/praktikum/nilai/saya` | Hanya Mahasiswa; nilai komponen mentah dan metadata periode/kelas milik akun sendiri. API belum menghitung nilai akhir karena kontrak konfigurasi/bobot dan rentang nilai masih perlu validasi terhadap aturan lama. | Implementasi lokal; belum diuji dengan fixture nilai. |
+| `POST /v1/praktikum/kelas` | Hanya `ADMIN_ICLABS`/`SUPER_ADMIN`; membuat kelas berjenis `PRAKTIKUM` dan kelompok terkait memakai ID periode, prodi, dan mata kuliah canonical. Status awal kelas `DRAF`, jumlah pertemuan 1–14. | Implementasi lokal, diuji dengan fixture dan audit log. |
+| `PATCH /v1/praktikum/kelas/{classId}` | Hanya admin pusat; ubah kode/nama kelompok, jumlah pertemuan, atau catatan dengan `versi` wajib. Menolak stale version, kode ganda dalam periode/prodi/mata kuliah, jumlah pertemuan di bawah sesi yang sudah tercatat, dan workflow yang sudah maju. | Implementasi lokal, diuji untuk update/version conflict dan null catatan. |
 
-Bentuk response menggunakan Laravel JSON Resource (`data`; daftar juga
+POST/PATCH mengembalikan resource detail kelas. Bentuk response menggunakan
+Laravel JSON Resource (`data`; daftar juga
 memuat `links`/`meta` pagination). Error mengikuti HTTP `401`, `403`, `404`,
 dan `422`. Pada tahap ini aplikasi legacy tetap berjalan seperti sebelumnya;
 tidak ada akses atau perubahan database yang dialihkan ke API.
+
+Suite backend pada container lulus 224 tests / 1.392 assertions; Pint dan
+route registration juga lulus. Tes ini bukan UAT VPS maupun pengujian seluruh
+route Praktikum.
 
 Contoh konfigurasi proses PHP (bukan isi file `.env` yang dibaca otomatis):
 
