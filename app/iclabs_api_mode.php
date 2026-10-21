@@ -524,6 +524,39 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/admin/periods' && in_array($method, array('GET', 'POST'), true)) {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Pengelolaan periode hanya dapat diakses administrator.'), 403);
+        }
+        $response = api_mode_request($method, 'praktikum/admin/periode-akademik', $method === 'POST' ? $payload : null);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Periode akademik tidak dapat dimuat atau dibuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if (preg_match('#\\A/admin/periods/(\\d+)\\z#', $route, $match) && $method === 'PATCH') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Pengelolaan periode hanya dapat diakses administrator.'), 403);
+        }
+        $response = api_mode_request('PATCH', 'praktikum/admin/periode-akademik/' . (int) $match[1], $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Periode akademik tidak dapat diperbarui.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if (preg_match('#\\A/admin/periods/(\\d+)/activate\\z#', $route, $match) && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Pengelolaan periode hanya dapat diakses administrator.'), 403);
+        }
+        $response = api_mode_request('POST', 'praktikum/admin/periode-akademik/' . (int) $match[1] . '/aktifkan', array());
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Periode akademik tidak dapat diaktifkan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/admin/schedule-template' && $method === 'GET') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Template jadwal hanya dapat diakses administrator.'), 403);
@@ -692,6 +725,17 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if (preg_match('#\A/classes/(\d+)/schedule-assistant-availability\z#', $route, $match) && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Rekomendasi ketersediaan Asisten hanya dapat diakses administrator.'), 403);
+        }
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/pratinjau-ketersediaan-asisten', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Ketersediaan Asisten tidak dapat diperiksa.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if (preg_match('#\A/classes/(\d+)/schedules/(\d+)\z#', $route, $match) && $method === 'PATCH') {
         $response = api_mode_request('PATCH', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/' . (int) $match[2], $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
@@ -701,11 +745,19 @@ try {
     }
 
     if ($route === '/classes' && $method === 'GET') {
+        $periodId = filter_var($_GET['period_id'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if (isset($_GET['period_id']) && $periodId === false) {
+            api_mode_json(array('error' => 'Filter periode tidak valid.'), 422);
+        }
         $classes = array();
         $page = 1;
         $lastPage = 1;
         do {
-            $response = api_mode_request('GET', 'praktikum/kelas?per_page=100&page=' . $page);
+            $query = 'praktikum/kelas?per_page=100&page=' . $page;
+            if ($periodId !== false && $periodId !== null) {
+                $query .= '&id_periode_akademik=' . (int) $periodId;
+            }
+            $response = api_mode_request('GET', $query);
             if ($response['status'] < 200 || $response['status'] >= 300) {
                 api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Daftar kelas Praktikum tidak dapat dimuat.')), $response['status']);
             }

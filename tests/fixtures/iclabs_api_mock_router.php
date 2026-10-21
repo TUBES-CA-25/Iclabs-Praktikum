@@ -53,6 +53,37 @@ if ($path === '/api/v1/praktikum/referensi') {
     )));
     return;
 }
+if ($path === '/api/v1/praktikum/admin/periode-akademik') {
+    $periods = array(
+        array('id_periode_akademik' => 1, 'tahun_akademik' => '2026/2027', 'semester' => array('id' => 1, 'kode' => 'GANJIL', 'nama' => 'Ganjil'), 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12', 'aktif' => true, 'jumlah_kelas' => 2),
+        array('id_periode_akademik' => 2, 'tahun_akademik' => '2026/2027', 'semester' => array('id' => 2, 'kode' => 'GENAP', 'nama' => 'Genap'), 'tanggal_mulai' => '2027-02-01', 'tanggal_selesai' => '2027-06-30', 'aktif' => false, 'jumlah_kelas' => 0),
+    );
+    if ($method === 'GET') {
+        echo json_encode(array('data' => array('periode' => $periods, 'semester' => array(
+            array('id' => 1, 'kode' => 'GANJIL', 'nama' => 'Ganjil', 'aktif' => true),
+            array('id' => 2, 'kode' => 'GENAP', 'nama' => 'Genap', 'aktif' => true),
+        ))));
+    } elseif ($method === 'POST') {
+        echo json_encode(array('data' => array('id_periode_akademik' => 3, 'tahun_akademik' => $request['tahun_akademik'] ?? '', 'aktif' => false)), JSON_UNESCAPED_UNICODE);
+    }
+    return;
+}
+if ($path === '/api/v1/praktikum/kelas/10/jadwal/pratinjau-ketersediaan-asisten' && $method === 'POST') {
+    $assistantId = (int) ($request['id_user_asisten_utama'] ?? 0);
+    echo json_encode(array('data' => array('rekomendasi_ketersediaan_asisten' => array(
+        array('id_user' => $assistantId, 'kode_peran' => 'ASISTEN_UTAMA', 'kode_ketersediaan' => 'BENTROK_JADWAL_KULIAH', 'dapat_dipilih' => true, 'alasan' => 'Jadwal kuliah pribadi bertabrakan. Asisten tetap dapat dipilih atas keputusan Laboran/Admin.'),
+    ))), JSON_UNESCAPED_UNICODE);
+    return;
+}
+if (preg_match('#\\A/api/v1/praktikum/admin/periode-akademik/(\\d+)(/aktifkan)?\\z#', $path, $match)) {
+    $periodId = (int) $match[1];
+    if (($match[2] ?? '') === '/aktifkan') {
+        echo json_encode(array('data' => array('id_periode_akademik' => $periodId, 'aktif' => true)), JSON_UNESCAPED_UNICODE);
+    } else {
+        echo json_encode(array('data' => array('id_periode_akademik' => $periodId, 'tanggal_mulai' => $request['tanggal_mulai'] ?? null, 'tanggal_selesai' => $request['tanggal_selesai'] ?? null)), JSON_UNESCAPED_UNICODE);
+    }
+    return;
+}
 if ($path === '/api/v1/praktikum/ringkasan') {
     echo json_encode(array('data' => array('jumlah_kelas' => 2, 'jumlah_peserta_aktif' => 18, 'pertemuan_direncanakan' => 28, 'pertemuan_tercatat' => 4, 'presensi_terisi' => 40, 'presensi_diharapkan' => 252, 'persentase_presensi' => 15.9, 'nilai_terisi' => 15, 'nilai_diharapkan' => 252, 'persentase_nilai' => 6.0, 'jadwal_perlu_perhatian' => 1)));
     return;

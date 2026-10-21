@@ -56,6 +56,18 @@ dashboard_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.
 grep -q '"jumlah_kelas":2' <<<"$dashboard_response" || { echo "FAIL: ringkasan dashboard"; exit 1; }
 audit_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
 grep -q '"trx_kelas_kuliah:10 · UPDATE"' <<<"$audit_response" || { echo "FAIL: audit aktivitas Praktikum"; exit 1; }
+periods_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods")"
+grep -q '"id_periode_akademik":2' <<<"$periods_response" || { echo "FAIL: daftar periode akademik admin"; exit 1; }
+grep -q '"kode":"GENAP"' <<<"$periods_response" || { echo "FAIL: referensi semester untuk periode"; exit 1; }
+period_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"tahun_akademik":"2027/2028","id_semester":1,"tanggal_mulai":"2027-09-01","tanggal_selesai":"2027-12-31"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods")"
+grep -q '"id_periode_akademik":3' <<<"$period_create" || { echo "FAIL: pembuatan periode akademik"; exit 1; }
+period_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"tanggal_mulai":"2027-02-02","tanggal_selesai":"2027-06-30"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods%2F2")"
+grep -q '"tanggal_mulai":"2027-02-02"' <<<"$period_update" || { echo "FAIL: perubahan rentang periode"; exit 1; }
+period_activate="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods%2F2%2Factivate")"
+grep -q '"id_periode_akademik":2' <<<"$period_activate" || { echo "FAIL: aktivasi periode akademik"; exit 1; }
+assistant_availability="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pendamping":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
+grep -q '"kode_ketersediaan":"BENTROK_JADWAL_KULIAH"' <<<"$assistant_availability" || { echo "FAIL: rekomendasi bentrok jadwal Asisten"; exit 1; }
+grep -q '"dapat_dipilih":true' <<<"$assistant_availability" || { echo "FAIL: bentrok jadwal kuliah harus tetap dapat dipilih"; exit 1; }
 template_status="$(curl -sS -o "$test_dir/schedule-template.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fschedule-template")"
 [[ "$template_status" == 200 ]] || { echo "FAIL: template import jadwal"; exit 1; }
 template_base64="$(base64 -w 0 "$test_dir/schedule-template.xlsx")"
@@ -138,4 +150,4 @@ student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_co
 student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit admin, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit/periode admin, rekomendasi bentrok jadwal Asisten, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"

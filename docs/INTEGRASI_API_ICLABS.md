@@ -14,7 +14,15 @@ Dokumen kerja branch `staging`. Checklist utama lintas project ada pada `monitor
 - [x] Simpan sesi, presensi dan nilai tetap menggunakan satu endpoint gabungan atomik; UI API-only memuat hanya field presensi/nilai yang diubah agar tidak menimpa data tanpa perubahan.
 - [x] Tutup `setup.php` saat mode API aktif sebelum session/PDO lokal dibuka; pembuatan akun dan role Praktikum tetap melalui API/Sumber Daya dan tidak membuat admin duplikat.
 
-Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelompok, komponen, jadwal, sinkron/pindah peserta dan workflow. Backend API berada di branch `feature/praktikum-read-api`; deploy dan UAT VPS belum dibuktikan.
+Status 21 Oktober 2026: **22 dari 27 butir checklist (≈81%) selesai**. Ini
+menghitung butir implementasi dan verifikasi secara setara, bukan persentase
+kesiapan cutover. Frontend branch `staging` sudah dipush. Backend Praktikum
+telah digabung ke `main` (commit `61425fb`) dan dipasang di VPS: health
+mengembalikan HTTP 200, route Praktikum terdaftar (401 tanpa autentikasi),
+migration ambang nilai berstatus Ran, dan sembilan ambang berhasil di-seed.
+Login browser lokal dengan role `SUPER_ADMIN` telah dikonfirmasi berhasil.
+Matriks UAT role lain, deploy frontend ke staging, serta rekonsiliasi data
+historis tetap belum selesai.
 
 ## Prinsip integrasi yang disepakati
 
@@ -59,24 +67,28 @@ Frontend lokal: branch `staging`; implementasi terbaru mencakup CRUD kelas/kelom
 ### D. Verifikasi dan cutover staging
 
 - [x] Lengkapi contract test untuk route API-only yang diimplementasikan, otorisasi inti, dan regresi operasi tulis; suite API, mock adapter, PHP/JS lint lulus. Route legacy di luar cakupan sengaja menolak 501.
-- [x] Verifikasi ulang lokal 21 Oktober 2026: `bash tests/api_mode_mock_test.sh`, `php -l setup.php`, `php -l app/iclabs_api_mode.php`, `node --check assets/app.js`, dan `git diff --check` lulus. Suite backend pusat pada branch `feature/praktikum-read-api` lulus 255 test / 1.589 assertion dalam container PHP 8.3.
-- [ ] Uji Admin, Dosen, Asisten, dan Mahasiswa memakai akun pusat staging; uji pula tidak memiliki role/scope dan token kedaluwarsa.
+- [x] Verifikasi ulang lokal 21 Oktober 2026: `bash tests/api_mode_mock_test.sh`, `php -l setup.php`, `php -l app/iclabs_api_mode.php`, `node --check assets/app.js`, dan `git diff --check` lulus. Suite backend pusat lulus 255 test / 1.589 assertion dalam container PHP 8.3.
+- [ ] Lengkapi matriks UAT Admin, Dosen, Asisten, dan Mahasiswa memakai akun pusat; login browser `SUPER_ADMIN` berhasil (konfirmasi pengguna, 21 Oktober 2026), tetapi role lain, akun tanpa role/scope, dan token kedaluwarsa belum diuji.
 - [ ] Rekonsiliasi jumlah dan sampel data lama terhadap API untuk satu periode pilot; cek perpindahan mahasiswa tidak menggandakan atau menghapus nilai/presensi.
 - [x] Buktikan jalur API-only dapat berjalan tanpa koneksi MySQL lokal: mock memakai nama database yang tidak ada, menolak installer lokal, dan endpoint yang belum dipindahkan fail-closed.
 - [x] Dokumentasikan environment PHP-FPM, endpoint, session path, dan panduan UAT. Deploy/rollback dan verifikasi server staging tetap pending.
 
-## Kontrak API Praktikum yang tersedia di branch kerja
+## Kontrak API Praktikum yang tersedia di backend `main`
 
 Prefix publik VPS adalah `/api`, sehingga URL lengkap memakai
 `https://iclabs.fikom.umi.ac.id/api/v1/...`. Semua endpoint berikut perlu Bearer
-token hasil login pusat. Saat ini baru ada di branch lokal backend
-`feature/praktikum-read-api`; jangan dipakai dari VPS sebelum rilis branch itu.
+token hasil login pusat. Backend telah dirilis ke `main`; endpoint ber-token
+tetap harus diuji sesuai role sebelum UAT aplikasi.
 
 | Endpoint | Akses dan isi | Status |
 | --- | --- | --- |
 | `GET /v1/praktikum/ringkasan` | Admin/Dosen/Asisten; agregat kelas dan peserta aktif, progres presensi/nilai, pertemuan tercatat, serta jadwal yang perlu perhatian. Mengikuti scope akses kelas dan tidak mengembalikan NIM/nama. | Implementasi lokal; diuji memakai fixture kelas, peserta, sesi, presensi, nilai, dan workflow. |
 | `GET /v1/praktikum/audit?limit=1000` | Hanya `ADMIN_ICLABS`/`SUPER_ADMIN`; maksimal 1.000 audit terbaru untuk entitas transaksi Praktikum. Mengambil nama dari profil canonical, menampilkan aksi serta data sebelum/sesudah, dan tidak mengubah audit lama. Audit non-Praktikum tidak ikut ditampilkan. | Endpoint pusat dan halaman Log Aktivitas API-only tersedia; regresi role dan adapter mock diuji. Riwayat `log_aktivitas` legacy belum diimpor. |
 | `GET /v1/praktikum/konfigurasi-nilai` / `PUT /v1/praktikum/konfigurasi-nilai` | Hanya Admin pusat; membaca atau mengubah sembilan ambang global A–E. PUT memerlukan `versi`, semua predikat tepat satu kali, ambang unik 0–100, dan nilai nol. Perubahan ditolak jika jadwal mana pun sudah `TERVERIFIKASI`/`DIKUNCI`; perubahan diaudit. | Migrasi menambah referensi kanonik, seeder mengisi nilai legacy, API dan halaman admin tersedia. Uji update/version, otorisasi, dan lock lulus. |
+| `GET /v1/praktikum/admin/periode-akademik` | Hanya `ADMIN_ICLABS`/`SUPER_ADMIN`; daftar semua periode, jumlah kelas per periode, dan referensi semester untuk form. | API pusat dan halaman **Periode Akademik** tersedia; adapter mock menguji respons. |
+| `POST /v1/praktikum/admin/periode-akademik` | Hanya admin pusat; membuat batch baru memakai `tahun_akademik`, `id_semester`, `tanggal_mulai`, `tanggal_selesai`. Periode baru selalu nonaktif; tidak menyalin kelas, jadwal, peserta, presensi, atau nilai. | Form tersedia di UI Praktikum API-only; mock memverifikasi request. |
+| `PATCH /v1/praktikum/admin/periode-akademik/{periodId}` | Hanya admin pusat; mengubah tanggal mulai/selesai periode nonaktif yang belum memiliki transaksi. Tahun ajaran dan semester tidak dapat diganti; periode aktif/berisi data ditolak. | Form edit tersedia; API melakukan validasi dan pencatatan audit. |
+| `POST /v1/praktikum/admin/periode-akademik/{periodId}/aktifkan` | Hanya admin pusat; mengaktifkan satu periode dan menutup periode aktif sebelumnya secara atomik. Tidak menghapus atau menyalin histori. Perubahan kelas/transaksi baru hanya diterima untuk periode aktif; periode lama tetap dapat dibaca dengan filter eksplisit. | Tombol aktivasi dan histori tersedia di UI; mock menguji adapter. Perlu UAT staging sebelum pemakaian operasional. |
 | `GET /v1/praktikum/referensi` | Admin pusat, Dosen, Asisten, Mahasiswa; periode, prodi, mata kuliah, lab Praktikum, status/pola jadwal. Data picker Dosen/Asisten aktif hanya disertakan untuk admin. | Implementasi lokal; query dan mapping referensi diuji dengan fixture. |
 | `GET /v1/praktikum/kelas` | Admin pusat seluruh kelas; Dosen/Asisten hanya kelas dengan penugasan; Mahasiswa hanya kelas dengan peserta aktif miliknya. Query opsional: `id_periode_akademik`, `status`, `per_page` (maksimum 100). | Implementasi lokal dan diuji dengan fixture role/kelas. |
 | `GET /v1/praktikum/kelas/{classId}` | Detail kelas yang dapat diakses pemanggil: jadwal, sesi, komponen nilai. Admin/Dosen/Asisten menerima roster peserta aktif beserta kehadiran, nilai komponen, ringkasan nilai akhir, status workflow, dan histori per jadwal; Mahasiswa hanya menerima sesi serta kehadiran/nilai/ringkasan miliknya. | Nilai akhir mengikuti rata-rata EVALUASI × 20%, rata-rata ASISTENSI × 20%, MID × 30%, UAS × 30%; predikat memakai ambang global. Data tidak lengkap menghasilkan nilai akhir/predikat kosong seperti perilaku lama. |
@@ -93,7 +105,8 @@ token hasil login pusat. Saat ini baru ada di branch lokal backend
 | `PUT /v1/praktikum/kelas/{classId}/komponen-nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi`, `jumlah_evaluasi`, `jumlah_asistensi`. Membentuk `EVALUASI_N` dan `ASISTENSI_N` dengan bobot total masing-masing 20%; `MID` dan `UAS` tetap 30%. Komponen berisi nilai tidak bisa dinonaktifkan. Ditolak bila workflow telah diajukan. | Endpoint API dan form UI Admin tersedia pada branch kerja lokal; konfigurasi produksi/VPS belum diverifikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi` dan array `perubahan` berisi `id_mahasiswa`, `kode_komponen`, `nilai` (0–100 atau `null` untuk menghapus), opsional `catatan`. Semua peserta dan komponen divalidasi sebelum perubahan; stale version ditolak. | Penyimpanan nilai melalui endpoint gabungan atomik tersedia di UI. Endpoint terpisah belum dipakai frontend. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}/workflow` | Admin/Asisten yang ditugaskan dapat mengajukan; Dosen pengampu jadwal dapat memberi `PERLU_REVISI`/`TERVERIFIKASI`, lalu mengunci; Admin dapat mengembalikan status ke `DRAF` dengan alasan. Payload wajib `versi`, `versi_workflow`, `status`; alasan wajib untuk revisi/reset. Pengajuan menolak data tidak lengkap dan semua perubahan masuk histori append-only. | UI menawarkan transisi sesuai role/status dan memakai versi yang dibaca; mock bridge lulus. UAT server belum dilakukan. |
-| `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu dan Asisten utama/opsional pendamping. Menolak personel tanpa master/role aktif atau konflik ruang/pengajar/jadwal kuliah pribadi Asisten. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Form UI Admin membuat jadwal/penugasan dan mock bridge lulus; UAT API server belum dilakukan. |
+| `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu dan Asisten utama/opsional pendamping. Menolak personel tanpa master/role aktif serta konflik ruang atau jadwal Praktikum aktif personel. Bentrok dengan kuliah pribadi Asisten tidak menggagalkan simpan. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Form UI Admin membuat jadwal/penugasan dan menampilkan peringatan jadwal kuliah; UAT API server belum dilakukan. |
+| `POST /v1/praktikum/kelas/{classId}/jadwal/pratinjau-ketersediaan-asisten` | Admin pusat; payload memakai field jadwal yang sama. Mengembalikan indikator `TERSEDIA`, `BENTROK_JADWAL_KULIAH`, atau `JADWAL_BELUM_DIKIRIM`. Bentrok kuliah adalah peringatan, bukan larangan; Laboran/Admin tetap memilih manual dan UI meminta konfirmasi. Bentrok ruang atau penugasan Praktikum personel tetap ditolak saat simpan. | Dipakai form input/edit jadwal untuk menampilkan badge warna dan peringatan; mock bridge menguji status bentrok tetap dapat dipilih. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}` | Hanya admin; mengubah subset detail jadwal dan/atau assignment dengan `versi` wajib. Menolak jadwal bukan milik kelas, stale version, tanggal/jam tidak sah, konflik, atau workflow yang sudah diajukan. Detail kelas mengembalikan pola, status, dan assignment aktif. | Form UI Admin mengubah jadwal/penugasan dan mock bridge lulus; UAT API server belum dilakukan. |
 | `POST /v1/praktikum/jadwal/import` | Hanya Admin; menerima 1–2.000 baris jadwal yang masing-masing menunjuk `id_kelas_kuliah` canonical yang sudah ada, versi kelompok, laboratorium canonical, hari/waktu, batas periode, pola/status, dan ID akun Dosen/Asisten pusat. Semua baris dibuat dalam satu transaksi; satu konflik atau baris invalid membatalkan seluruh batch. Menolak kelompok yang sudah memiliki jadwal agar import tidak menimpa jadwal. | UI API-only menyediakan template XLSX, pratinjau tanpa menulis, lalu commit seluruh batch. Pemetaan jadwal legacy ke kelompok canonical tetap tanggung jawab operator dan import tidak membuat kelas/kelompok baru. Uji mock dan fitur API tersedia; UAT VPS belum dilakukan. |
 
@@ -264,7 +277,7 @@ yang belum dimigrasikan merespons 501 secara eksplisit dan tidak fallback ke DB.
 | Area native | Perilaku yang harus dipertahankan | Dukungan API saat ini / gap |
 | --- | --- | --- |
 | Login, `/me`, logout, ganti password | Sesi, identitas, role, dan CSRF | Implementasi API-only meneruskan ke endpoint pusat, menyimpan bearer token pada session server, memetakan role pusat ke role UI, dan gagal tertutup jika role tidak didukung. Belum ada UI alur aktivasi/reset password. |
-| Periode aktif dan referensi | Prodi, semester, mata kuliah, lab, periode, status | `GET /praktikum/referensi` dipakai untuk membaca periode aktif pada mode API. Pengubahan periode tetap tidak tersedia di Praktikum (periode dikelola pusat). |
+| Periode dan batch akademik | Prodi, semester, mata kuliah, lab, periode, status; batch baru kosong tanpa menyalin transaksi | Referensi aktif dibaca dari API; admin pusat dapat membuat, mengubah tanggal periode kosong, melihat histori, dan mengaktifkan batch melalui endpoint periode. Satu periode aktif pada satu waktu; API menolak mutasi pada periode tertutup, sedangkan pembacaan histori memerlukan filter eksplisit. |
 | Daftar/detail `/classes` | Ringkasan pertemuan, kehadiran, nilai, indikator monitoring | Adapter memuat daftar berhalaman dan detail canonical. UI menampilkan jadwal/sesi/komponen serta roster yang diizinkan; Mahasiswa hanya melihat data sendiri. |
 | Simpan kelas, komponen, workflow | Optimistic version, komponen nilai, aturan verifikasi/dikunci | UI API-only mendukung buat/edit kelompok, atur jumlah komponen, simpan atomik sesi/presensi/nilai dan workflow role-based. Otorisasi final ada di API. |
 | Sinkron/pindah peserta | Tambahkan peserta dari anggota aktif tanpa menghapus histori; perpindahan satu mahasiswa ke kelas paralel | UI menyediakan sinkronisasi additive untuk Admin/Asisten dan pemindahan untuk Admin; API tetap memvalidasi versi, periode, prodi, mata kuliah, histori dan tanggal efektif. |
@@ -286,7 +299,10 @@ jalur baca yang telah dimigrasikan memakai API pusat; jalur lain gagal tertutup.
 
 Suite backend API di image test `iclabs-test-php83:local` lulus **255 tests / 1.589 assertions**, termasuk pencarian calon Mahasiswa, penolakan duplikasi lintas frekuensi, penambahan/import anggota-roster atomik, import jadwal, dan rollback batch. Frontend lulus `bash tests/api_mode_mock_test.sh`, PHP lint adapter/fixture/setup, dan `node --check assets/app.js`; mock mencakup pratinjau/commit import jadwal serta anggota, ekspor XLSX/PDF, workflow, peserta, nilai Mahasiswa, serta penolakan installer lokal tanpa PDO. Bukti mock bukan UAT VPS maupun regresi seluruh route legacy Praktikum.
 
-Contoh konfigurasi proses PHP-FPM/Apache (native PHP tidak membaca `.env` otomatis):
+PHP native tidak memuat `.env` sendiri. Repo ini memuat `.env` lokal opsional
+melalui `config.php`; nilai environment dari Apache/PHP-FPM tetap diprioritaskan.
+Salin `.env.example` menjadi `.env` untuk pengembangan lokal. Jangan commit `.env`.
+Contoh konfigurasi:
 
 ```text
 ICLABS_API_BASE_URL=https://iclabs.fikom.umi.ac.id/api/v1
