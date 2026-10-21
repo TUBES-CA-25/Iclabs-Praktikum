@@ -1,4 +1,26 @@
 <?php
+// PHP native tidak memuat .env secara otomatis. Muat file lokal opsional agar
+// konfigurasi pengembangan bisa dikelola tanpa menaruh nilai rahasia di kode.
+$envFile = __DIR__ . '/.env';
+if (is_file($envFile) && is_readable($envFile)) {
+    $envValues = parse_ini_file($envFile, false, INI_SCANNER_RAW);
+    if (is_array($envValues)) {
+        foreach ($envValues as $envKey => $envValue) {
+            if (!is_string($envKey) || $envKey === '') {
+                continue;
+            }
+            // Nilai dari Apache/PHP-FPM/test runner lebih spesifik daripada
+            // .env, jadi jangan menimpanya.
+            if (getenv($envKey) !== false) {
+                continue;
+            }
+            $envValue = (string) $envValue;
+            putenv($envKey . '=' . $envValue);
+            $_ENV[$envKey] = $envValue;
+        }
+    }
+}
+
 // Konfigurasi XAMPP localhost. Ubah nama database/password sesuai instalasi Anda.
 return array(
     'host' => getenv('PRAKTIKUM_DB_HOST') ?: '127.0.0.1',

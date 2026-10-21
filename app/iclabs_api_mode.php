@@ -38,7 +38,7 @@ function api_mode_export_report(array $class, array $schedule, $format)
     }
 
     $weekday = array(1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu');
-    $teachers = array('DOSEN_PENGAMPU' => '', 'ASISTEN_UTAMA' => '', 'ASISTEN_PENDAMPING' => '');
+    $teachers = array('DOSEN_PENGAMPU' => '', 'ASISTEN_UTAMA' => '', 'ASISTEN_PENGAJAR_PENDUKUNG' => '', 'PENDAMPING_TEKNIS' => '', 'ASISTEN_PENDAMPING' => '');
     foreach (($schedule['pengajar'] ?? array()) as $teacher) {
         $role = $teacher['peran'] ?? '';
         if (array_key_exists($role, $teachers)) {
@@ -73,7 +73,10 @@ function api_mode_export_report(array $class, array $schedule, $format)
         'lab' => $schedule['nama_laboratorium'] ?? $schedule['nama_ruang'] ?? $schedule['kode_ruang'] ?? '',
         'lecturer' => $teachers['DOSEN_PENGAMPU'],
         'assistant1' => $teachers['ASISTEN_UTAMA'],
-        'assistant2' => $teachers['ASISTEN_PENDAMPING'],
+        'assistant2' => implode(' · ', array_filter(array(
+            $teachers['ASISTEN_PENGAJAR_PENDUKUNG'] ?: $teachers['ASISTEN_PENDAMPING'],
+            $teachers['PENDAMPING_TEKNIS'] === '' ? '' : 'Pendamping: ' . $teachers['PENDAMPING_TEKNIS'],
+        ))),
         'meeting_count' => (int) ($class['jumlah_pertemuan_rencana'] ?? 0),
         'evaluation_count' => $evaluations === array() ? 0 : max($evaluations),
         'assistance_count' => $assistance === array() ? 0 : max($assistance),
@@ -166,8 +169,9 @@ function api_mode_parse_schedule_import($base64)
 {
     require_once __DIR__ . '/exchange.php';
     $data = read_xlsx($base64);
-    $headers = array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'hari', 'jam', 'aktif', 'frekuensi');
-    $missing = array_diff(array_diff($headers, array('email asisten 2')), $data['headers']);
+    $headers = array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'email pendamping', 'hari', 'jam', 'aktif', 'frekuensi');
+    $optionalHeaders = array('email asisten 2', 'email pendamping');
+    $missing = array_diff(array_diff($headers, $optionalHeaders), $data['headers']);
     if ($missing !== array()) {
         return array('rows' => array(), 'errors' => array(array('line' => 1, 'error' => 'Kolom wajib tidak ditemukan: ' . implode(', ', $missing))));
     }
@@ -191,7 +195,7 @@ function api_mode_parse_schedule_import($base64)
         $line = (int) $sourceRow['line'];
         $values = $sourceRow['values'];
         try {
-            foreach (array_diff($headers, array('email asisten 2')) as $header) {
+            foreach (array_diff($headers, $optionalHeaders) as $header) {
                 if (trim((string) ($values[$header] ?? '')) === '') {
                     throw new RuntimeException('Kolom ' . $header . ' wajib diisi.');
                 }
@@ -205,6 +209,9 @@ function api_mode_parse_schedule_import($base64)
             $assistant2 = trim((string) ($values['email asisten 2'] ?? '')) === ''
                 ? null
                 : api_mode_find_reference($references['asisten'] ?? array(), $values['email asisten 2'], 'email', 'Email Asisten 2');
+            $pendamping = trim((string) ($values['email pendamping'] ?? '')) === ''
+                ? null
+                : api_mode_find_reference($references['asisten'] ?? array(), $values['email pendamping'], 'email', 'Email Pendamping');
 
             $programName = mb_strtolower(trim((string) $program['nama']), 'UTF-8');
             $year = mb_strtolower(trim((string) $values['tahun akademik']), 'UTF-8');
@@ -264,7 +271,8 @@ function api_mode_parse_schedule_import($base64)
                 'status' => $activeMap[$statusKey],
                 'id_user_dosen' => (int) $lecturer['id_user'],
                 'id_user_asisten_utama' => (int) $assistant['id_user'],
-                'id_user_asisten_pendamping' => $assistant2 === null ? null : (int) $assistant2['id_user'],
+                'id_user_asisten_pengajar_pendukung' => $assistant2 === null ? null : (int) $assistant2['id_user'],
+                'id_user_pendamping_teknis' => $pendamping === null ? null : (int) $pendamping['id_user'],
                 'frequency' => $frequency,
                 'day' => trim((string) $values['hari']),
                 'time' => str_replace(':', '.', sprintf('%02d:%02d-%02d:%02d', (int) $timeParts[1], (int) $timeParts[2], (int) $timeParts[3], (int) $timeParts[4])),
@@ -563,8 +571,8 @@ try {
         }
         require_once __DIR__ . '/exchange.php';
         xlsx_download(array(
-            array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'hari', 'jam', 'aktif', 'frekuensi'),
-            array('2026/2027', 'Ganjil', 'Teknik Informatika', '130106RP4', 'Lab Startup', 'dosen@fikom.umi.ac.id', 'asisten1@fikom.umi.ac.id', '', 'Selasa', '07.00-10.20', 'Aktif', 'TI_ALPRO-1'),
+            array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'email pendamping', 'hari', 'jam', 'aktif', 'frekuensi'),
+            array('2026/2027', 'Ganjil', 'Teknik Informatika', '130106RP4', 'Lab Startup', 'dosen@fikom.umi.ac.id', 'asisten1@fikom.umi.ac.id', '', '', 'Selasa', '07.00-10.20', 'Aktif', 'TI_ALPRO-1'),
         ), 'template-jadwal.xlsx', 1);
         exit;
     }
@@ -587,7 +595,7 @@ try {
             return array_intersect_key($row['values'], array_flip(array(
                 'id_kelas_kuliah', 'versi', 'id_laboratorium', 'hari_ke', 'jam_mulai', 'jam_selesai',
                 'tanggal_mulai', 'tanggal_selesai', 'pola_perulangan', 'status', 'id_user_dosen',
-                'id_user_asisten_utama', 'id_user_asisten_pendamping',
+                'id_user_asisten_utama', 'id_user_asisten_pengajar_pendukung', 'id_user_pendamping_teknis',
             )));
         }, $preview['rows']);
         $response = api_mode_request('POST', 'praktikum/jadwal/import', array('jadwal' => $schedules));
@@ -703,6 +711,36 @@ try {
             api_mode_json(array('error' => 'Penambahan anggota kelompok hanya dapat dilakukan administrator.'), 403);
         }
         $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/anggota', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Mahasiswa tidak dapat ditambahkan ke kelompok.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if (preg_match('#\A/classes/(\d+)/members/batch\z#', $route, $match) && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Penambahan anggota kelompok hanya dapat dilakukan administrator.'), 403);
+        }
+        $members = $payload['anggota'] ?? null;
+        if (!is_array($members) || count($members) < 1 || count($members) > 500) {
+            api_mode_json(array('error' => 'Pilih antara 1 sampai 500 Mahasiswa.'), 422);
+        }
+        $rows = array();
+        foreach ($members as $member) {
+            if (!is_array($member)) {
+                api_mode_json(array('error' => 'Format data Mahasiswa terpilih tidak valid.'), 422);
+            }
+            $rows[] = array(
+                'nim' => (string) ($member['nim'] ?? ''),
+                'tanggal_mulai' => (string) ($member['tanggal_mulai'] ?? ''),
+                'catatan' => isset($member['catatan']) && $member['catatan'] !== '' ? (string) $member['catatan'] : null,
+            );
+        }
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/anggota/import', array(
+            'versi' => (int) ($payload['versi'] ?? 0),
+            'pratinjau' => filter_var($payload['preview'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'anggota' => $rows,
+        ));
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Mahasiswa tidak dapat ditambahkan ke kelompok.')), $response['status']);
         }

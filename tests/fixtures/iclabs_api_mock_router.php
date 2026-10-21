@@ -69,10 +69,26 @@ if ($path === '/api/v1/praktikum/admin/periode-akademik') {
     return;
 }
 if ($path === '/api/v1/praktikum/kelas/10/jadwal/pratinjau-ketersediaan-asisten' && $method === 'POST') {
-    $assistantId = (int) ($request['id_user_asisten_utama'] ?? 0);
-    echo json_encode(array('data' => array('rekomendasi_ketersediaan_asisten' => array(
-        array('id_user' => $assistantId, 'kode_peran' => 'ASISTEN_UTAMA', 'kode_ketersediaan' => 'BENTROK_JADWAL_KULIAH', 'dapat_dipilih' => true, 'alasan' => 'Jadwal kuliah pribadi bertabrakan. Asisten tetap dapat dipilih atas keputusan Laboran/Admin.', 'bentrok_dengan' => array('nama_mata_kuliah' => 'Algoritma dan Pemrograman', 'kode_mata_kuliah' => '130107RP4', 'kode_kelas' => 'TI-A1', 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '10:00')),
-    ))), JSON_UNESCAPED_UNICODE);
+    $assignments = array(
+        array('field' => 'id_user_asisten_utama', 'role' => 'ASISTEN_UTAMA', 'status' => 'BENTROK_JADWAL_KULIAH'),
+        array('field' => 'id_user_asisten_pengajar_pendukung', 'role' => 'ASISTEN_PENGAJAR_PENDUKUNG', 'status' => 'TERSEDIA'),
+        array('field' => 'id_user_pendamping_teknis', 'role' => 'PENDAMPING_TEKNIS', 'status' => 'TERSEDIA'),
+    );
+    $recommendations = array();
+    foreach ($assignments as $assignment) {
+        $assistantId = (int) ($request[$assignment['field']] ?? 0);
+        if ($assistantId > 0) {
+            $recommendations[] = array(
+                'id_user' => $assistantId,
+                'kode_peran' => $assignment['role'],
+                'kode_ketersediaan' => $assignment['status'],
+                'dapat_dipilih' => true,
+                'alasan' => $assignment['status'] === 'BENTROK_JADWAL_KULIAH' ? 'Jadwal kuliah pribadi bertabrakan. Asisten tetap dapat dipilih atas keputusan Laboran/Admin.' : null,
+                'bentrok_dengan' => $assignment['status'] === 'BENTROK_JADWAL_KULIAH' ? array('nama_mata_kuliah' => 'Algoritma dan Pemrograman', 'kode_mata_kuliah' => '130107RP4', 'kode_kelas' => 'TI-A1', 'hari_ke' => 2, 'jam_mulai' => '09:00', 'jam_selesai' => '10:00') : null,
+            );
+        }
+    }
+    echo json_encode(array('data' => array('rekomendasi_ketersediaan_asisten' => $recommendations)), JSON_UNESCAPED_UNICODE);
     return;
 }
 if (preg_match('#\\A/api/v1/praktikum/admin/periode-akademik/(\\d+)(/aktifkan)?\\z#', $path, $match)) {

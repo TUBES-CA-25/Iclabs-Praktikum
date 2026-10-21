@@ -60,7 +60,7 @@ historis tetap belum selesai.
 - [x] Alihkan jadwal/penugasan dan peserta; pertahankan sinkronisasi additive serta aturan pindah frekuensi dan histori.
 - [x] Alihkan pertemuan, presensi, evaluasi/nilai komponen, workflow/verifikasi, serta pembacaan audit Praktikum ke API pusat; operasi penyimpanan sesi/presensi/nilai dilakukan atomik.
 - [x] Alihkan konfigurasi nilai akhir, laporan/ekspor, dan import jadwal Praktikum per kelompok setelah validasi mapping legacy; import hanya mengisi kelompok canonical yang sudah ada.
-- [x] Alihkan import anggota roster XLSX dengan pratinjau no-write/commit atomik; tidak membuat akun atau master. Histori `log_aktivitas` legacy tetap menunggu keputusan arsip/mapping.
+- [x] Alihkan penambahan/import anggota roster ke API: pencarian manual mendukung multi-select Mahasiswa, pratinjau dan commit atomik; XLSX juga tetap tersedia. Tidak membuat akun atau master. Histori `log_aktivitas` legacy tetap menunggu keputusan arsip/mapping.
 - [x] Alihkan laporan dan ekspor; gunakan periode/kelas/jadwal canonical, aturan kehadiran lama, serta pembatasan role API.
 - [x] API-only mode tidak fallback atau menulis ke DB lokal; route yang belum didukung menolak eksplisit dan `setup.php` installer lokal ditutup. DB/data legacy tidak dihapus.
 
@@ -105,7 +105,7 @@ tetap harus diuji sesuai role sebelum UAT aplikasi.
 | `PUT /v1/praktikum/kelas/{classId}/komponen-nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi`, `jumlah_evaluasi`, `jumlah_asistensi`. Membentuk `EVALUASI_N` dan `ASISTENSI_N` dengan bobot total masing-masing 20%; `MID` dan `UAS` tetap 30%. Komponen berisi nilai tidak bisa dinonaktifkan. Ditolak bila workflow telah diajukan. | Endpoint API dan form UI Admin tersedia pada branch kerja lokal; konfigurasi produksi/VPS belum diverifikasi. |
 | `PUT /v1/praktikum/kelas/{classId}/nilai` | Admin pusat atau Asisten yang ditugaskan; payload `versi` dan array `perubahan` berisi `id_mahasiswa`, `kode_komponen`, `nilai` (0–100 atau `null` untuk menghapus), opsional `catatan`. Semua peserta dan komponen divalidasi sebelum perubahan; stale version ditolak. | Penyimpanan nilai melalui endpoint gabungan atomik tersedia di UI. Endpoint terpisah belum dipakai frontend. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}/workflow` | Admin/Asisten yang ditugaskan dapat mengajukan; Dosen pengampu jadwal dapat memberi `PERLU_REVISI`/`TERVERIFIKASI`, lalu mengunci; Admin dapat mengembalikan status ke `DRAF` dengan alasan. Payload wajib `versi`, `versi_workflow`, `status`; alasan wajib untuk revisi/reset. Pengajuan menolak data tidak lengkap dan semua perubahan masuk histori append-only. | UI menawarkan transisi sesuai role/status dan memakai versi yang dibaca; mock bridge lulus. UAT server belum dilakukan. |
-| `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu dan Asisten utama/opsional pendamping. Menolak personel tanpa master/role aktif serta konflik ruang atau jadwal Praktikum aktif personel. Bentrok dengan kuliah pribadi Asisten tidak menggagalkan simpan. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Form UI Admin membuat jadwal/penugasan dan menampilkan peringatan jadwal kuliah; UAT API server belum dilakukan. |
+| `POST /v1/praktikum/kelas/{classId}/jadwal` | Hanya admin; membuat jadwal dari ruang lab canonical, pola ulangan, status, tanggal dalam periode, Dosen pengampu, Asisten utama (wajib), Asisten pengajar pendukung/Asisten 2 (opsional), dan Pendamping Teknis (opsional). Menolak personel tanpa master/role aktif serta konflik ruang atau jadwal Praktikum aktif personel. Bentrok dengan kuliah pribadi Asisten tidak menggagalkan simpan. Request wajib `versi`; simpan jadwal, assignment, audit, dan kenaikan versi satu transaksi. | Form UI menyediakan tiga slot yang sesuai peran dan menampilkan peringatan bentrok di bawah masing-masing dropdown. |
 | `POST /v1/praktikum/kelas/{classId}/jadwal/pratinjau-ketersediaan-asisten` | Admin pusat; payload memakai field jadwal yang sama. Mengembalikan indikator `TERSEDIA`, `BENTROK_JADWAL_KULIAH`, atau `JADWAL_BELUM_DIKIRIM`; item bentrok menyertakan `bentrok_dengan` (nama/kode Mata Kuliah, kelas, hari, dan jam). Bentrok kuliah adalah peringatan, bukan larangan; Laboran/Admin tetap memilih manual dan UI meminta konfirmasi. Bentrok ruang atau penugasan Praktikum personel tetap ditolak saat simpan. | Form menampilkan status berwarna tepat di bawah dropdown Asisten terkait, termasuk detail Mata Kuliah yang bertabrakan. `JADWAL_BELUM_DIKIRIM` berarti API tidak menemukan import jadwal berstatus `AKTIF` untuk Asisten pada periode kelas tersebut. |
 | `PATCH /v1/praktikum/kelas/{classId}/jadwal/{scheduleId}` | Hanya admin; mengubah subset detail jadwal dan/atau assignment dengan `versi` wajib. Menolak jadwal bukan milik kelas, stale version, tanggal/jam tidak sah, konflik, atau workflow yang sudah diajukan. Detail kelas mengembalikan pola, status, dan assignment aktif. | Form UI Admin mengubah jadwal/penugasan dan mock bridge lulus; UAT API server belum dilakukan. |
 | `POST /v1/praktikum/jadwal/import` | Hanya Admin; menerima 1–2.000 baris jadwal yang masing-masing menunjuk `id_kelas_kuliah` canonical yang sudah ada, versi kelompok, laboratorium canonical, hari/waktu, batas periode, pola/status, dan ID akun Dosen/Asisten pusat. Semua baris dibuat dalam satu transaksi; satu konflik atau baris invalid membatalkan seluruh batch. Menolak kelompok yang sudah memiliki jadwal agar import tidak menimpa jadwal. | UI API-only menyediakan template XLSX, pratinjau tanpa menulis, lalu commit seluruh batch. Pemetaan jadwal legacy ke kelompok canonical tetap tanggung jawab operator dan import tidak membuat kelas/kelompok baru. Uji mock dan fitur API tersedia; UAT VPS belum dilakukan. |
@@ -131,6 +131,9 @@ tidak memindahkan peserta, nilai, presensi, atau histori.
 Route frontend:
 
 - `GET api.php?route=/admin/schedule-template` — unduh template XLSX (Admin).
+  Kolom `email asisten 2` (Asisten pengajar pendukung) dan `email pendamping`
+  (Pendamping Teknis) opsional. Template lama tanpa kolom `email pendamping`
+  tetap dapat dipratinjau.
 - `POST api.php?route=/admin/import-schedule` dengan `mode=preview` — validasi
   dan pratinjau, tanpa mutasi.
 - Route yang sama dengan `mode=commit` — kirim batch tervalidasi ke API pusat.
@@ -142,8 +145,13 @@ duplikat atau menulis ke database lokal.
 
 ### Import anggota frekuensi (API-only)
 
-Pada detail kelas/frekuensi, Admin dapat mengunduh template anggota, mengunggah
-XLSX, memeriksa NIM/tanggal tanpa menulis, lalu melakukan commit. Header wajib
+Pada detail kelas/frekuensi, Admin dapat mencari Mahasiswa canonical, memilih
+beberapa hasil sekaligus, lalu menambahkan pilihan dengan satu tindakan. UI
+memvalidasi seluruh pilihan melalui pratinjau API dan baru melakukan commit
+atomik jika semuanya valid. Tanggal mulai dan catatan yang diisi berlaku untuk
+semua pilihan pada batch tersebut. Admin juga dapat mengunduh template anggota,
+mengunggah XLSX, memeriksa NIM/tanggal tanpa menulis, lalu melakukan commit.
+Header wajib
 `nim` dan `tanggal_mulai`; `catatan` opsional. Isi tanggal sebagai teks ISO
 `YYYY-MM-DD` di dalam periode canonical. Semua NIM harus sudah menjadi Mahasiswa
 aktif canonical dan sesuai Prodi. File tidak boleh digunakan untuk membuat akun
@@ -183,9 +191,14 @@ Contoh payload pembuatan jadwal (ID user adalah ID akun pusat; jangan mengirim e
   "status": "AKTIF",
   "id_user_dosen": 20,
   "id_user_asisten_utama": 21,
-  "id_user_asisten_pendamping": null
+  "id_user_asisten_pengajar_pendukung": null,
+  "id_user_pendamping_teknis": null
 }
 ```
+
+Asisten utama wajib; Asisten pengajar pendukung (Asisten 2) dan Pendamping Teknis
+opsional. Keduanya adalah akun Asisten pusat dan masing-masing dicek terhadap
+role/master aktif serta bentrok jadwal Praktikum.
 
 Gunakan `GET /api/v1/praktikum/referensi` untuk daftar referensi; pilihan
 `dosen`/`asisten` hanya tersedia untuk admin. `POST` dan `PATCH` jadwal
@@ -325,6 +338,17 @@ belum dimigrasikan. Route Praktikum legacy di luar kontrak ini sengaja mengembal
 `501` tanpa mengakses database lokal.
 `tests/fixtures/iclabs_api_mock_router.php` menyediakan mock kontrak untuk
 pengujian adapter lokal; ini bukan pengganti UAT pada API staging.
+
+Pada detail kelas mode API, bagian Presensi, Input Nilai, Riwayat Sesi,
+Komponen Penilaian, dan Rekap Peserta dipisahkan ke tab agar pekerjaan Asisten
+tidak tercampur. Dosen mendapat tampilan baca-saja untuk presensi, sesi,
+komponen, dan rekap; Mahasiswa hanya mendapat ringkasan nilainya sendiri.
+Draft presensi dan data sesi (tanggal, materi, status, catatan) disimpan lokal
+di `localStorage`, dengan kunci terpisah menurut akun, kelas, pertemuan, dan
+jadwal. Draft tetap tersedia setelah refresh pada browser/perangkat yang sama,
+dan baru dihapus setelah API mengonfirmasi simpan berhasil. Ini bukan backup
+server: gunakan perangkat pribadi, jangan masukkan data sensitif ke catatan,
+dan ingat bahwa membersihkan data browser akan menghapus draft.
 
 Tidak diperlukan API key aplikasi untuk endpoint ini. Login memakai identitas akun
 pusat, dan bearer token disimpan hanya di session server dengan cookie aman; token

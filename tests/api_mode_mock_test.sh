@@ -65,10 +65,12 @@ period_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 
 grep -q '"tanggal_mulai":"2027-02-02"' <<<"$period_update" || { echo "FAIL: perubahan rentang periode"; exit 1; }
 period_activate="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods%2F2%2Factivate")"
 grep -q '"id_periode_akademik":2' <<<"$period_activate" || { echo "FAIL: aktivasi periode akademik"; exit 1; }
-assistant_availability="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pendamping":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
+assistant_availability="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pengajar_pendukung":401,"id_user_pendamping_teknis":402}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
 grep -q '"kode_ketersediaan":"BENTROK_JADWAL_KULIAH"' <<<"$assistant_availability" || { echo "FAIL: rekomendasi bentrok jadwal Asisten"; exit 1; }
 grep -q '"dapat_dipilih":true' <<<"$assistant_availability" || { echo "FAIL: bentrok jadwal kuliah harus tetap dapat dipilih"; exit 1; }
 grep -q '"nama_mata_kuliah":"Algoritma dan Pemrograman"' <<<"$assistant_availability" || { echo "FAIL: detail mata kuliah yang bentrok"; exit 1; }
+grep -q '"id_user":401,"kode_peran":"ASISTEN_PENGAJAR_PENDUKUNG"' <<<"$assistant_availability" || { echo "FAIL: rekomendasi Asisten 2 opsional"; exit 1; }
+grep -q '"id_user":402,"kode_peran":"PENDAMPING_TEKNIS"' <<<"$assistant_availability" || { echo "FAIL: rekomendasi Pendamping opsional"; exit 1; }
 template_status="$(curl -sS -o "$test_dir/schedule-template.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fschedule-template")"
 [[ "$template_status" == 200 ]] || { echo "FAIL: template import jadwal"; exit 1; }
 template_base64="$(base64 -w 0 "$test_dir/schedule-template.xlsx")"
@@ -111,7 +113,7 @@ changes_response="$(curl -sS -b "$cookie_jar" -X PUT -H "X-CSRF-Token: $csrf" -H
 grep -q '"versi":2' <<<"$changes_response" || { echo "FAIL: simpan sesi/presensi/nilai atomik"; exit 1; }
 workflow_response="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"versi_workflow":1,"status":"DRAF","catatan":"Uji reset"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules%2F99%2Fworkflow")"
 grep -q '"versi_workflow":2' <<<"$workflow_response" || { echo "FAIL: transisi workflow"; exit 1; }
-schedule_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pendamping":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules")"
+schedule_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pengajar_pendukung":401,"id_user_pendamping_teknis":402}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules")"
 grep -q '"id_jadwal_kelas_kuliah":100' <<<"$schedule_create" || { echo "FAIL: pembuatan jadwal"; exit 1; }
 schedule_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"status":"NONAKTIF"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules%2F99")"
 grep -q '"id_jadwal_kelas_kuliah":99' <<<"$schedule_update" || { echo "FAIL: pembaruan jadwal"; exit 1; }
@@ -121,6 +123,10 @@ candidate_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.
 grep -q '"nim":"13020260001"' <<<"$candidate_response" || { echo "FAIL: pencarian calon Mahasiswa canonical: $candidate_response"; exit 1; }
 member_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_mahasiswa":701,"tanggal_mulai":"2026-09-07","catatan":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fmembers")"
 grep -q '"id_mahasiswa":701' <<<"$member_response" || { echo "FAIL: tambah anggota canonical: $member_response"; exit 1; }
+member_batch_preview="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":2,"preview":true,"anggota":[{"nim":"13020260001","tanggal_mulai":"2026-09-07"},{"nim":"13020260002","tanggal_mulai":"2026-09-07"}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fmembers%2Fbatch")"
+grep -q '"jumlah_valid":2' <<<"$member_batch_preview" || { echo "FAIL: pratinjau tambah anggota batch: $member_batch_preview"; exit 1; }
+member_batch_commit="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":2,"preview":false,"anggota":[{"nim":"13020260001","tanggal_mulai":"2026-09-07"},{"nim":"13020260002","tanggal_mulai":"2026-09-07"}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fmembers%2Fbatch")"
+grep -q '"jumlah_diimpor":2' <<<"$member_batch_commit" || { echo "FAIL: commit tambah anggota batch: $member_batch_commit"; exit 1; }
 frequency_template_status="$(curl -sS -o "$test_dir/frequency-template.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Ffrequency-template")"
 [[ "$frequency_template_status" == 200 ]] || { echo "FAIL: template import anggota frekuensi"; exit 1; }
 frequency_template_base64="$(base64 -w 0 "$test_dir/frequency-template.xlsx")"
