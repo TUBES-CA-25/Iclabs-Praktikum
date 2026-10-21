@@ -777,6 +777,49 @@ dialog .form-grid {
     gap: 16px;
 }
 
+.assistant-availability {
+    margin-top: 7px;
+    padding: 8px 10px;
+    border: 1px solid #dfe6dc;
+    border-radius: 7px;
+    background: #f7f9f5;
+    color: #68705f;
+    font-size: 11px;
+    line-height: 1.45;
+}
+.assistant-availability.is-warning {
+    border-color: #f0d77a;
+    background: #fff8dc;
+    color: #795d0a;
+}
+.assistant-availability.is-available {
+    border-color: #b9d9c0;
+    background: #edf7ef;
+    color: #2f7043;
+}
+.assistant-availability.is-checking {
+    border-color: #c8d7e9;
+    background: #f0f6fc;
+    color: #4c6685;
+}
+.assistant-availability.is-error {
+    border-color: #efc6b9;
+    background: #fff1ec;
+    color: #9a4935;
+}
+dialog select.assistant-select-warning {
+    border-color: #d5a91e;
+    background-color: #fffaf0;
+}
+dialog select.assistant-select-available {
+    border-color: #78b58a;
+    background-color: #f2faf3;
+}
+dialog select.assistant-select-error {
+    border-color: #d7866e;
+    background-color: #fff5f1;
+}
+
 dialog h2 {
     margin-bottom: 20px;
 }

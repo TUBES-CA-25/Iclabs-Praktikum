@@ -68,6 +68,7 @@ grep -q '"id_periode_akademik":2' <<<"$period_activate" || { echo "FAIL: aktivas
 assistant_availability="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"id_user_asisten_pendamping":null}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
 grep -q '"kode_ketersediaan":"BENTROK_JADWAL_KULIAH"' <<<"$assistant_availability" || { echo "FAIL: rekomendasi bentrok jadwal Asisten"; exit 1; }
 grep -q '"dapat_dipilih":true' <<<"$assistant_availability" || { echo "FAIL: bentrok jadwal kuliah harus tetap dapat dipilih"; exit 1; }
+grep -q '"nama_mata_kuliah":"Algoritma dan Pemrograman"' <<<"$assistant_availability" || { echo "FAIL: detail mata kuliah yang bentrok"; exit 1; }
 template_status="$(curl -sS -o "$test_dir/schedule-template.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fschedule-template")"
 [[ "$template_status" == 200 ]] || { echo "FAIL: template import jadwal"; exit 1; }
 template_base64="$(base64 -w 0 "$test_dir/schedule-template.xlsx")"
