@@ -3,6 +3,7 @@
 /** API-only authentication bridge. This file intentionally never loads PDO/bootstrap.php. */
 $config = require dirname(__DIR__) . '/config.php';
 require_once __DIR__ . '/iclabs_api_client.php';
+require_once __DIR__ . '/google_sheet_schedule_import.php';
 
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -547,9 +548,26 @@ try {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Sinkronisasi jadwal hanya dapat dilakukan administrator.'), 403);
         }
+        if (array_key_exists('jadwal', $payload)) {
+            if (!is_array($payload['jadwal'])) {
+                api_mode_json(array('error' => 'Data jadwal hasil pemetaan harus berupa daftar baris.'), 422);
+            }
+            $scheduleRows = $payload['jadwal'];
+        } else {
+            try {
+                $csv = iclabs_praktikum_fetch_google_sheet_csv($payload['url'] ?? '');
+                $scheduleRows = iclabs_praktikum_parse_google_sheet_csv($csv);
+            } catch (InvalidArgumentException $exception) {
+                api_mode_json(array('error' => $exception->getMessage()), 422);
+            } catch (Throwable $exception) {
+                api_mode_json(array('error' => $exception->getMessage()), 502);
+            }
+        }
+
         $response = api_mode_request('POST', 'praktikum/jadwal/sinkronisasi-google-sheet', array(
             'url' => trim((string) ($payload['url'] ?? '')),
             'id_periode_akademik' => (int) ($payload['id_periode_akademik'] ?? 0),
+            'jadwal' => $scheduleRows,
         ));
         if ($response['status'] < 200 || $response['status'] >= 300) {
             $message = api_mode_error_message($response['data'] ?? array(), 'Sinkronisasi Google Sheets gagal. Tidak ada perubahan yang diterapkan.');

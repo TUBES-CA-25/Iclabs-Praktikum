@@ -146,6 +146,11 @@ if ($path === '/api/v1/praktikum/jadwal/sinkronisasi-google-sheet' && $method ==
         'tidak_berubah' => 0,
         'jumlah_peserta_sumber' => 17,
         'roster_diubah' => false,
+        'assistant_slots_received' => array(
+            $request['jadwal'][0]['asisten_1'] ?? null,
+            $request['jadwal'][0]['asisten_2'] ?? null,
+            $request['jadwal'][0]['asisten_3'] ?? null,
+        ),
         'baris_dengan_perbedaan_nama_mk_atau_sks' => array(),
         'jadwal_yang_tidak_ada_di_sheet_dihapus' => false,
     )), JSON_UNESCAPED_UNICODE);
