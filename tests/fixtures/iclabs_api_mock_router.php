@@ -137,6 +137,20 @@ if ($path === '/api/v1/praktikum/jadwal/import' && $method === 'POST') {
     echo json_encode(array('data' => array('jumlah_diimpor' => count($schedules), 'jadwal' => $schedules)), JSON_UNESCAPED_UNICODE);
     return;
 }
+if ($path === '/api/v1/praktikum/jadwal/sinkronisasi-google-sheet' && $method === 'POST') {
+    echo json_encode(array('data' => array(
+        'periode' => array('id' => (int) ($request['id_periode_akademik'] ?? 0), 'tahun_akademik' => '2026/2027', 'semester' => 'Ganjil'),
+        'jumlah_baris' => 1,
+        'dibuat' => 1,
+        'diperbarui' => 0,
+        'tidak_berubah' => 0,
+        'jumlah_peserta_sumber' => 17,
+        'roster_diubah' => false,
+        'baris_dengan_perbedaan_nama_mk_atau_sks' => array(),
+        'jadwal_yang_tidak_ada_di_sheet_dihapus' => false,
+    )), JSON_UNESCAPED_UNICODE);
+    return;
+}
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,

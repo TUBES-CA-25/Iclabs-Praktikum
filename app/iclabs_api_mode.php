@@ -543,6 +543,35 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if ($route === '/admin/sync-google-sheet' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Sinkronisasi jadwal hanya dapat dilakukan administrator.'), 403);
+        }
+        $response = api_mode_request('POST', 'praktikum/jadwal/sinkronisasi-google-sheet', array(
+            'url' => trim((string) ($payload['url'] ?? '')),
+            'id_periode_akademik' => (int) ($payload['id_periode_akademik'] ?? 0),
+        ));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            $message = api_mode_error_message($response['data'] ?? array(), 'Sinkronisasi Google Sheets gagal. Tidak ada perubahan yang diterapkan.');
+            $rowErrors = $response['data']['errors']['baris'] ?? array();
+            if (is_array($rowErrors) && $rowErrors !== array()) {
+                $details = array();
+                foreach ($rowErrors as $issue) {
+                    if (is_array($issue)) {
+                        $details[] = 'Baris ' . (int) ($issue['baris'] ?? 0)
+                            . (!empty($issue['frekuensi']) ? ' (' . $issue['frekuensi'] . ')' : '')
+                            . ': ' . (string) ($issue['pesan'] ?? 'Data tidak valid.');
+                    }
+                }
+                if ($details !== array()) {
+                    $message .= ' ' . implode(' ', $details);
+                }
+            }
+            api_mode_json(array('error' => substr($message, 0, 3000)), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if (preg_match('#\\A/admin/periods/(\\d+)\\z#', $route, $match) && $method === 'PATCH') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Pengelolaan periode hanya dapat diakses administrator.'), 403);
