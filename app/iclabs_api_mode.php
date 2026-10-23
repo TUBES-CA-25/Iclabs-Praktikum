@@ -544,6 +544,31 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if ($route === '/admin/preview-google-sheet' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Pratinjau jadwal hanya dapat dilakukan administrator.'), 403);
+        }
+        if (!is_string($payload['url'] ?? null) || strlen($payload['url']) > 2048) {
+            api_mode_json(array('error' => 'URL Google Spreadsheet wajib berupa teks dan maksimal 2048 karakter.'), 422);
+        }
+        try {
+            $csv = iclabs_praktikum_fetch_google_sheet_csv($payload['url']);
+            $scheduleRows = iclabs_praktikum_parse_google_sheet_csv($csv);
+        } catch (InvalidArgumentException $exception) {
+            api_mode_json(array('error' => $exception->getMessage()), 422);
+        } catch (Throwable $exception) {
+            api_mode_json(array('error' => $exception->getMessage()), 502);
+        }
+
+        // This endpoint only reads the public Sheet. No central API write is made here.
+        api_mode_json(array(
+            'url' => trim((string) ($payload['url'] ?? '')),
+            'checksum_sha256' => hash('sha256', $csv),
+            'jumlah_baris' => count($scheduleRows),
+            'jadwal' => $scheduleRows,
+        ));
+    }
+
     if ($route === '/admin/sync-google-sheet' && $method === 'POST') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Sinkronisasi jadwal hanya dapat dilakukan administrator.'), 403);

@@ -17,8 +17,27 @@ POST /api/v1/praktikum/jadwal/sinkronisasi-google-sheet
 Payload JSON membawa `url`, `id_periode_akademik`, dan `jadwal[]`. Setiap baris
 membawa `baris_sumber`, `prodi`, `hari`, `jam`, `kode_mk`, `mata_kuliah`,
 `dosen`, `frekuensi`, `laboratorium`, `asisten_1`, `asisten_2`, `asisten_3`,
-`peserta`, serta `sks`. API tidak mempercayai hasil pencocokan ID dari aplikasi;
-ia mencari ulang master dan menolak nama/kode yang tidak cocok atau ambigu.
+`peserta`, serta `sks`. Aplikasi boleh mengirim ID pengguna canonical hasil
+pilihan manual untuk membedakan personel dengan nama sama. API pusat memvalidasi
+ulang bahwa setiap ID masih aktif dan cocok dengan peran yang diperlukan; ID
+tidak dapat dipakai untuk melewati validasi master.
+
+## Pratinjau dan validasi manual
+
+Tombol **Ambil & Pratinjau Sheet** memanggil endpoint aplikasi Praktikum
+`POST /admin/preview-google-sheet`. Endpoint ini membaca CSV publik dan
+mengembalikan baris beserta checksum SHA-256, tanpa mengirim perubahan ke API
+pusat atau menulis database. Browser kemudian memuat master canonical melalui
+`GET /references` dan menampilkan tabel yang dapat diedit.
+
+Pencocokan tepat yang unik ditandai hijau. Kandidat fuzzy atau nama yang
+ambigu ditandai oranye dan tidak dipilih otomatis; administrator harus memilih
+kandidat yang benar. Nilai tanpa kandidat ditandai merah, tetapi masih dapat
+diedit atau dipilih dari daftar master. Tombol simpan aktif hanya bila semua
+baris lolos validasi lokal. Saat **Simpan** ditekan, seluruh baris terkoreksi
+dikirim ke endpoint sinkronisasi pusat yang memvalidasi ulang semuanya secara
+atomik. Jika personel memang belum ada di master aktif, data master harus
+dilengkapi terlebih dahulu—fuzzy matching tidak membuat akun atau personel.
 
 ## Kolom dan aturan
 
@@ -33,6 +52,11 @@ identitas master praktikum dan tidak mengubah roster/kelas reguler.
 - Jika `Dosen` berisi beberapa nama dipisahkan `/`, API memakai nama pertama.
 - `Peserta` seperti `17+5` hanya menjadi ringkasan informasi; angka pertama
   dipakai dan daftar peserta tidak diubah.
+- Awalan `Lab ` pada nama laboratorium boleh dicantumkan atau dihilangkan; API
+  mencocokkan keduanya ke satu master laboratorium canonical yang aktif.
+- Nama dosen boleh menyertakan gelar; API memakai nama inti hanya jika hasilnya
+  cocok ke satu dosen aktif. Asisten boleh memakai satu token nama jika token
+  itu hanya cocok ke satu asisten aktif; nama ambigu tetap ditolak.
 - `Mata Kuliah` dan `SKS` diperiksa terhadap master. `Hari`, `Jam`, lab dan
   penugasan diperbarui pada jadwal canonical untuk periode aktif dan frekuensi
   yang sama.
