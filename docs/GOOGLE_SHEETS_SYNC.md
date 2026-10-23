@@ -30,14 +30,17 @@ mengembalikan baris beserta checksum SHA-256, tanpa mengirim perubahan ke API
 pusat atau menulis database. Browser kemudian memuat master canonical melalui
 `GET /references` dan menampilkan tabel yang dapat diedit.
 
-Pencocokan tepat yang unik ditandai hijau. Kandidat fuzzy atau nama yang
-ambigu ditandai oranye dan tidak dipilih otomatis; administrator harus memilih
-kandidat yang benar. Nilai tanpa kandidat ditandai merah, tetapi masih dapat
-diedit atau dipilih dari daftar master. Tombol simpan aktif hanya bila semua
-baris lolos validasi lokal. Saat **Simpan** ditekan, seluruh baris terkoreksi
-dikirim ke endpoint sinkronisasi pusat yang memvalidasi ulang semuanya secara
-atomik. Jika personel memang belum ada di master aktif, data master harus
-dilengkapi terlebih dahulu—fuzzy matching tidak membuat akun atau personel.
+Pencocokan tepat yang unik ditandai hijau. Untuk nama yang tidak persis sama,
+sistem menandai kandidat paling mirip dengan warna oranye dan memilihnya sebagai
+usulan awal. Usulan ini belum dianggap cocok: administrator perlu memeriksa lalu
+menekan **Konfirmasi pilihan**, atau memilih kandidat lain. Nilai tanpa kandidat
+ditandai merah, tetapi masih dapat diedit atau dipilih dari daftar master.
+Pencocokan ini hanya memberi usulan dan tidak memakai library/dependensi baru.
+Tombol simpan aktif hanya bila semua baris lolos validasi lokal. Saat **Simpan**
+ditekan, seluruh baris terkoreksi dikirim ke endpoint sinkronisasi pusat yang
+memvalidasi ulang semuanya secara atomik. Jika personel memang belum ada di
+master aktif, data master harus dilengkapi terlebih dahulu; pencocokan nama
+tidak membuat akun atau personel.
 
 ## Kolom dan aturan
 
