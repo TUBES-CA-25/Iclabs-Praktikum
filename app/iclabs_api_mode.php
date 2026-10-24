@@ -813,6 +813,17 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if (preg_match('#\A/classes/(\d+)/schedules/(\d+)\z#', $route, $match) && $method === 'DELETE') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Penghapusan jadwal draft hanya dapat dilakukan administrator.'), 403);
+        }
+        $response = api_mode_request('DELETE', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/' . (int) $match[2], $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Jadwal draft tidak dapat dihapus.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if (preg_match('#\A/classes/(\d+)/components\z#', $route, $match) && $method === 'PUT') {
         $response = api_mode_request('PUT', 'praktikum/kelas/' . (int) $match[1] . '/komponen-nilai', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
