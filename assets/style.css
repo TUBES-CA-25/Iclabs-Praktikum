@@ -59,6 +59,15 @@ button.small {
     font-size: 12px;
 }
 
+button.danger {
+    color: #b42318;
+    border-color: #f2b8b5;
+}
+
+button.danger:hover {
+    background: #fff2f1;
+}
+
 input,select,textarea {
     border: 1px solid #dfe3da;
     border-radius: 7px;
