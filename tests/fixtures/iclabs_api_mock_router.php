@@ -137,7 +137,35 @@ if ($path === '/api/v1/praktikum/jadwal/import' && $method === 'POST') {
     echo json_encode(array('data' => array('jumlah_diimpor' => count($schedules), 'jadwal' => $schedules)), JSON_UNESCAPED_UNICODE);
     return;
 }
+if ($path === '/api/v1/praktikum/jadwal/rekomendasi-google-sheet' && $method === 'POST') {
+    $row = $request['jadwal'][0] ?? array();
+    echo json_encode(array('data' => array(
+        'jumlah_nilai_unik_diperiksa' => 1,
+        'jumlah_rekomendasi' => 1,
+        'jumlah_nilai_dilewati_batas' => 0,
+        'rekomendasi' => array(array(
+            'baris_sumber' => (int) ($row['baris_sumber'] ?? 0),
+            'field' => 'asisten_3',
+            'kandidat_id' => 402,
+            'kandidat' => array('id_user' => 402, 'nama' => 'Pendamping Uji', 'kode_tingkat_asisten' => 'ASISTEN_3'),
+            'keyakinan_ai' => 91,
+            'alasan' => 'Nama paling mendekati kandidat Pendamping.',
+        )),
+    )), JSON_UNESCAPED_UNICODE);
+    return;
+}
 if ($path === '/api/v1/praktikum/jadwal/sinkronisasi-google-sheet' && $method === 'POST') {
+    if (($request['jadwal'][0]['asisten_2'] ?? null) === '__SIMULATE_CONFLICT__') {
+        http_response_code(422);
+        echo json_encode(array(
+            'message' => 'Sinkronisasi dibatalkan. Ada data Sheet yang belum cocok dengan master pusat.',
+            'errors' => array('baris' => array(array(
+                'baris' => 12,
+                'pesan' => 'Satu akun tidak boleh mengisi lebih dari satu peran pada jadwal yang sama. Pilih akun berbeda untuk setiap peran.',
+            ))),
+        ), JSON_UNESCAPED_UNICODE);
+        return;
+    }
     echo json_encode(array('data' => array(
         'periode' => array('id' => (int) ($request['id_periode_akademik'] ?? 0), 'tahun_akademik' => '2026/2027', 'semester' => 'Ganjil'),
         'jumlah_baris' => 1,

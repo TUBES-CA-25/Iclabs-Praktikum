@@ -289,12 +289,12 @@ function api_mode_parse_schedule_import($base64)
     return array('rows' => $resolved, 'errors' => $errors);
 }
 
-function api_mode_request($method, $path, array $payload = null, $authenticated = true)
+function api_mode_request($method, $path, array $payload = null, $authenticated = true, $timeoutSeconds = null)
 {
     global $config;
     $client = new IclabsApiClient($config);
     $token = $authenticated ? ($_SESSION['iclabs_bearer'] ?? null) : null;
-    return $client->request($method, $path, $payload, $token);
+    return $client->request($method, $path, $payload, $token, $timeoutSeconds);
 }
 
 function api_mode_error_message(array $body, $fallback)
@@ -304,13 +304,23 @@ function api_mode_error_message(array $body, $fallback)
         $messages[] = $body['message'];
     }
     if (isset($body['errors']) && is_array($body['errors'])) {
-        foreach ($body['errors'] as $fieldMessages) {
-            foreach ((array) $fieldMessages as $message) {
-                if (is_string($message) && $message !== '') {
-                    $messages[] = $message;
-                }
+        $collect = static function ($value) use (&$collect): array {
+            if (is_string($value)) {
+                return $value === '' ? array() : array($value);
             }
-        }
+            if (!is_array($value)) {
+                return array();
+            }
+            if (isset($value['baris'], $value['pesan']) && is_scalar($value['baris']) && is_string($value['pesan'])) {
+                return array('Baris ' . $value['baris'] . ': ' . $value['pesan']);
+            }
+            $collected = array();
+            foreach ($value as $item) {
+                $collected = array_merge($collected, $collect($item));
+            }
+            return $collected;
+        };
+        $messages = array_merge($messages, $collect($body['errors']));
     }
     if (isset($body['error']) && is_string($body['error'])) {
         $messages[] = $body['error'];
@@ -567,6 +577,51 @@ try {
             'jumlah_baris' => count($scheduleRows),
             'jadwal' => $scheduleRows,
         ));
+    }
+
+    if ($route === '/admin/match-google-sheet-ai' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Rekomendasi pencocokan hanya dapat dilakukan administrator.'), 403);
+        }
+        if (!is_array($payload['jadwal'] ?? null) || count($payload['jadwal']) < 1 || count($payload['jadwal']) > 500) {
+            api_mode_json(array('error' => 'Data pratinjau harus berisi 1 sampai 500 baris jadwal.'), 422);
+        }
+
+        $fields = array('prodi', 'kode_mk', 'mata_kuliah', 'dosen', 'laboratorium', 'asisten_1', 'asisten_2', 'asisten_3');
+        $scheduleRows = array();
+        foreach ($payload['jadwal'] as $row) {
+            if (!is_array($row)) {
+                api_mode_json(array('error' => 'Setiap baris pratinjau harus berupa data jadwal.'), 422);
+            }
+            $matchRow = array('baris_sumber' => (int) ($row['baris_sumber'] ?? 0));
+            foreach ($fields as $field) {
+                $value = $row[$field] ?? '';
+                if (!is_string($value) && !is_numeric($value)) {
+                    api_mode_json(array('error' => 'Nilai kolom jadwal harus berupa teks.'), 422);
+                }
+                $matchRow[$field] = trim((string) $value);
+            }
+            $scheduleRows[] = $matchRow;
+        }
+
+        $aiTimeoutSeconds = max($config['iclabs_api_timeout_seconds'], $config['iclabs_api_ai_timeout_seconds']);
+        if (function_exists('set_time_limit')) {
+            set_time_limit($aiTimeoutSeconds + 15);
+        }
+
+        $response = api_mode_request(
+            'POST',
+            'praktikum/jadwal/rekomendasi-google-sheet',
+            array('jadwal' => $scheduleRows),
+            true,
+            $aiTimeoutSeconds
+        );
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array(
+                'error' => api_mode_error_message($response['data'] ?? array(), 'Rekomendasi AI tidak tersedia. Pemetaan manual tetap dapat digunakan.'),
+            ), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
     if ($route === '/admin/sync-google-sheet' && $method === 'POST') {

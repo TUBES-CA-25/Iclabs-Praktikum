@@ -29,7 +29,7 @@ class IclabsApiClient
     /**
      * @return array{status: int, data: array<string, mixed>|null}
      */
-    public function request($method, $path, array $payload = null, $bearerToken = null)
+    public function request($method, $path, array $payload = null, $bearerToken = null, $timeoutSeconds = null)
     {
         if (!function_exists('curl_init')) {
             throw new RuntimeException('Ekstensi cURL PHP harus diaktifkan untuk koneksi ke API ICLabs.');
@@ -54,12 +54,16 @@ class IclabsApiClient
             $headers[] = 'Authorization: Bearer ' . $bearerToken;
         }
 
+        $requestTimeoutSeconds = $timeoutSeconds === null
+            ? $this->timeoutSeconds
+            : max($this->connectTimeoutSeconds, (int) $timeoutSeconds);
+
         $handle = curl_init($this->baseUrl . '/' . $path);
         curl_setopt_array($handle, array(
             CURLOPT_CUSTOMREQUEST => strtoupper((string) $method),
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => $this->connectTimeoutSeconds,
-            CURLOPT_TIMEOUT => $this->timeoutSeconds,
+            CURLOPT_TIMEOUT => $requestTimeoutSeconds,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_MAXREDIRS => 0,
             CURLOPT_SSL_VERIFYPEER => $this->verifyTls,
