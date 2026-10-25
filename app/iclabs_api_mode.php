@@ -1059,6 +1059,10 @@ try {
         if (isset($_GET['period_id']) && $periodId === false) {
             api_mode_json(array('error' => 'Filter periode tidak valid.'), 422);
         }
+        $lecturerView = $_GET['dosen_view'] ?? null;
+        if ($lecturerView !== null && !in_array($lecturerView, array('aktivitas', 'hasil'), true)) {
+            api_mode_json(array('error' => 'Pilihan tampilan Dosen tidak valid.'), 422);
+        }
         $classes = array();
         $page = 1;
         $lastPage = 1;
@@ -1066,6 +1070,9 @@ try {
             $query = 'praktikum/kelas?per_page=100&page=' . $page;
             if ($periodId !== false && $periodId !== null) {
                 $query .= '&id_periode_akademik=' . (int) $periodId;
+            }
+            if ($lecturerView !== null) {
+                $query .= '&dosen_view=' . rawurlencode($lecturerView);
             }
             $response = api_mode_request('GET', $query);
             if ($response['status'] < 200 || $response['status'] >= 300) {
@@ -1138,7 +1145,15 @@ try {
     }
 
     if (preg_match('#\A/classes/(\d+)\z#', $route, $match) && $method === 'GET') {
-        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1]);
+        $lecturerView = $_GET['dosen_view'] ?? null;
+        if ($lecturerView !== null && !in_array($lecturerView, array('aktivitas', 'hasil'), true)) {
+            api_mode_json(array('error' => 'Pilihan tampilan Dosen tidak valid.'), 422);
+        }
+        $path = 'praktikum/kelas/' . (int) $match[1];
+        if ($lecturerView !== null) {
+            $path .= '?dosen_view=' . rawurlencode($lecturerView);
+        }
+        $response = api_mode_request('GET', $path);
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Detail kelas tidak dapat dimuat.')), $response['status']);
         }
