@@ -585,6 +585,101 @@ function xlsx_download(
     }
 }
 
+function xlsx_roster_rotation_download(array $template, $filename = 'template-roster-rotasi.xlsx')
+{
+    if (!class_exists('ZipArchive')) {
+        reject('Ekstensi ZIP PHP diperlukan untuk membuat template Excel.', 503);
+    }
+
+    $roster = $template['roster'] ?? array();
+    $classes = $template['kelas_tujuan'] ?? array();
+    $period = $template['periode'] ?? array();
+    $headers = array('NIM', 'Nama Mahasiswa (informasi)', 'Mata Kuliah (informasi)', 'Frekuensi Aktif (informasi)', 'Kelas Tujuan', 'Tanggal Efektif', 'Alasan Perpindahan');
+    $optionsById = array();
+    $classLabels = array();
+    foreach ($classes as $class) {
+        $optionsById[(int) ($class['id'] ?? 0)] = (string) ($class['label'] ?? '');
+        if (($class['label'] ?? '') !== '') {
+            $classLabels[] = (string) $class['label'];
+        }
+    }
+    if ($classLabels === array()) {
+        reject('Belum ada kelas Praktikum aktif untuk dijadikan pilihan roster.', 409);
+    }
+
+    $rows = array($headers);
+    foreach ($roster as $student) {
+        $groupLabels = array_map(static function (array $group): string {
+            return (string) ($group['label'] ?? $group['kode_kelompok'] ?? '');
+        }, $student['frekuensi_aktif'] ?? array());
+        $targetId = $student['id_kelas_tujuan_default'] ?? null;
+        $rows[] = array(
+            (string) ($student['nim'] ?? ''),
+            (string) ($student['nama'] ?? ''),
+            trim((string) ($student['kode_mata_kuliah'] ?? '').' · '.(string) ($student['nama_mata_kuliah'] ?? ''), ' ·'),
+            implode(' / ', array_filter($groupLabels)),
+            $targetId === null ? '' : ($optionsById[(int) $targetId] ?? ''),
+            '',
+            '',
+        );
+    }
+
+    // Leave blank data rows with the same dropdown so administrators can append students.
+    $headerCount = count($rows);
+    $maxDataRow = max($headerCount + 500, 501);
+    $rosterXml = '';
+    for ($rowNumber = 1; $rowNumber <= $maxDataRow; $rowNumber++) {
+        $values = $rows[$rowNumber - 1] ?? array();
+        if ($values === array()) {
+            continue;
+        }
+        $rosterXml .= '<row r="'.$rowNumber.'" ht="24" customHeight="1">';
+        foreach ($values as $index => $value) {
+            $column = column_name($index + 1);
+            $style = $rowNumber === 1 ? 1 : 0;
+            $rosterXml .= '<c r="'.$column.$rowNumber.'" s="'.$style.'" t="inlineStr"><is><t xml:space="preserve">'.xml_escape($value).'</t></is></c>';
+        }
+        $rosterXml .= '</row>';
+    }
+
+    $classXml = '<row r="1"><c r="A1" s="1" t="inlineStr"><is><t>Daftar kelas tujuan</t></is></c></row>';
+    foreach ($classLabels as $index => $label) {
+        $rowNumber = $index + 2;
+        $classXml .= '<row r="'.$rowNumber.'"><c r="A'.$rowNumber.'" t="inlineStr"><is><t xml:space="preserve">'.xml_escape($label).'</t></is></c></row>';
+    }
+
+    $rosterSheet = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        .'<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="2" width="30" customWidth="1"/><col min="3" max="3" width="34" customWidth="1"/><col min="4" max="4" width="48" customWidth="1"/><col min="5" max="5" width="44" customWidth="1"/><col min="6" max="6" width="18" customWidth="1"/><col min="7" max="7" width="42" customWidth="1"/></cols>'
+        .'<sheetData>'.$rosterXml.'</sheetData><autoFilter ref="A1:G'.$maxDataRow.'"/>'
+        .'<dataValidations count="1"><dataValidation type="list" allowBlank="1" showErrorMessage="1" errorStyle="stop" errorTitle="Frekuensi tidak valid" error="Pilih frekuensi dari daftar kelas aktif." sqref="E2:E'.$maxDataRow.'"><formula1>FrekuensiTujuan</formula1></dataValidation></dataValidations>'
+        .'<pageMargins left="0.25" right="0.25" top="0.4" bottom="0.4" header="0.2" footer="0.2"/></worksheet>';
+    $classSheet = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetData>'.$classXml.'</sheetData></worksheet>';
+
+    $file = tempnam(sys_get_temp_dir(), 'iclabs_roster_');
+    $zip = new ZipArchive();
+    try {
+        if ($zip->open($file, ZipArchive::OVERWRITE) !== true) {
+            reject('Tidak dapat membuat template Excel roster.', 500);
+        }
+        $zip->addFromString('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+        $zip->addFromString('_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Roster" sheetId="1" r:id="rId1"/><sheet name="Daftar Kelas" sheetId="2" state="hidden" r:id="rId2"/></sheets><definedNames><definedName name="FrekuensiTujuan">\'Daftar Kelas\'!$A$2:$A$'.(count($classLabels) + 1).'</definedName></definedNames></workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', $rosterSheet);
+        $zip->addFromString('xl/worksheets/sheet2.xml', $classSheet);
+        $zip->addFromString('xl/styles.xml', '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="10"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF123B5D"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="2"><xf fontId="0" fillId="0" borderId="0" xfId="0"/><xf fontId="1" fillId="2" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>');
+        $zip->close();
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        header('Content-Length: '.filesize($file));
+        readfile($file);
+    } finally {
+        @unlink($file);
+    }
+}
+
 function component_value(
     $items,
     $number

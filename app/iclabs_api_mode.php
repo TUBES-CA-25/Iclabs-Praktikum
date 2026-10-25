@@ -741,6 +741,98 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/admin/roster-rotation/template' && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Template roster rotasi hanya dapat diakses administrator.'), 403);
+        }
+        $response = api_mode_request('GET', 'praktikum/admin/roster-rotasi');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Roster periode aktif tidak dapat dimuat dari API pusat.')), $response['status']);
+        }
+        require_once __DIR__ . '/exchange.php';
+        xlsx_roster_rotation_download($response['data']['data'] ?? array());
+        exit;
+    }
+
+    if ($route === '/admin/roster-rotation' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Impor roster rotasi hanya dapat dilakukan administrator.'), 403);
+        }
+        if (!is_string($payload['base64'] ?? null) || $payload['base64'] === '') {
+            api_mode_json(array('error' => 'Berkas roster XLSX wajib dipilih.'), 422);
+        }
+        require_once __DIR__ . '/exchange.php';
+        $file = read_xlsx($payload['base64']);
+        $headerAliases = array(
+            'nim' => 'nim', 'nama mahasiswa (informasi)' => 'nama_mahasiswa',
+            'mata kuliah (informasi)' => 'mata_kuliah', 'frekuensi aktif (informasi)' => 'frekuensi_aktif',
+            'kelas tujuan' => 'kelas_tujuan', 'tanggal efektif' => 'tanggal_efektif',
+            'alasan perpindahan' => 'alasan',
+        );
+        $canonicalHeaders = array_map(static function ($header) use ($headerAliases) {
+            return $headerAliases[$header] ?? $header;
+        }, $file['headers']);
+        $requiredHeaders = array('nim', 'kelas_tujuan', 'tanggal_efektif', 'alasan');
+        $missingHeaders = array_values(array_diff($requiredHeaders, $canonicalHeaders));
+        if ($missingHeaders !== array() || $file['rows'] === array() || count($file['rows']) > 2000) {
+            api_mode_json(array('error' => $missingHeaders !== array()
+                ? 'Kolom wajib pada template: NIM, Kelas Tujuan, Tanggal Efektif, dan Alasan Perpindahan. Unduh template terbaru agar judul kolom sesuai.'
+                : 'File harus berisi 1–2.000 baris roster.'), 422);
+        }
+
+        $templateResponse = api_mode_request('GET', 'praktikum/admin/roster-rotasi');
+        if ($templateResponse['status'] < 200 || $templateResponse['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($templateResponse['data'] ?? array(), 'Pilihan kelas tujuan tidak dapat diverifikasi.')), $templateResponse['status']);
+        }
+        $template = $templateResponse['data']['data'] ?? array();
+        $classIdsByLabel = array();
+        foreach (($template['kelas_tujuan'] ?? array()) as $classOption) {
+            $classIdsByLabel[trim((string) ($classOption['label'] ?? ''))] = (int) ($classOption['id'] ?? 0);
+        }
+
+        $rotationRows = array();
+        foreach ($file['rows'] as $row) {
+            $values = array();
+            foreach ($row['values'] as $header => $value) {
+                $values[$headerAliases[$header] ?? $header] = $value;
+            }
+            $targetLabel = preg_replace('/\s+/u', ' ', trim((string) ($values['kelas_tujuan'] ?? '')));
+            $effectiveDate = trim((string) ($values['tanggal_efektif'] ?? ''));
+            if ($effectiveDate !== '' && preg_match('/^[0-9]+(?:\.[0-9]+)?$/', $effectiveDate) === 1) {
+                $serialDays = (int) floor((float) $effectiveDate);
+                if ($serialDays > 0 && $serialDays < 100000) {
+                    $effectiveDate = (new DateTimeImmutable('1899-12-30'))->modify('+'.$serialDays.' days')->format('Y-m-d');
+                }
+            }
+            $rotationRows[] = array(
+                'baris_sumber' => (int) $row['line'],
+                'nim' => trim((string) ($values['nim'] ?? '')),
+                'id_kelas_tujuan' => (int) ($classIdsByLabel[$targetLabel] ?? 0),
+                'tanggal_efektif' => $effectiveDate === '' ? null : $effectiveDate,
+                'alasan' => trim((string) ($values['alasan'] ?? '')) ?: null,
+            );
+        }
+
+        $preview = filter_var($payload['preview'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($preview) {
+            $response = api_mode_request('POST', 'praktikum/admin/roster-rotasi/pratinjau', array('baris' => $rotationRows));
+        } else {
+            $versions = $payload['versi_kelas'] ?? null;
+            if (!is_array($versions) || $versions === array()) {
+                api_mode_json(array('error' => 'Pratinjau terbaru wajib ada sebelum konfirmasi. Muat ulang file dan periksa kembali.'), 422);
+            }
+            $response = api_mode_request('POST', 'praktikum/admin/roster-rotasi/konfirmasi', array(
+                'konfirmasi' => true,
+                'baris' => $rotationRows,
+                'versi_kelas' => $versions,
+            ));
+        }
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Impor roster rotasi ditolak API pusat. Tidak ada perubahan yang disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/admin/frequency-template' && $method === 'GET') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Template anggota frekuensi hanya dapat diakses administrator.'), 403);
