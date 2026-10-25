@@ -297,7 +297,7 @@ function api_mode_request($method, $path, array $payload = null, $authenticated 
     return $client->request($method, $path, $payload, $token, $timeoutSeconds);
 }
 
-function api_mode_error_message(array $body, $fallback)
+function api_mode_error_message(array $body, $fallback, $maxLength = 1000)
 {
     $messages = array();
     if (isset($body['message']) && is_string($body['message'])) {
@@ -314,6 +314,25 @@ function api_mode_error_message(array $body, $fallback)
             if (isset($value['baris'], $value['pesan']) && is_scalar($value['baris']) && is_string($value['pesan'])) {
                 return array('Baris ' . $value['baris'] . ': ' . $value['pesan']);
             }
+            if (isset($value['pesan']) && is_string($value['pesan'])) {
+                if (isset($value['kode_frekuensi']) && is_string($value['kode_frekuensi'])) {
+                    $identity = array();
+                    if (isset($value['kode_program_studi']) && is_string($value['kode_program_studi'])) {
+                        $identity[] = $value['kode_program_studi'];
+                    }
+                    if (isset($value['kode_mata_kuliah']) && is_string($value['kode_mata_kuliah'])) {
+                        $identity[] = $value['kode_mata_kuliah'];
+                    }
+                    if (isset($value['id_kelas_kuliah'])) {
+                        $identity[] = 'kelas ' . (int) $value['id_kelas_kuliah'];
+                    }
+                    $label = 'Frekuensi ' . $value['kode_frekuensi']
+                        . ($identity === array() ? '' : ' (' . implode(' · ', $identity) . ')');
+                } else {
+                    $label = isset($value['id_kelas_kuliah']) ? 'Kelas ID ' . (int) $value['id_kelas_kuliah'] : 'Kelas';
+                }
+                return array($label . ': ' . $value['pesan']);
+            }
             $collected = array();
             foreach ($value as $item) {
                 $collected = array_merge($collected, $collect($item));
@@ -326,7 +345,7 @@ function api_mode_error_message(array $body, $fallback)
         $messages[] = $body['error'];
     }
     $message = implode(' ', array_unique($messages));
-    return $message === '' ? $fallback : substr($message, 0, 1000);
+    return $message === '' ? $fallback : substr($message, 0, max(1, (int) $maxLength));
 }
 
 function api_mode_open_session()
@@ -392,6 +411,7 @@ function api_mode_user(array $user)
         'name' => trim(($profile['gelar_depan'] ?? '') . ' ' . ($profile['nama_lengkap'] ?? ($user['username'] ?? $user['email_login'] ?? 'Pengguna ICLabs')) . ' ' . ($profile['gelar_belakang'] ?? '')),
         'email' => $user['email_login'] ?? '',
         'role' => $role,
+        'roles' => array_values(array_column($user['peran'] ?? array(), 'kode')),
         'api_mode' => true,
     );
 }
@@ -882,6 +902,17 @@ try {
         $response = api_mode_request('POST', 'praktikum/kelas', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Kelas Praktikum tidak dapat dibuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if ($route === '/admin/classes/status' && $method === 'PATCH') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Perubahan status kelas hanya dapat dilakukan administrator Praktikum.'), 403);
+        }
+        $response = api_mode_request('PATCH', 'praktikum/admin/kelas/status', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Status kelas tidak dapat diperbarui. Tidak ada frekuensi yang diubah.', 8000)), $response['status']);
         }
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
