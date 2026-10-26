@@ -644,6 +644,50 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if ($route === '/admin/recommend-google-sheet-assistants' && $method === 'POST') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Rekomendasi Asisten hanya dapat diminta administrator.'), 403);
+        }
+        $periodId = filter_var($payload['id_periode_akademik'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if ($periodId === false || !is_array($payload['jadwal'] ?? null) || count($payload['jadwal']) < 1 || count($payload['jadwal']) > 500) {
+            api_mode_json(array('error' => 'Periode dan 1 sampai 500 baris jadwal wajib disertakan.'), 422);
+        }
+
+        $scheduleRows = array();
+        $idFields = array('id_user_dosen', 'id_user_asisten_utama', 'id_user_asisten_pengajar_pendukung', 'id_user_pendamping_teknis');
+        foreach ($payload['jadwal'] as $row) {
+            if (!is_array($row)) {
+                api_mode_json(array('error' => 'Setiap baris rekomendasi harus berupa objek jadwal.'), 422);
+            }
+            $normalized = array(
+                'baris_sumber' => (int) ($row['baris_sumber'] ?? 0),
+                'prodi' => trim((string) ($row['prodi'] ?? '')),
+                'kode_mk' => trim((string) ($row['kode_mk'] ?? '')),
+                'frekuensi' => trim((string) ($row['frekuensi'] ?? '')),
+                'hari_ke' => (int) ($row['hari_ke'] ?? 0),
+                'jam_mulai' => trim((string) ($row['jam_mulai'] ?? '')),
+                'jam_selesai' => trim((string) ($row['jam_selesai'] ?? '')),
+            );
+            foreach ($idFields as $field) {
+                $value = $row[$field] ?? null;
+                if ($value !== null && (!is_numeric($value) || (int) $value < 1)) {
+                    api_mode_json(array('error' => 'Pilihan akun Asisten pada pratinjau tidak valid.'), 422);
+                }
+                $normalized[$field] = $value === null ? null : (int) $value;
+            }
+            $scheduleRows[] = $normalized;
+        }
+
+        $response = api_mode_request('POST', 'praktikum/jadwal/rekomendasi-asisten-google-sheet', array(
+            'id_periode_akademik' => (int) $periodId,
+            'jadwal' => $scheduleRows,
+        ), true, max(20, $config['iclabs_api_timeout_seconds']));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Rekomendasi ketersediaan Asisten tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/admin/sync-google-sheet' && $method === 'POST') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Sinkronisasi jadwal hanya dapat dilakukan administrator.'), 403);
