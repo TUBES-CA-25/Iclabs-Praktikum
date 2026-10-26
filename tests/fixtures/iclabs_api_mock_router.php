@@ -16,6 +16,17 @@ $user = array(
     'peran' => array(array('kode' => $isStudent ? 'MAHASISWA' : 'ADMIN_ICLABS', 'nama' => $isStudent ? 'Mahasiswa' : 'Administrator ICLabs')),
 );
 
+if (in_array($path, array('/api/v1/auth/aktivasi/request', '/api/v1/auth/reset-password/request'), true) && $method === 'POST') {
+    if (($request['email_login'] ?? '') === 'rate-limit@iclabs.test') {
+        http_response_code(429);
+        echo json_encode(array('message' => 'Rate limited.'));
+        return;
+    }
+    http_response_code(202);
+    echo json_encode(array('message' => 'If eligible, instructions will be sent.'));
+    return;
+}
+
 if ($path === '/api/v1/auth/login' && $method === 'POST') {
     $student = ($request['identitas'] ?? '') === 'uji-mahasiswa@iclabs.test';
     $user['id'] = $student ? 9002 : 9001;

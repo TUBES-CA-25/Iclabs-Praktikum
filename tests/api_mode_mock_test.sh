@@ -42,6 +42,20 @@ setup_status="$(curl -sS -o "$test_dir/setup.txt" -w '%{http_code}' "http://127.
 grep -q '^Not found\.$' "$test_dir/setup.txt" || { echo "FAIL: respons installer mode API tidak sesuai"; exit 1; }
 
 cookie_jar="$test_dir/cookies.txt"
+prelogin_csrf_response="$(curl -sS -c "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Fcsrf")"
+prelogin_csrf="$(printf '%s' "$prelogin_csrf_response" | php -r '$data=json_decode(stream_get_contents(STDIN),true); echo $data["csrf"] ?? "";')"
+[[ -n "$prelogin_csrf" ]] || { echo "FAIL: token CSRF sebelum login tidak tersedia"; exit 1; }
+activation_csrf_status="$(curl -sS -o "$test_dir/activation-csrf.json" -w '%{http_code}' -b "$cookie_jar" -H 'Content-Type: application/json' -d '{"email":"uji@student.umi.ac.id"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Factivation-request")"
+[[ "$activation_csrf_status" == 403 ]] || { echo "FAIL: permintaan aktivasi tanpa CSRF harus ditolak"; exit 1; }
+invalid_activation_status="$(curl -sS -o "$test_dir/activation-invalid.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"bukan-email"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Factivation-request")"
+[[ "$invalid_activation_status" == 422 ]] || { echo "FAIL: validasi email aktivasi"; exit 1; }
+activation_request_status="$(curl -sS -o "$test_dir/activation-request.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"uji@student.umi.ac.id"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Factivation-request")"
+[[ "$activation_request_status" == 202 ]] || { echo "FAIL: permintaan email aktivasi"; exit 1; }
+grep -q 'Jika email terdaftar dan akun memenuhi syarat' "$test_dir/activation-request.json" || { echo "FAIL: pesan generik aktivasi"; exit 1; }
+reset_request_status="$(curl -sS -o "$test_dir/reset-request.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"uji@student.umi.ac.id"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Fpassword-reset-request")"
+[[ "$reset_request_status" == 202 ]] || { echo "FAIL: permintaan reset kata sandi"; exit 1; }
+rate_limit_status="$(curl -sS -o "$test_dir/rate-limit.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"rate-limit@iclabs.test"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Fpassword-reset-request")"
+[[ "$rate_limit_status" == 429 ]] || { echo "FAIL: penanganan rate limit permintaan akun"; exit 1; }
 login_response="$(curl -sS -c "$cookie_jar" -H 'Content-Type: application/json' -d '{"email":"uji-admin@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"
 [[ "$login_response" == '{"ok":true}' ]] || { echo "FAIL: login bridge: $login_response"; exit 1; }
 

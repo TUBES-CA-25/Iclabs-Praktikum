@@ -432,6 +432,45 @@ try {
         api_mode_json(array('error' => 'JSON tidak valid.'), 400);
     }
 
+    // Pre-login CSRF bootstrap keeps anonymous account-action requests same-origin.
+    if ($route === '/auth/csrf' && $method === 'GET') {
+        if (empty($_SESSION['iclabs_csrf'])) {
+            $_SESSION['iclabs_csrf'] = bin2hex(random_bytes(24));
+        }
+        api_mode_cookie();
+        api_mode_json(array('csrf' => $_SESSION['iclabs_csrf']));
+    }
+
+    if (in_array($route, array('/auth/activation-request', '/auth/password-reset-request'), true)) {
+        if ($method !== 'POST') api_mode_json(array('error' => 'Metode tidak diizinkan.'), 405);
+        $sessionCsrf = (string) ($_SESSION['iclabs_csrf'] ?? '');
+        $requestCsrf = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if ($sessionCsrf === '' || $requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf)) {
+            api_mode_json(array('error' => 'Sesi formulir tidak valid. Muat ulang halaman lalu coba kembali.'), 403);
+        }
+        $email = strtolower(trim((string) ($payload['email'] ?? '')));
+        if (strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            api_mode_json(array('error' => 'Masukkan alamat email yang valid.'), 422);
+        }
+
+        $centralPath = $route === '/auth/activation-request'
+            ? 'auth/aktivasi/request'
+            : 'auth/reset-password/request';
+        $response = api_mode_request('POST', $centralPath, array('email_login' => $email), false);
+        if ($response['status'] >= 200 && $response['status'] < 300) {
+            api_mode_json(array(
+                'message' => 'Jika email terdaftar dan akun memenuhi syarat, instruksi akan dikirim ke email tersebut.',
+            ), 202);
+        }
+        if ($response['status'] === 429) {
+            api_mode_json(array('error' => 'Terlalu banyak permintaan. Coba kembali beberapa saat lagi.'), 429);
+        }
+        if ($response['status'] >= 500) {
+            api_mode_json(array('error' => 'Layanan akun pusat sedang mengalami gangguan. Coba kembali nanti.'), 503);
+        }
+        api_mode_json(array('error' => 'Permintaan belum dapat diproses. Periksa email lalu coba kembali.'), $response['status'] >= 400 ? $response['status'] : 502);
+    }
+
     if ($route === '/login') {
         if ($method !== 'POST') api_mode_json(array('error' => 'Metode tidak diizinkan.'), 405);
         $response = api_mode_request('POST', 'auth/login', array(
