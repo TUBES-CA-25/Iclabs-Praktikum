@@ -1175,6 +1175,46 @@ try {
         api_mode_json($classes);
     }
 
+    if (preg_match('#\A/classes/(\d+)/assessment-scheme\z#', $route, $match) && in_array($method, array('GET', 'PUT'), true)) {
+        $response = api_mode_request($method, 'praktikum/kelas/' . (int) $match[1] . '/skema-penilaian', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Skema penilaian tidak dapat dimuat atau disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? null, $method === 'PUT' ? 201 : 200);
+    }
+
+    if (preg_match('#\A/classes/(\d+)/meetings/(\d+)/assessment\z#', $route, $match) && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1] . '/pertemuan/' . (int) $match[2] . '/lembar-penilaian');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Lembar nilai pertemuan tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if (preg_match('#\A/classes/(\d+)/meetings/(\d+)/assessment/generate\z#', $route, $match) && $method === 'POST') {
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/pertemuan/' . (int) $match[2] . '/lembar-penilaian', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Lembar nilai tidak dapat dibuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), 201);
+    }
+
+    if (preg_match('#\A/classes/(\d+)/meetings/(\d+)/grades\z#', $route, $match) && $method === 'PUT') {
+        $response = api_mode_request('PUT', 'praktikum/kelas/' . (int) $match[1] . '/pertemuan/' . (int) $match[2] . '/nilai', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Nilai pertemuan tidak dapat disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if ($route === '/meeting-grades' && $method === 'GET') {
+        $response = api_mode_request('GET', 'praktikum/nilai/saya/pertemuan');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Riwayat nilai pertemuan tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
     if (preg_match('#\A/classes/(\d+)/changes\z#', $route, $match) && $method === 'PUT') {
         $response = api_mode_request('PUT', 'praktikum/kelas/' . (int) $match[1] . '/perubahan', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
