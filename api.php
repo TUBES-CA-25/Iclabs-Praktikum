@@ -60,8 +60,8 @@ try {
         require_post();
         $b = input();
 
-        if (!is_string($b['password'] ?? null) || strlen($b['password']) < 12) {
-            reject('Password minimal 12 karakter.');
+        if (!is_string($b['password'] ?? null) || strlen($b['password']) < 6) {
+            reject('Password minimal 6 karakter.');
         }
 
         $old = row(

@@ -35,9 +35,9 @@ function create_user($b)
         !in_array($b['role'] ?? '', array('admin', 'dosen', 'asisten', 'mahasiswa'), true)
         || !filter_var($b['email'] ?? '', FILTER_VALIDATE_EMAIL)
         || !is_string($b['password'] ?? null)
-        || strlen($b['password']) < 12
+        || strlen($b['password']) < 6
     ) {
-        reject('Isi email, role, dan password minimal 12 karakter.');
+        reject('Isi email, role, dan password minimal 6 karakter.');
     }
 
     $work = function () use ($b, $db) {

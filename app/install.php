@@ -11,10 +11,10 @@ function install_admin(
     if (
         !trim($name) ||
         !filter_var($email, FILTER_VALIDATE_EMAIL) ||
-        strlen($password) < 12
+        strlen($password) < 6
     ) {
         reject(
-            'Nama, email valid, dan password minimal 12 karakter wajib diisi.'
+            'Nama, email valid, dan password minimal 6 karakter wajib diisi.'
         );
     }
 

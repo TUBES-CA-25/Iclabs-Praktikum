@@ -117,11 +117,11 @@ try {
                         </label>
 
                         <label>
-                            Password (minimal 12 karakter)
+                            Password (minimal 6 karakter)
                             <input
                                 name="password"
                                 type="password"
-                                minlength="12"
+                                minlength="6"
                                 required
                                 autocomplete="new-password"
                             >

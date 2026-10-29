@@ -9,7 +9,7 @@ function user_import_validate($data) {
         $b['role']=str_replace(' ','',$b['role']);
         if(!in_array($b['role'],array('admin','dosen','asisten','mahasiswa'),true))reject('Role tidak valid.');
         if(!filter_var($b['email'],FILTER_VALIDATE_EMAIL)||strlen($b['email'])>191)reject('Email tidak valid.');
-        if(strlen($b['password'])<12||strlen($b['password'])>72)reject('Password harus 12–72 byte.');
+        if(strlen($b['password'])<6||strlen($b['password'])>72)reject('Password harus 6–72 byte.');
         if(!$b['name']||mb_strlen($b['name'])>191)reject('Nama wajib diisi, maksimal 191 karakter.');
         if(isset($emails[$b['email']])||row('SELECT id FROM users WHERE email=?',array($b['email'])))reject('Email sudah terdaftar atau duplikat dalam file.');
         $nim=trim((string)($v['nim']??''));

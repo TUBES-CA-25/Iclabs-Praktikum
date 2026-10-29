@@ -39,7 +39,7 @@ Import Akun Pengguna sekarang memakai nilai role `asisten`, bukan `asisten1` ata
 
 # Import Akun Pengguna
 
-Admin: Data Master → Akun Pengguna → Import Excel. Unduh template, isi nama/email/role/password/nim, lalu Periksa file dan Import akun. Maksimal 100 akun / 4 MB per XLSX, tanpa formula. Role: admin, dosen, asisten, mahasiswa. Password 12–72 byte; gunakan password awal berbeda untuk setiap pengguna. NIM harus ditulis sebagai teks, wajib untuk mahasiswa dan harus sudah terdaftar dengan nama yang sesuai. Kosongkan NIM untuk role staf.
+Admin: Data Master → Akun Pengguna → Import Excel. Unduh template, isi nama/email/role/password/nim, lalu Periksa file dan Import akun. Maksimal 100 akun / 4 MB per XLSX, tanpa formula. Role: admin, dosen, asisten, mahasiswa. Password 6–72 byte; gunakan password awal berbeda untuk setiap pengguna. NIM harus ditulis sebagai teks, wajib untuk mahasiswa dan harus sudah terdaftar dengan nama yang sesuai. Kosongkan NIM untuk role staf.
 
 Email atau NIM yang sudah mempunyai akun ditolak; import tidak menimpa akun lama. Satu kesalahan membatalkan seluruh file. Server memvalidasi ulang ketika menyimpan. Profil dosen/asisten dan relasi akun mahasiswa dibuat otomatis. Password disimpan sebagai hash bcrypt dan tidak masuk pratinjau atau audit.
 
@@ -77,7 +77,7 @@ SQL membuat master frekuensi dan keanggotaan banyak frekuensi per mahasiswa. Pes
 
 ## Instalasi baru
 
-Ekstrak folder praktikum-iclabs ke C:\xampp\htdocs. Jalankan Apache dan MySQL. Buat database praktikum_fikom (utf8mb4_unicode_ci), import database/schema.sql, lalu sesuaikan config.php. Buka http://localhost/praktikum-iclabs/setup.php untuk membuat akun admin dengan password minimal 12 karakter. Untuk instalasi baru tidak perlu menjalankan kedua SQL update.
+Ekstrak folder praktikum-iclabs ke C:\xampp\htdocs. Jalankan Apache dan MySQL. Buat database praktikum_fikom (utf8mb4_unicode_ci), import database/schema.sql, lalu sesuaikan config.php. Buka http://localhost/praktikum-iclabs/setup.php untuk membuat akun admin dengan password minimal 6 karakter. Untuk instalasi baru tidak perlu menjalankan kedua SQL update.
 
 ## Fitur lainnya
 
