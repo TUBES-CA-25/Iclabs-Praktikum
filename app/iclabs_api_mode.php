@@ -84,6 +84,65 @@ function api_mode_export_report(array $class, array $schedule, $format)
         'state' => $schedule['status_workflow'] ?? $schedule['status'] ?? '',
     );
 
+    $assessmentColumns = array();
+    $assessmentSheets = array();
+    $assessmentGradesByStudent = array();
+    $schemeResponse = api_mode_request('GET', 'praktikum/kelas/' . (int) ($class['id_kelas_kuliah'] ?? 0) . '/skema-penilaian');
+    $activeScheme = $schemeResponse['status'] >= 200 && $schemeResponse['status'] < 300
+        ? ($schemeResponse['data']['data'] ?? null)
+        : null;
+    if (is_array($activeScheme)) {
+        for ($meetingNumber = 1; $meetingNumber <= $legacyClass['meeting_count']; $meetingNumber++) {
+            $assessmentResponse = api_mode_request(
+                'GET',
+                'praktikum/kelas/' . (int) ($class['id_kelas_kuliah'] ?? 0) . '/pertemuan/' . $meetingNumber . '/lembar-penilaian',
+            );
+            if ($assessmentResponse['status'] < 200 || $assessmentResponse['status'] >= 300) {
+                continue;
+            }
+
+            $sheet = $assessmentResponse['data']['data']['lembar'] ?? null;
+            if (!is_array($sheet)) {
+                continue;
+            }
+
+            $components = $sheet['skema']['komponen'] ?? array();
+            $assessmentSheets[] = array(
+                'nomor_pertemuan' => $meetingNumber,
+                'tanggal_sesi' => $sheet['tanggal_sesi'] ?? null,
+                'komponen' => array(),
+            );
+            foreach ($components as $component) {
+                $componentId = (int) ($component['id_komponen_skema_penilaian_praktikum'] ?? 0);
+                $scoreKey = $meetingNumber . ':' . $componentId;
+                $componentName = (string) ($component['nama'] ?? 'Komponen');
+                $weight = (float) ($component['bobot_persen'] ?? 0);
+                $assessmentColumns[] = array(
+                    'key' => $scoreKey,
+                    'label' => 'P' . $meetingNumber . ' ' . $componentName . ' (' . number_format($weight, 2) . '%)',
+                );
+                $assessmentSheets[array_key_last($assessmentSheets)]['komponen'][] = array(
+                    'key' => $scoreKey,
+                    'nama' => $componentName,
+                    'bobot_persen' => $weight,
+                );
+            }
+
+            $totalKey = $meetingNumber . ':total';
+            $assessmentColumns[] = array('key' => $totalKey, 'label' => 'P' . $meetingNumber . ' Total');
+            foreach (($sheet['peserta'] ?? array()) as $participant) {
+                $studentId = (int) ($participant['id_mahasiswa'] ?? 0);
+                foreach (($participant['nilai'] ?? array()) as $score) {
+                    $componentId = (int) ($score['id_komponen_skema_penilaian_praktikum'] ?? 0);
+                    $assessmentGradesByStudent[$studentId][$meetingNumber . ':' . $componentId] = $score['nilai'] ?? null;
+                }
+                $assessmentGradesByStudent[$studentId][$totalKey] = $participant['nilai_pertemuan'] ?? null;
+            }
+        }
+    }
+    $legacyClass['assessment_columns'] = $assessmentColumns;
+    $legacyClass['assessment_sheets'] = $assessmentSheets;
+
     $statusMap = array('HADIR' => 'H', 'IZIN' => 'I', 'SAKIT' => 'S', 'ALPA' => 'A', 'TERLAMBAT' => 'T');
     $students = array();
     foreach (($class['peserta'] ?? array()) as $participant) {
@@ -111,6 +170,7 @@ function api_mode_export_report(array $class, array $schedule, $format)
         }
         $summary = $participant['ringkasan_nilai'] ?? array();
         $students[] = array_merge(array(
+            'id_mahasiswa' => (int) ($participant['id_mahasiswa'] ?? 0),
             'nim' => $participant['nim'] ?? '',
             'name' => $participant['nama'] ?? '',
             'attendance' => $attendance,
@@ -123,6 +183,7 @@ function api_mode_export_report(array $class, array $schedule, $format)
             'uas' => $gradeValues['uas'],
             'na' => $summary['nilai_akhir'] ?? null,
             'letter' => $summary['predikat'] ?? '—',
+            'meeting_assessments' => $assessmentGradesByStudent[(int) ($participant['id_mahasiswa'] ?? 0)] ?? array(),
         ), $gradeValues);
     }
 

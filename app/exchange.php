@@ -764,6 +764,10 @@ function export_report($d, $format)
         $headers[] = 'P' . $i;
     }
 
+    foreach (($c['assessment_columns'] ?? array()) as $column) {
+        $headers[] = $column['label'];
+    }
+
     for (
         $i = 1;
         $i <= $c['evaluation_count'];
@@ -821,6 +825,12 @@ function export_report($d, $format)
                     $s[$k],
                     $i
                 );
+            }
+
+            if ($k === 'attendance') {
+                foreach (($c['assessment_columns'] ?? array()) as $column) {
+                    $r[] = $s['meeting_assessments'][$column['key']] ?? null;
+                }
             }
         }
 
@@ -909,6 +919,31 @@ function pdf_report($d)
         $chunks = array(
             array()
         );
+    }
+
+    $assessmentPageGroups = array();
+    foreach (($c['assessment_sheets'] ?? array()) as $sheet) {
+        if (($sheet['komponen'] ?? array()) === array()) {
+            continue;
+        }
+        $legendParts = array();
+        foreach ($sheet['komponen'] as $index => $component) {
+            $legendParts[] = 'C' . ($index + 1) . ' ' . $component['nama'] . ' (' . number_format((float) $component['bobot_persen'], 2) . '%)';
+        }
+        $legendLines = explode("\n", wordwrap(implode(' · ', $legendParts), 100, "\n", true));
+        $headerY = 499 - count($legendLines) * 12 - 3;
+        $rowsPerPage = max(1, min(16, (int) floor(($headerY - 60) / 20)));
+        $assessmentPageGroups[] = array(
+            'sheet' => $sheet,
+            'chunks' => array_chunk($d['students'], $rowsPerPage),
+            'legend_lines' => $legendLines,
+            'header_y' => $headerY,
+            'rows_per_page' => $rowsPerPage,
+        );
+    }
+    $totalPageCount = count($chunks);
+    foreach ($assessmentPageGroups as $group) {
+        $totalPageCount += count($group['chunks']);
     }
 
     $streams = array();
@@ -1100,12 +1135,89 @@ function pdf_report($d)
             'Halaman ' .
             ($page + 1) .
             ' / ' .
-            count($chunks),
+            $totalPageCount,
             725,
             35
         );
 
         $streams[] = $stream;
+    }
+
+    foreach ($assessmentPageGroups as $group) {
+        $sheet = $group['sheet'];
+        $meetingNumber = (int) ($sheet['nomor_pertemuan'] ?? 0);
+        $components = $sheet['komponen'];
+
+        foreach ($group['chunks'] as $detailPage => $students) {
+            $pageNumber = count($streams) + 1;
+            $stream = pdf_text(
+                'Detail Nilai Pertemuan ' . $meetingNumber,
+                30,
+                560,
+                15
+            );
+            $stream .= pdf_text(
+                $c['code'] . ' | ' . $c['course'] . ' | Frekuensi ' . $c['class'],
+                30,
+                539,
+                10
+            );
+            $stream .= pdf_text(
+                'Tanggal sesi: ' . ($sheet['tanggal_sesi'] ?? 'belum tersedia') . ' | Total dihitung dari bobot kategori pada skema lembar.',
+                30,
+                520,
+                9
+            );
+
+            $legendY = 502;
+            foreach ($group['legend_lines'] as $legendLine) {
+                $stream .= pdf_text($legendLine, 30, $legendY, 8);
+                $legendY -= 12;
+            }
+
+            $headers = array('No', 'NIM', 'Nama');
+            foreach ($components as $index => $component) {
+                $headers[] = 'C' . ($index + 1);
+            }
+            $headers[] = 'Total';
+            $headerY = $group['header_y'];
+            $stream .= "0.957 0.812 0.271 rg 26 " . ($headerY - 7) . " 789 20 re f 0 0 0 rg\n";
+
+            $columnPositions = array(30, 58, 155);
+            $startX = 310;
+            $columnStep = max(20, min(42, (int) floor(480 / (count($components) + 1))));
+            foreach ($components as $index => $component) {
+                $columnPositions[] = $startX + $index * $columnStep;
+            }
+            $columnPositions[] = $startX + count($components) * $columnStep + 2;
+            foreach ($headers as $index => $header) {
+                $stream .= pdf_text($header, $columnPositions[$index], $headerY, 8);
+            }
+
+            $y = $headerY - 25;
+            foreach ($students as $index => $student) {
+                $values = array(
+                    $detailPage * $group['rows_per_page'] + $index + 1,
+                    $student['nim'],
+                    mb_strimwidth($student['name'], 0, 25, '...', 'UTF-8'),
+                );
+                foreach ($components as $component) {
+                    $score = $student['meeting_assessments'][$component['key']] ?? null;
+                    $values[] = $score === null ? '-' : number_format((float) $score, 2);
+                }
+                $total = $student['meeting_assessments'][$meetingNumber . ':total'] ?? null;
+                $values[] = $total === null ? '-' : number_format((float) $total, 2);
+
+                foreach ($values as $valueIndex => $value) {
+                    $stream .= pdf_text($value, $columnPositions[$valueIndex], $y, 8);
+                }
+                $stream .= "0.86 G 26 " . ($y - 8) . " m 815 " . ($y - 8) . " l S 0 G\n";
+                $y -= 20;
+            }
+
+            $stream .= pdf_text('Halaman ' . $pageNumber . ' / ' . $totalPageCount, 725, 35);
+            $streams[] = $stream;
+        }
     }
 
     $objects = array(
