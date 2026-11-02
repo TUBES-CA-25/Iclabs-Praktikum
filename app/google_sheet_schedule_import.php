@@ -142,6 +142,10 @@ function iclabs_praktikum_parse_google_sheet_csv($csv)
         'program studi' => 'prodi',
         'frek' => 'frekuensi',
         'frek praktikum' => 'frekuensi',
+        'kode kelas' => 'kelas',
+        'nama kelas' => 'kelas',
+        'label kelas' => 'kelas',
+        'kelas reguler' => 'kelas',
         'nama laboratorium' => 'laboratorium',
         'lab' => 'laboratorium',
     );
@@ -201,6 +205,7 @@ function iclabs_praktikum_parse_google_sheet_csv($csv)
             'mata kuliah' => 'mata_kuliah',
             'dosen' => 'dosen',
             'frekuensi' => 'frekuensi',
+            'kelas' => 'kelas',
             'laboratorium' => 'laboratorium',
             'asisten 1' => 'asisten_1',
             'asisten 2' => 'asisten_2',
@@ -216,8 +221,10 @@ function iclabs_praktikum_parse_google_sheet_csv($csv)
             }
             $row = array('baris_sumber' => $lineNumber);
             foreach ($fieldMap as $source => $target) {
-                $row[$target] = trim((string) ($values[$headerIndexes[$source]] ?? ''));
+                $columnIndex = $headerIndexes[$source] ?? null;
+                $row[$target] = $columnIndex === null ? '' : trim((string) ($values[$columnIndex] ?? ''));
             }
+            $row['kelas'] = $row['kelas'] ?? '';
             $rows[] = $row;
             if (count($rows) > 500) {
                 throw new InvalidArgumentException('Sheet melebihi batas 500 baris jadwal.');
