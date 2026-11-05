@@ -38,12 +38,11 @@ jobs:
             find . -path './storage' -prune -o -path './uploads' -prune -o -path './public/uploads' -prune -o -path './vendor' -prune -o -type d -exec chmod 755 {} +
             find . -path './storage' -prune -o -path './uploads' -prune -o -path './public/uploads' -prune -o -path './vendor' -prune -o -type f -exec chmod 644 {} +
 
-            # 4. Kunci file konfigurasi environment
+            # 4. Kunci file konfigurasi environment (config.php wajib 644 agar dibaca PHP-FPM)
+            chmod 644 config.php
             if [ -f .env ]; then
-                chmod 640 .env
-            fi
-            if [ -f config.php ]; then
-                chmod 640 config.php
+                sudo chown labfikom:www-data .env 2>/dev/null || true
+                chmod 644 .env
             fi
 
             # 5. Amankan izin folder runtime dan uploads

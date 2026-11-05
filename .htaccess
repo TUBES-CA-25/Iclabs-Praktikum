@@ -1,4 +1,12 @@
 Options -Indexes
-<Files "config.php">
-Require all denied
-</Files>
+
+# Blokir total akses publik ke .env, config.php, .git, dan semua file sensitif
+<FilesMatch "(^\.|\.env|config\.php|composer\.(json|lock)|\.sql|\.md)$">
+    Require all denied
+</FilesMatch>
+
+# Aturan Apache Rewrite untuk memblokir dotfiles
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+</IfModule>
