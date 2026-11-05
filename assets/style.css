@@ -2115,3 +2115,17 @@ dialog select.assistant-select-error {
         background: #ffffff;
     }
 }
+
+.spin {
+    animation: spin-icon 1s linear infinite;
+    display: inline-block;
+}
+@keyframes spin-icon {
+    100% { transform: rotate(360deg); }
+}
+.btn-sync-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+

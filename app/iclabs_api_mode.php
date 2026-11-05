@@ -641,6 +641,18 @@ try {
         api_mode_json($response['data']['data'] ?? array());
     }
 
+    if ($route === '/sync-production' && $method === 'POST') {
+        $userRole = $_SESSION['iclabs_user']['role'] ?? '';
+        if (!in_array($userRole, array('admin', 'asisten'), true)) {
+            api_mode_json(array('error' => 'Hanya Admin atau Asisten yang dapat memicu sinkronisasi data produksi.'), 403);
+        }
+        $response = api_mode_request('POST', 'praktikum/sync-transaksi', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Gagal menyinkronkan data dari produksi.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data']);
+    }
+
     if ($route === '/admin/audit' && $method === 'GET') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Akses khusus administrator.'), 403);
