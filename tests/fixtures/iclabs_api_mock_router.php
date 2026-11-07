@@ -1,20 +1,51 @@
-<?php
+    <?php
 
 header('Content-Type: application/json; charset=utf-8');
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $request = json_decode(file_get_contents('php://input') ?: '{}', true) ?: array();
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
 $isStudent = ($request['identitas'] ?? '') === 'uji-mahasiswa@iclabs.test'
-    || strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('b', 64)) === 0;
-$user = array(
-    'id' => $isStudent ? 9002 : 9001,
-    'email_login' => $isStudent ? 'uji-mahasiswa@iclabs.test' : 'uji-admin@iclabs.test',
-    'username' => $isStudent ? 'uji-mahasiswa' : 'uji-admin',
-    'jenis_akun' => array('kode' => 'INTERNAL', 'nama' => 'Internal'),
-    'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
-    'profil' => array('nama_lengkap' => $isStudent ? 'Mahasiswa Uji' : 'Admin Uji', 'gelar_depan' => null, 'gelar_belakang' => null),
-    'peran' => array(array('kode' => $isStudent ? 'MAHASISWA' : 'ADMIN_ICLABS', 'nama' => $isStudent ? 'Mahasiswa' : 'Administrator ICLabs')),
-);
+    || strpos($authHeader, 'Bearer ' . str_repeat('b', 64)) === 0;
+$isAssistant3 = ($request['identitas'] ?? '') === 'uji-asisten3@iclabs.test'
+    || strpos($authHeader, 'Bearer ' . str_repeat('c', 64)) === 0;
+$isParticipant = ($request['identitas'] ?? '') === 'uji-praktikan@iclabs.test'
+    || strpos($authHeader, 'Bearer ' . str_repeat('d', 64)) === 0;
+
+if ($isAssistant3) {
+    $user = array(
+        'id' => 9003,
+        'email_login' => 'uji-asisten3@iclabs.test',
+        'username' => 'uji-asisten3',
+        'jenis_akun' => array('kode' => 'INTERNAL', 'nama' => 'Internal'),
+        'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+        'profil' => array('nama_lengkap' => 'Asisten 3 Uji', 'gelar_depan' => null, 'gelar_belakang' => null),
+        'peran' => array(array('kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium')),
+    );
+} elseif ($isParticipant) {
+    $user = array(
+        'id' => 9004,
+        'email_login' => 'uji-praktikan@iclabs.test',
+        'username' => 'uji-praktikan',
+        'jenis_akun' => array('kode' => 'INTERNAL', 'nama' => 'Internal'),
+        'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+        'profil' => array('nama_lengkap' => 'Praktikan Dual Role Uji', 'gelar_depan' => null, 'gelar_belakang' => null),
+        'peran' => array(
+            array('kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium'),
+            array('kode' => 'MAHASISWA', 'nama' => 'Mahasiswa')
+        ),
+    );
+} else {
+    $user = array(
+        'id' => $isStudent ? 9002 : 9001,
+        'email_login' => $isStudent ? 'uji-mahasiswa@iclabs.test' : 'uji-admin@iclabs.test',
+        'username' => $isStudent ? 'uji-mahasiswa' : 'uji-admin',
+        'jenis_akun' => array('kode' => 'INTERNAL', 'nama' => 'Internal'),
+        'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+        'profil' => array('nama_lengkap' => $isStudent ? 'Mahasiswa Uji' : 'Admin Uji', 'gelar_depan' => null, 'gelar_belakang' => null),
+        'peran' => array(array('kode' => $isStudent ? 'MAHASISWA' : 'ADMIN_ICLABS', 'nama' => $isStudent ? 'Mahasiswa' : 'Administrator ICLabs')),
+    );
+}
 
 if (in_array($path, array('/api/v1/auth/aktivasi/request', '/api/v1/auth/reset-password/request'), true) && $method === 'POST') {
     if (($request['email_login'] ?? '') === 'rate-limit@iclabs.test') {
@@ -28,13 +59,8 @@ if (in_array($path, array('/api/v1/auth/aktivasi/request', '/api/v1/auth/reset-p
 }
 
 if ($path === '/api/v1/auth/login' && $method === 'POST') {
-    $student = ($request['identitas'] ?? '') === 'uji-mahasiswa@iclabs.test';
-    $user['id'] = $student ? 9002 : 9001;
-    $user['email_login'] = $student ? 'uji-mahasiswa@iclabs.test' : 'uji-admin@iclabs.test';
-    $user['username'] = $student ? 'uji-mahasiswa' : 'uji-admin';
-    $user['profil']['nama_lengkap'] = $student ? 'Mahasiswa Uji' : 'Admin Uji';
-    $user['peran'] = array(array('kode' => $student ? 'MAHASISWA' : 'ADMIN_ICLABS', 'nama' => $student ? 'Mahasiswa' : 'Administrator ICLabs'));
-    echo json_encode(array('data' => array('token' => str_repeat($student ? 'b' : 'a', 64), 'kadaluarsa_pada' => gmdate('c', time() + 3600), 'user' => $user)));
+    $token = $isAssistant3 ? str_repeat('c', 64) : ($isParticipant ? str_repeat('d', 64) : str_repeat($isStudent ? 'b' : 'a', 64));
+    echo json_encode(array('data' => array('token' => $token, 'kadaluarsa_pada' => gmdate('c', time() + 3600), 'user' => $user)));
     return;
 }
 if ($path === '/api/v1/auth/me') {
@@ -202,9 +228,11 @@ if ($path === '/api/v1/praktikum/jadwal/sinkronisasi-google-sheet' && $method ==
     return;
 }
 if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
+    $roleInClass = $isAssistant3 ? 'ASISTEN_3' : ($isParticipant ? 'PRAKTIKAN' : ($isStudent ? 'PRAKTIKAN' : 'ADMIN'));
     echo json_encode(array('data' => array(array(
         'id_kelas_kuliah' => 10, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,
         'catatan' => null,
+        'peran_di_kelas' => $roleInClass,
         'periode' => array('id' => 1, 'tahun_akademik' => '2026/2027', 'kode_semester' => 'GANJIL', 'semester' => 'Ganjil'),
         'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
         'mata_kuliah' => array('id' => 20, 'kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'),
@@ -213,6 +241,7 @@ if ($path === '/api/v1/praktikum/kelas' && $method === 'GET') {
     ), array(
         'id_kelas_kuliah' => 12, 'status' => 'AKTIF', 'jumlah_pertemuan_rencana' => 12,
         'catatan' => null,
+        'peran_di_kelas' => $roleInClass,
         'periode' => array('id' => 1, 'tahun_akademik' => '2026/2027', 'kode_semester' => 'GANJIL', 'semester' => 'Ganjil', 'tanggal_mulai' => '2026-09-07', 'tanggal_selesai' => '2026-12-12'),
         'program_studi' => array('kode' => 'TI', 'nama' => 'Teknik Informatika'),
         'mata_kuliah' => array('id' => 21, 'kode' => '130106RP4', 'nama' => 'Pemrograman'),
@@ -252,12 +281,33 @@ if ($path === '/api/v1/praktikum/kelas/10') {
             array('id' => 3, 'kode' => 'MID', 'nama' => 'Ujian Tengah Semester', 'bobot_persen' => 30, 'urutan' => 3, 'aktif' => true),
             array('id' => 4, 'kode' => 'UAS', 'nama' => 'Ujian Akhir Semester', 'bobot_persen' => 30, 'urutan' => 4, 'aktif' => true)
         ),
-        'peserta' => array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(array('nomor_pertemuan' => 1, 'status' => 'HADIR'), array('nomor_pertemuan' => 2, 'status' => 'IZIN')), 'nilai' => array(array('kode_komponen' => 'EVALUASI_1', 'nilai' => 80), array('kode_komponen' => 'ASISTENSI_1', 'nilai' => 90), array('kode_komponen' => 'MID', 'nilai' => 85), array('kode_komponen' => 'UAS', 'nilai' => 85)), 'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'))),
     );
+    if ($isAssistant3) {
+        $class['peran_di_kelas'] = 'ASISTEN_3';
+        $class['peserta'] = array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(array('nomor_pertemuan' => 1, 'status' => 'HADIR'), array('nomor_pertemuan' => 2, 'status' => 'IZIN'))));
+    } elseif ($isParticipant) {
+        $class['peran_di_kelas'] = 'PRAKTIKAN';
+        $class['kehadiran_saya'] = array(array('nomor_pertemuan' => 1, 'status' => 'HADIR'), array('nomor_pertemuan' => 2, 'status' => 'IZIN'));
+        $class['nilai_saya'] = array(
+            array('kode_komponen' => 'EVALUASI_1', 'nama_komponen' => 'Evaluasi 1', 'bobot_persen' => 20, 'nilai' => 80),
+            array('kode_komponen' => 'ASISTENSI_1', 'nama_komponen' => 'Asistensi 1', 'bobot_persen' => 20, 'nilai' => 90),
+            array('kode_komponen' => 'MID', 'nama_komponen' => 'MID', 'bobot_persen' => 30, 'nilai' => 85),
+            array('kode_komponen' => 'UAS', 'nama_komponen' => 'UAS', 'bobot_persen' => 30, 'nilai' => 85)
+        );
+        $class['ringkasan_nilai_saya'] = array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A');
+    } else {
+        $class['peran_di_kelas'] = 'ADMIN';
+        $class['peserta'] = array(array('id' => 70, 'id_mahasiswa' => 700, 'nim' => '13020230049', 'nama' => 'Mahasiswa Uji', 'status' => 'AKTIF', 'terdaftar_pada' => '2026-09-07', 'kehadiran' => array(array('nomor_pertemuan' => 1, 'status' => 'HADIR'), array('nomor_pertemuan' => 2, 'status' => 'IZIN')), 'nilai' => array(array('kode_komponen' => 'EVALUASI_1', 'nilai' => 80), array('kode_komponen' => 'ASISTENSI_1', 'nilai' => 90), array('kode_komponen' => 'MID', 'nilai' => 85), array('kode_komponen' => 'UAS', 'nilai' => 85)), 'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A')));
+    }
     echo json_encode(array('data' => $class));
     return;
 }
 if ($path === '/api/v1/praktikum/kelas/10/perubahan' && $method === 'PUT') {
+    if ($isAssistant3 || $isParticipant) {
+        http_response_code(403);
+        echo json_encode(array('message' => 'Anda tidak memiliki wewenang untuk mengubah data pada kelas ini.'));
+        return;
+    }
     if (strpos($_SERVER['HTTP_AUTHORIZATION'] ?? '', 'Bearer ' . str_repeat('a', 64)) !== 0) {
         http_response_code(401);
         echo json_encode(array('message' => 'Unauthenticated.'));

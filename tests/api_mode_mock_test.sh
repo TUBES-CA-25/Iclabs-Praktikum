@@ -113,8 +113,10 @@ grep -q '"kode":"LAB-UJI"' <<<"$references_response" || { echo "FAIL: referensi 
 grep -q '"kode":"TI"' <<<"$references_response" || { echo "FAIL: referensi form kelas"; exit 1; }
 classes_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
 grep -q '"id_kelas_kuliah":10' <<<"$classes_response" || { echo "FAIL: daftar kelas"; exit 1; }
+grep -q '"peran_di_kelas":"ADMIN"' <<<"$classes_response" || { echo "FAIL: peran_di_kelas admin pada daftar kelas: $classes_response"; exit 1; }
 detail_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
 grep -q '"kode":"TI_ALPRO-1"' <<<"$detail_response" || { echo "FAIL: detail kelas"; exit 1; }
+grep -q '"peran_di_kelas":"ADMIN"' <<<"$detail_response" || { echo "FAIL: peran_di_kelas admin pada detail kelas: $detail_response"; exit 1; }
 xlsx_status="$(curl -sS -o "$test_dir/report.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$xlsx_status" == 200 ]] || { echo "FAIL: ekspor Excel status $xlsx_status"; exit 1; }
 php -r '$f=fopen($argv[1],"rb"); exit(fread($f,2)==="PK"?0:1);' "$test_dir/report.xlsx" || { echo "FAIL: berkas Excel tidak valid"; exit 1; }
@@ -232,4 +234,39 @@ student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_co
 student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit/periode admin, manajemen akses RBAC, rekomendasi bentrok jadwal Asisten, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+# --- Pengujian Asisten 3 (PENDAMPING_TEKNIS) & Praktikan Enrolled ---
+asisten3_cookies="$test_dir/asisten3-cookies.txt"
+asisten3_login="$(curl -sS -c "$asisten3_cookies" -H 'Content-Type: application/json' -d '{"email":"uji-asisten3@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"
+[[ "$asisten3_login" == '{"ok":true}' ]] || { echo "FAIL: login Asisten 3"; exit 1; }
+asisten3_me="$(curl -sS -b "$asisten3_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fme")"
+asisten3_csrf="$(printf '%s' "$asisten3_me" | php -r '$data=json_decode(stream_get_contents(STDIN),true); echo $data["csrf"] ?? "";')"
+asisten3_classes="$(curl -sS -b "$asisten3_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
+grep -q '"peran_di_kelas":"ASISTEN_3"' <<<"$asisten3_classes" || { echo "FAIL: peran_di_kelas Asisten 3: $asisten3_classes"; exit 1; }
+asisten3_detail="$(curl -sS -b "$asisten3_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
+grep -q '"peran_di_kelas":"ASISTEN_3"' <<<"$asisten3_detail" || { echo "FAIL: peran_di_kelas detail Asisten 3: $asisten3_detail"; exit 1; }
+if grep -q '"ringkasan_nilai"' <<<"$asisten3_detail"; then
+    echo "FAIL: Asisten 3 tidak boleh melihat nilai praktikum peserta: $asisten3_detail"
+    exit 1
+fi
+asisten3_change_status="$(curl -sS -o "$test_dir/asisten3-change.json" -w '%{http_code}' -b "$asisten3_cookies" -X PUT -H "X-CSRF-Token: $asisten3_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nilai":[{"id_mahasiswa":700,"kode_komponen":"EVALUASI_1","nilai":90}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fchanges")"
+[[ "$asisten3_change_status" == 403 ]] || { echo "FAIL: Asisten 3 tidak boleh mengubah nilai praktikum; HTTP $asisten3_change_status"; exit 1; }
+
+praktikan_cookies="$test_dir/praktikan-cookies.txt"
+praktikan_login="$(curl -sS -c "$praktikan_cookies" -H 'Content-Type: application/json' -d '{"email":"uji-praktikan@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"
+[[ "$praktikan_login" == '{"ok":true}' ]] || { echo "FAIL: login Praktikan"; exit 1; }
+praktikan_me="$(curl -sS -b "$praktikan_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fme")"
+praktikan_csrf="$(printf '%s' "$praktikan_me" | php -r '$data=json_decode(stream_get_contents(STDIN),true); echo $data["csrf"] ?? "";')"
+praktikan_classes="$(curl -sS -b "$praktikan_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses")"
+grep -q '"peran_di_kelas":"PRAKTIKAN"' <<<"$praktikan_classes" || { echo "FAIL: peran_di_kelas Praktikan: $praktikan_classes"; exit 1; }
+praktikan_detail="$(curl -sS -b "$praktikan_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10")"
+grep -q '"peran_di_kelas":"PRAKTIKAN"' <<<"$praktikan_detail" || { echo "FAIL: peran_di_kelas detail Praktikan: $praktikan_detail"; exit 1; }
+grep -q '"nilai_saya"' <<<"$praktikan_detail" || { echo "FAIL: Praktikan harus menerima nilai_saya: $praktikan_detail"; exit 1; }
+grep -q '"bobot_persen":20' <<<"$praktikan_detail" || { echo "FAIL: Praktikan harus menerima bobot komponen: $praktikan_detail"; exit 1; }
+if grep -q '"peserta"' <<<"$praktikan_detail"; then
+    echo "FAIL: Praktikan tidak boleh melihat roster peserta lain: $praktikan_detail"
+    exit 1
+fi
+praktikan_change_status="$(curl -sS -o "$test_dir/praktikan-change.json" -w '%{http_code}' -b "$praktikan_cookies" -X PUT -H "X-CSRF-Token: $praktikan_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nilai":[{"id_mahasiswa":700,"kode_komponen":"EVALUASI_1","nilai":90}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fchanges")"
+[[ "$praktikan_change_status" == 403 ]] || { echo "FAIL: Praktikan tidak boleh mengubah nilai praktikum; HTTP $praktikan_change_status"; exit 1; }
+
+echo "ApiModeMockTest: OK (auth, dashboard, audit/periode admin, manajemen akses RBAC, rekomendasi bentrok jadwal Asisten, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, peran kontekstual asisten 3 & praktikan, fail-closed; tanpa PDO)"
