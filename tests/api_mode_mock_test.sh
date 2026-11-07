@@ -162,6 +162,51 @@ grep -q '"jumlah_diimpor":1' <<<"$frequency_import" || { echo "FAIL: commit impo
 transfer_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi_sumber":1,"versi_tujuan":1,"id_kelas_tujuan":11,"id_mahasiswa":700,"tanggal_efektif":"2026-10-21","alasan":"Uji perpindahan"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fparticipants%2Ftransfer")"
 grep -q '"id_kelas_tujuan":11' <<<"$transfer_response" || { echo "FAIL: pindah peserta"; exit 1; }
 
+# --- Pengujian Manajemen Akses & RBAC ---
+roles_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Froles")"
+grep -q '"kode":"SUPER_ADMIN"' <<<"$roles_response" || { echo "FAIL: referensi peran manajemen akses: $roles_response"; exit 1; }
+grep -q '"kode":"LABORAN"' <<<"$roles_response" || { echo "FAIL: peran laboran tidak ditemukan: $roles_response"; exit 1; }
+
+users_response="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers")"
+grep -q '"username":"uji-admin"' <<<"$users_response" || { echo "FAIL: daftar pengguna manajemen akses: $users_response"; exit 1; }
+
+users_filtered="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers&cari=laboran&kode_peran=LABORAN&status_akun=AKTIF")"
+grep -q '"username":"laboran-uji"' <<<"$users_filtered" || { echo "FAIL: filter pengguna manajemen akses: $users_filtered"; exit 1; }
+
+user_create="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"email_login":"baru@iclabs.test","nama_lengkap":"Pengguna Baru","kode_peran":"ASISTEN","nomor_induk":"13020269999"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers")"
+grep -q '"id":9099' <<<"$user_create" || { echo "FAIL: pembuatan pengguna: $user_create"; exit 1; }
+grep -q '"email_login":"baru@iclabs.test"' <<<"$user_create" || { echo "FAIL: email pengguna baru: $user_create"; exit 1; }
+
+profile_update="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"nama_lengkap":"Dosen Pengampu Update","gelar_depan":"Dr.","gelar_belakang":"M.T.","versi":1}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Fprofile")"
+grep -q '"nama_lengkap":"Dosen Pengampu Update"' <<<"$profile_update" || { echo "FAIL: update profil pengguna: $profile_update"; exit 1; }
+
+role_assign="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"kode_peran":"ADMIN_ICLABS","catatan_pemberian":"Penugasan peran tambahan untuk uji integrasi"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Froles")"
+grep -q '"id":201' <<<"$role_assign" || { echo "FAIL: penetapan peran pengguna: $role_assign"; exit 1; }
+
+role_end="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"catatan_berakhir":"Pengakhiran peran masa tugas selesai pengujian"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Froles%2F104%2Fend")"
+grep -q '"id":104' <<<"$role_end" || { echo "FAIL: pengakhiran peran pengguna: $role_end"; exit 1; }
+
+bulk_assign="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"kode_peran":"ASISTEN","id_pengguna":[9003,9004],"catatan_pemberian":"Penetapan massal asisten laboratorium periode baru"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Froles%2Fbulk")"
+grep -q '"jumlah_diminta":2' <<<"$bulk_assign" || { echo "FAIL: penetapan peran massal: $bulk_assign"; exit 1; }
+
+password_reset="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"password_baru":"KataSandiBaru2026!"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Fpassword")"
+grep -q 'Password akun berhasil diperbarui' <<<"$password_reset" || { echo "FAIL: reset password pengguna: $password_reset"; exit 1; }
+
+token_issue="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"kadaluarsa_jam":48}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Factivation-token")"
+grep -q '"token":"mock-token-aktivasi-abcdef123456"' <<<"$token_issue" || { echo "FAIL: penerbitan token aktivasi: $token_issue"; exit 1; }
+
+email_activation="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9004%2Factivation-email")"
+grep -q 'Email instruksi aktivasi akun telah dikirimkan' <<<"$email_activation" || { echo "FAIL: pengiriman email aktivasi: $email_activation"; exit 1; }
+
+lab_scopes_get="$(curl -sS -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9003%2Froles%2F103%2Flab-scopes")"
+grep -q '"SEMUA_LAB"' <<<"$lab_scopes_get" || { echo "FAIL: get cakupan laboratorium: $lab_scopes_get"; exit 1; }
+
+lab_scopes_post="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"jenis_cakupan":"LAB_TERTENTU","id_laboratorium":2,"catatan_pemberian":"Penugasan laboratorium riset komputer dasar"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9003%2Froles%2F103%2Flab-scopes")"
+grep -q '"id":502' <<<"$lab_scopes_post" || { echo "FAIL: penugasan cakupan laboratorium: $lab_scopes_post"; exit 1; }
+
+lab_scope_end="$(curl -sS -b "$cookie_jar" -X PATCH -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{"versi":1,"catatan_berakhir":"Pengakhiran cakupan lab semua lab beralih spesifik"}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers%2F9003%2Froles%2F103%2Flab-scopes%2F501%2Fend")"
+grep -q '"id":501' <<<"$lab_scope_end" || { echo "FAIL: pengakhiran cakupan laboratorium: $lab_scope_end"; exit 1; }
+
 unsupported_response="$(curl -sS -b "$cookie_jar" -X POST -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' -d '{}' "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fusers")"
 grep -q '"error":"Fitur ini belum dialihkan ke API pusat' <<<"$unsupported_response" || { echo "FAIL: route belum siap tidak gagal tertutup"; exit 1; }
 
@@ -177,9 +222,14 @@ student_me="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php
 grep -q '"role":"mahasiswa"' <<<"$student_me" || { echo "FAIL: role Mahasiswa"; exit 1; }
 student_grades="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fstudent%2Fgrades")"
 grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai pribadi Mahasiswa"; exit 1; }
+grep -q '"bobot_persen":30' <<<"$student_grades" || { echo "FAIL: bobot komponen nilai Mahasiswa"; exit 1; }
+student_access_users_status="$(curl -sS -o "$test_dir/student-access-users.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers")"
+[[ "$student_access_users_status" == 403 ]] || { echo "FAIL: manajemen akses pengguna harus ditolak untuk Mahasiswa"; exit 1; }
+student_access_roles_status="$(curl -sS -o "$test_dir/student-access-roles.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Froles")"
+[[ "$student_access_roles_status" == 403 ]] || { echo "FAIL: manajemen akses peran harus ditolak untuk Mahasiswa"; exit 1; }
 student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faudit")"
 [[ "$student_audit_status" == 403 ]] || { echo "FAIL: audit harus ditolak untuk Mahasiswa"; exit 1; }
 student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
 
-echo "ApiModeMockTest: OK (auth, dashboard, audit/periode admin, rekomendasi bentrok jadwal Asisten, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"
+echo "ApiModeMockTest: OK (auth, dashboard, audit/periode admin, manajemen akses RBAC, rekomendasi bentrok jadwal Asisten, template/pratinjau/commit import jadwal/anggota frekuensi, konfigurasi nilai admin, referensi, CRUD kelas/jadwal/komponen, ekspor XLSX/PDF dengan kontrol role, simpan atomik, workflow, sinkron/tambah/import/pindah peserta, nilai Mahasiswa, fail-closed; tanpa PDO)"

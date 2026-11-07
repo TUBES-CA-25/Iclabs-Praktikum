@@ -449,11 +449,18 @@ function api_mode_cookie($clear = false)
 function api_mode_role(array $roles)
 {
     $codes = array_column($roles, 'kode');
-    foreach (array('ADMIN_ICLABS', 'SUPER_ADMIN', 'DOSEN', 'ASISTEN', 'MAHASISWA') as $candidate) {
+    foreach (array('SUPER_ADMIN', 'ADMIN_ICLABS', 'KEPALA_LAB', 'LABORAN', 'ADMIN_SUMBER_DAYA', 'DOSEN', 'ASISTEN', 'KOORDINATOR_ASISTEN', 'MAHASISWA') as $candidate) {
         if (in_array($candidate, $codes, true)) {
             return array(
-                'ADMIN_ICLABS' => 'admin', 'SUPER_ADMIN' => 'admin',
-                'DOSEN' => 'dosen', 'ASISTEN' => 'asisten', 'MAHASISWA' => 'mahasiswa'
+                'SUPER_ADMIN' => 'admin',
+                'ADMIN_ICLABS' => 'admin',
+                'KEPALA_LAB' => 'admin',
+                'LABORAN' => 'admin',
+                'ADMIN_SUMBER_DAYA' => 'admin',
+                'DOSEN' => 'dosen',
+                'ASISTEN' => 'asisten',
+                'KOORDINATOR_ASISTEN' => 'asisten',
+                'MAHASISWA' => 'mahasiswa'
             )[$candidate];
         }
     }
@@ -467,14 +474,36 @@ function api_mode_user(array $user)
         throw new RuntimeException('Akun pusat belum memiliki role yang didukung Praktikum.');
     }
     $profile = $user['profil'] ?? array();
+    $roleCodes = array_values(array_column($user['peran'] ?? array(), 'kode'));
+    $permissions = array_values(array_filter($user['izin'] ?? array(), 'is_string'));
+    $canManageAccess = !empty(array_intersect($roleCodes, array('SUPER_ADMIN', 'ADMIN_ICLABS', 'KEPALA_LAB', 'LABORAN')))
+        || in_array('MANAJEMEN_AKSES.KELOLA', $permissions, true);
+    $isSuperAdmin = in_array('SUPER_ADMIN', $roleCodes, true);
+
     return array(
         'id' => (int) ($user['id'] ?? 0),
         'name' => trim(($profile['gelar_depan'] ?? '') . ' ' . ($profile['nama_lengkap'] ?? ($user['username'] ?? $user['email_login'] ?? 'Pengguna ICLabs')) . ' ' . ($profile['gelar_belakang'] ?? '')),
         'email' => $user['email_login'] ?? '',
         'role' => $role,
-        'roles' => array_values(array_column($user['peran'] ?? array(), 'kode')),
+        'roles' => $roleCodes,
+        'permissions' => $permissions,
+        'can_manage_access' => $canManageAccess,
+        'is_super_admin' => $isSuperAdmin,
         'api_mode' => true,
     );
+}
+
+function api_mode_require_access_management()
+{
+    $user = $_SESSION['iclabs_user'] ?? array();
+    $roles = $user['roles'] ?? array();
+    $permissions = $user['permissions'] ?? array();
+    $canManage = !empty($user['can_manage_access'])
+        || !empty(array_intersect($roles, array('SUPER_ADMIN', 'ADMIN_ICLABS', 'KEPALA_LAB', 'LABORAN')))
+        || in_array('MANAJEMEN_AKSES.KELOLA', $permissions, true);
+    if (!$canManage) {
+        api_mode_json(array('error' => 'Akses khusus administrator manajemen akses.'), 403);
+    }
 }
 
 try {
@@ -684,6 +713,139 @@ try {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Periode akademik tidak dapat dimuat atau dibuat.')), $response['status']);
         }
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
+    if ($route === '/admin/access-management/users' && $method === 'GET') {
+        api_mode_require_access_management();
+        $query = array();
+        if (isset($_GET['cari']) && is_string($_GET['cari']) && trim($_GET['cari']) !== '') {
+            $query['cari'] = trim($_GET['cari']);
+        }
+        if (isset($_GET['kode_peran']) && is_string($_GET['kode_peran']) && trim($_GET['kode_peran']) !== '') {
+            $query['kode_peran'] = trim($_GET['kode_peran']);
+        }
+        if (isset($_GET['status_akun']) && is_string($_GET['status_akun']) && trim($_GET['status_akun']) !== '') {
+            $query['status_akun'] = trim($_GET['status_akun']);
+        }
+        $endpoint = 'manajemen-akses/pengguna' . ($query === array() ? '' : '?' . http_build_query($query));
+        $response = api_mode_request('GET', $endpoint);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Daftar pengguna tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if ($route === '/admin/access-management/roles' && $method === 'GET') {
+        api_mode_require_access_management();
+        $response = api_mode_request('GET', 'manajemen-akses/peran');
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Daftar peran tidak dapat dimuat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array());
+    }
+
+    if ($route === '/admin/access-management/users' && $method === 'POST') {
+        api_mode_require_access_management();
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pembuatan akun pengguna ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data'], $response['status']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/profile\z#', $route, $match) && $method === 'PATCH') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $response = api_mode_request('PATCH', 'manajemen-akses/pengguna/' . $userId . '/profil', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pembaruan profil pengguna ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/roles\z#', $route, $match) && $method === 'POST') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna/' . $userId . '/peran', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Penetapan peran ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data'], $response['status']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/roles/(\d+)/end\z#', $route, $match) && $method === 'PATCH') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $roleAssignmentId = (int) $match[2];
+        $response = api_mode_request('PATCH', 'manajemen-akses/pengguna/' . $userId . '/peran/' . $roleAssignmentId . '/akhir', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pengakhiran peran ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data']);
+    }
+
+    if ($route === '/admin/access-management/roles/bulk' && $method === 'POST') {
+        api_mode_require_access_management();
+        $response = api_mode_request('POST', 'manajemen-akses/peran/massal', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Penetapan peran massal ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/password\z#', $route, $match) && $method === 'PATCH') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $response = api_mode_request('PATCH', 'manajemen-akses/pengguna/' . $userId . '/password', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Penggantian password akun ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data'] ?? array('message' => 'Password akun berhasil diperbarui.'));
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/activation-token\z#', $route, $match) && $method === 'POST') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna/' . $userId . '/token-aktivasi', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Penerbitan token aktivasi ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data'], $response['status']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/activation-email\z#', $route, $match) && $method === 'POST') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna/' . $userId . '/email-aktivasi', $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pengiriman email aktivasi ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data'] ?? array('message' => 'Email aktivasi berhasil dikirim.'));
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/roles/(\d+)/lab-scopes\z#', $route, $match) && in_array($method, array('GET', 'POST'), true)) {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $roleAssignmentId = (int) $match[2];
+        $endpoint = 'manajemen-akses/pengguna/' . $userId . '/peran/' . $roleAssignmentId . '/cakupan-laboratorium';
+        $response = api_mode_request($method, $endpoint, $method === 'POST' ? $payload : null);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Cakupan laboratorium tidak dapat dimuat atau disimpan.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data'], $response['status']);
+    }
+
+    if (preg_match('#\A/admin/access-management/users/(\d+)/roles/(\d+)/lab-scopes/(\d+)/end\z#', $route, $match) && $method === 'PATCH') {
+        api_mode_require_access_management();
+        $userId = (int) $match[1];
+        $roleAssignmentId = (int) $match[2];
+        $scopeId = (int) $match[3];
+        $endpoint = 'manajemen-akses/pengguna/' . $userId . '/peran/' . $roleAssignmentId . '/cakupan-laboratorium/' . $scopeId . '/akhir';
+        $response = api_mode_request('PATCH', $endpoint, $payload);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pengakhiran cakupan laboratorium ditolak API pusat.')), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? $response['data']);
     }
 
     if ($route === '/admin/preview-google-sheet' && $method === 'POST') {
