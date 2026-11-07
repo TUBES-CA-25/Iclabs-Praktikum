@@ -334,5 +334,270 @@ if ($path === '/api/v1/praktikum/nilai/saya') {
     ))));
     return;
 }
+if ($path === '/api/v1/manajemen-akses/peran' && $method === 'GET') {
+    echo json_encode(array('data' => array(
+        array('id' => 1, 'kode' => 'SUPER_ADMIN', 'nama' => 'Super Administrator', 'deskripsi' => 'Akses penuh.'),
+        array('id' => 2, 'kode' => 'ADMIN_ICLABS', 'nama' => 'Administrator ICLabs', 'deskripsi' => 'Pengelola operasional.'),
+        array('id' => 3, 'kode' => 'KEPALA_LAB', 'nama' => 'Kepala Laboratorium', 'deskripsi' => 'Pimpinan lab.'),
+        array('id' => 4, 'kode' => 'LABORAN', 'nama' => 'Laboran', 'deskripsi' => 'Pengelola lab.'),
+        array('id' => 5, 'kode' => 'DOSEN', 'nama' => 'Dosen Pengampu', 'deskripsi' => 'Pengajar.'),
+        array('id' => 6, 'kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium', 'deskripsi' => 'Asisten.'),
+        array('id' => 7, 'kode' => 'MAHASISWA', 'nama' => 'Mahasiswa', 'deskripsi' => 'Peserta.')
+    )));
+    return;
+}
+if ($path === '/api/v1/manajemen-akses/pengguna' && $method === 'GET') {
+    $cari = strtolower((string) ($_GET['cari'] ?? ''));
+    $kodePeran = (string) ($_GET['kode_peran'] ?? '');
+    $statusAkun = (string) ($_GET['status_akun'] ?? '');
+    $allUsers = array(
+        array(
+            'id' => 9001,
+            'email_login' => 'uji-admin@iclabs.test',
+            'username' => 'uji-admin',
+            'nim' => null,
+            'nama_lengkap' => 'Admin Uji',
+            'versi_profil' => 1,
+            'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+            'dapat_diberi_peran' => true,
+            'peran' => array(
+                array(
+                    'id' => 101,
+                    'peran' => array('id' => 1, 'kode' => 'SUPER_ADMIN', 'nama' => 'Super Administrator'),
+                    'mulai_pada' => '2026-01-01 00:00:00',
+                    'berakhir_pada' => null,
+                    'catatan_pemberian' => 'Akun inisialisasi sistem',
+                    'versi' => 1
+                ),
+                array(
+                    'id' => 102,
+                    'peran' => array('id' => 2, 'kode' => 'ADMIN_ICLABS', 'nama' => 'Administrator ICLabs'),
+                    'mulai_pada' => '2026-01-01 00:00:00',
+                    'berakhir_pada' => null,
+                    'catatan_pemberian' => 'Pengelola sistem',
+                    'versi' => 1
+                )
+            )
+        ),
+        array(
+            'id' => 9003,
+            'email_login' => 'laboran@iclabs.test',
+            'username' => 'laboran-uji',
+            'nim' => null,
+            'nama_lengkap' => 'Laboran Uji',
+            'versi_profil' => 1,
+            'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+            'dapat_diberi_peran' => true,
+            'peran' => array(
+                array(
+                    'id' => 103,
+                    'peran' => array('id' => 4, 'kode' => 'LABORAN', 'nama' => 'Laboran'),
+                    'mulai_pada' => '2026-02-01 00:00:00',
+                    'berakhir_pada' => null,
+                    'catatan_pemberian' => 'Staf teknis laboratorium',
+                    'versi' => 1
+                )
+            )
+        ),
+        array(
+            'id' => 9004,
+            'email_login' => 'pending@iclabs.test',
+            'username' => null,
+            'nim' => null,
+            'nama_lengkap' => 'User Baru Menunggu',
+            'versi_profil' => 1,
+            'status_akun' => array('kode' => 'PENDING_AKTIVASI', 'nama' => 'Menunggu Aktivasi'),
+            'dapat_diberi_peran' => true,
+            'peran' => array(
+                array(
+                    'id' => 104,
+                    'peran' => array('id' => 6, 'kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium'),
+                    'mulai_pada' => '2026-03-01 00:00:00',
+                    'berakhir_pada' => null,
+                    'catatan_pemberian' => 'Perekrutan periode baru',
+                    'versi' => 1
+                )
+            )
+        )
+    );
+    $filtered = array_values(array_filter($allUsers, function($u) use ($cari, $kodePeran, $statusAkun) {
+        if ($cari !== '') {
+            $matched = strpos(strtolower($u['nama_lengkap']), $cari) !== false
+                || strpos(strtolower($u['email_login']), $cari) !== false
+                || strpos(strtolower($u['username'] ?? ''), $cari) !== false;
+            if (!$matched) return false;
+        }
+        if ($kodePeran !== '') {
+            $hasRole = false;
+            foreach ($u['peran'] as $p) {
+                if (($p['peran']['kode'] ?? '') === $kodePeran) {
+                    $hasRole = true;
+                    break;
+                }
+            }
+            if (!$hasRole) return false;
+        }
+        if ($statusAkun !== '' && ($u['status_akun']['kode'] ?? '') !== $statusAkun) {
+            return false;
+        }
+        return true;
+    }));
+    echo json_encode(array('data' => $filtered));
+    return;
+}
+if ($path === '/api/v1/manajemen-akses/pengguna' && $method === 'POST') {
+    if (empty($request['nama_lengkap']) || empty($request['email_login']) || empty($request['kode_peran'])) {
+        http_response_code(422);
+        echo json_encode(array('message' => 'Validasi gagal.', 'errors' => array('nama_lengkap' => array('Wajib diisi'))));
+        return;
+    }
+    http_response_code(201);
+    echo json_encode(array(
+        'data' => array(
+            'pengguna' => array(
+                'id' => 9099,
+                'email_login' => $request['email_login'],
+                'username' => $request['username'] ?? null,
+                'nama_lengkap' => $request['nama_lengkap'],
+                'versi_profil' => 1,
+                'status_akun' => array('kode' => 'PENDING_AKTIVASI', 'nama' => 'Menunggu Aktivasi'),
+                'dapat_diberi_peran' => true,
+                'peran' => array(
+                    array(
+                        'id' => 999,
+                        'peran' => array('id' => 6, 'kode' => $request['kode_peran'], 'nama' => $request['kode_peran']),
+                        'mulai_pada' => gmdate('c'),
+                        'berakhir_pada' => null,
+                        'catatan_pemberian' => $request['catatan_pemberian'] ?? null,
+                        'versi' => 1
+                    )
+                )
+            ),
+            'email_aktivasi' => array('status' => 'TERKIRIM', 'pesan' => 'Email instruksi aktivasi akun telah dikirimkan.')
+        )
+    ));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/profil\z#', $path, $m) && $method === 'PATCH') {
+    $userId = (int) $m[1];
+    echo json_encode(array('data' => array(
+        'id_user' => $userId,
+        'nama_lengkap' => $request['nama_lengkap'] ?? 'Nama Baru',
+        'versi' => ((int) ($request['versi'] ?? 1)) + 1
+    )));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/peran\z#', $path, $m) && $method === 'POST') {
+    $note = (string) ($request['catatan_pemberian'] ?? '');
+    if (strlen($note) < 10) {
+        http_response_code(422);
+        echo json_encode(array('message' => 'Alasan pemberian role minimal 10 karakter.'));
+        return;
+    }
+    http_response_code(201);
+    echo json_encode(array('data' => array(
+        'id' => 201,
+        'peran' => array('id' => 5, 'kode' => $request['kode_peran'] ?? '', 'nama' => $request['kode_peran'] ?? ''),
+        'mulai_pada' => gmdate('c'),
+        'berakhir_pada' => null,
+        'catatan_pemberian' => $note,
+        'versi' => 1
+    )));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/peran/(\d+)/akhir\z#', $path, $m) && $method === 'PATCH') {
+    $note = (string) ($request['catatan_berakhir'] ?? '');
+    if (strlen($note) < 10) {
+        http_response_code(422);
+        echo json_encode(array('message' => 'Alasan pengakhiran role minimal 10 karakter.'));
+        return;
+    }
+    echo json_encode(array('data' => array(
+        'id' => (int) $m[2],
+        'berakhir_pada' => gmdate('c'),
+        'catatan_berakhir' => $note,
+        'versi' => ((int) ($request['versi'] ?? 1)) + 1
+    )));
+    return;
+}
+if ($path === '/api/v1/manajemen-akses/peran/massal' && $method === 'POST') {
+    $ids = (array) ($request['id_pengguna'] ?? array());
+    echo json_encode(array('data' => array(
+        'kode_peran' => $request['kode_peran'] ?? '',
+        'jumlah_diminta' => count($ids),
+        'berhasil' => array_map(function($id) { return array('id_user' => (int)$id, 'id_rel_user_peran' => 300 + (int)$id); }, $ids),
+        'dilewati' => array()
+    )));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/password\z#', $path, $m) && $method === 'PATCH') {
+    echo json_encode(array('message' => 'Password akun berhasil diperbarui. Semua sesi lama telah dicabut.'));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/token-aktivasi\z#', $path, $m) && $method === 'POST') {
+    http_response_code(201);
+    echo json_encode(array('data' => array(
+        'token' => 'mock-token-aktivasi-abcdef123456',
+        'jenis_token' => 'AKTIVASI_AKUN',
+        'kadaluarsa_pada' => gmdate('c', time() + 86400)
+    )));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/email-aktivasi\z#', $path, $m) && $method === 'POST') {
+    echo json_encode(array('message' => 'Email instruksi aktivasi akun telah dikirimkan.'));
+    return;
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/peran/(\d+)/cakupan-laboratorium\z#', $path, $m)) {
+    if ($method === 'GET') {
+        echo json_encode(array('data' => array(
+            array(
+                'id' => 501,
+                'jenis_cakupan' => array('kode' => 'SEMUA_LAB', 'nama' => 'Semua Laboratorium'),
+                'laboratorium' => null,
+                'status' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+                'mulai_pada' => '2026-02-01 00:00:00',
+                'berakhir_pada' => null,
+                'catatan_pemberian' => 'Cakupan seluruh lab untuk laboran utama',
+                'catatan_berakhir' => null,
+                'versi' => 1
+            )
+        )));
+        return;
+    } elseif ($method === 'POST') {
+        $note = (string) ($request['catatan_pemberian'] ?? '');
+        if (strlen($note) < 10) {
+            http_response_code(422);
+            echo json_encode(array('message' => 'Alasan pemberian cakupan minimal 10 karakter.'));
+            return;
+        }
+        http_response_code(201);
+        echo json_encode(array('data' => array(
+            'id' => 502,
+            'jenis_cakupan' => array('kode' => $request['kode_jenis_cakupan'] ?? 'SEMUA_LAB', 'nama' => $request['kode_jenis_cakupan'] ?? 'Semua Lab'),
+            'laboratorium' => !empty($request['id_laboratorium']) ? array('id' => (int) $request['id_laboratorium'], 'kode' => 'LAB-UJI', 'nama' => 'Laboratorium Uji') : null,
+            'status' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
+            'mulai_pada' => gmdate('c'),
+            'berakhir_pada' => null,
+            'catatan_pemberian' => $note,
+            'versi' => 1
+        )));
+        return;
+    }
+}
+if (preg_match('#\A/api/v1/manajemen-akses/pengguna/(\d+)/peran/(\d+)/cakupan-laboratorium/(\d+)/akhir\z#', $path, $m) && $method === 'PATCH') {
+    $note = (string) ($request['catatan_berakhir'] ?? '');
+    if (strlen($note) < 10) {
+        http_response_code(422);
+        echo json_encode(array('message' => 'Alasan pengakhiran cakupan minimal 10 karakter.'));
+        return;
+    }
+    echo json_encode(array('data' => array(
+        'id' => (int) $m[3],
+        'berakhir_pada' => gmdate('c'),
+        'catatan_berakhir' => $note,
+        'versi' => ((int) ($request['versi'] ?? 1)) + 1
+    )));
+    return;
+}
 http_response_code(404);
 echo json_encode(array('message' => 'Mock endpoint not found.'));

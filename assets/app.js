@@ -59,19 +59,22 @@ function iconSvg(name, cls=''){
   };
   return `<svg ${c} viewBox="0 0 24 24" width="18" height="18" ${s}>${svgs[name] || svgs.grid}</svg>`;
 }
-const iconMap = { 'Nilai Saya': 'file-text', 'Dashboard': 'grid', 'Jadwal Praktikum': 'calendar', 'Absensi': 'check-square', 'Penilaian': 'file-text', 'Verifikasi': 'shield-check', 'Laporan': 'bar-chart', 'Aktivitas & Presensi': 'check-square', 'Hasil Penilaian': 'file-text', 'Kelas Praktikum': 'grid', 'Ringkasan': 'grid', 'Data Master': 'settings', 'Konfigurasi Nilai': 'percent', 'Periode Akademik': 'clock', 'Sinkron Jadwal': 'refresh', 'Log Aktivitas': 'clock' };
+const iconMap = { 'Nilai Saya': 'file-text', 'Dashboard': 'grid', 'Jadwal Praktikum': 'calendar', 'Absensi': 'check-square', 'Penilaian': 'file-text', 'Verifikasi': 'shield-check', 'Laporan': 'bar-chart', 'Aktivitas & Presensi': 'check-square', 'Hasil Penilaian': 'file-text', 'Kelas Praktikum': 'grid', 'Ringkasan': 'grid', 'Data Master': 'settings', 'Konfigurasi Nilai': 'percent', 'Periode Akademik': 'clock', 'Sinkron Jadwal': 'refresh', 'Log Aktivitas': 'clock', 'Manajemen Akses': 'users' };
 const icons = new Proxy(iconMap, { get: (t, k) => iconSvg(t[k] || 'grid') });
 function render() {
   if (user?.api_mode) { renderApiMode(); return } const nav = user.role === 'mahasiswa' ? ['Nilai Saya'] : Object.keys(iconMap).filter(x => x !== 'Nilai Saya' && (user.role === 'admin' || !['Data Master', 'Log Aktivitas'].includes(x))); app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">MENU</div><nav class="nav">${nav.map(x => `<button data-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Sistem Aktif</span></span></div><button id="logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span></div></div><div class="profile"><div class="avatar">${esc(user.name.split(' ').map(x => x[0]).slice(0, 2).join(''))}</div><button id="account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="period-summary">${periodSummary()}</div><div id="view"></div></main></div></div>`;
   document.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navigate(b.dataset.nav)); $('#logout').onclick = logout; $('#header-logout').onclick = logout; $('#account').onclick = account; $('.profile .avatar').onclick = account; $('#menu').onclick = () => $('.sidebar').classList.toggle('open'); if (user.role === 'mahasiswa') studentPortal(); else if (current) renderClass(); else if (page === 'Dashboard') dashboard(); else if (page === 'Data Master') masters(); else if (page === 'Log Aktivitas') auditPage(); else listPage()
 }
 function renderApiMode(){
-  const student = user.role === 'mahasiswa', hasStudentRole = (user.roles || []).includes('MAHASISWA'), nav = student ? ['Nilai Saya'] : (user.role === 'admin' ? ['Ringkasan', 'Kelas Praktikum', 'Sinkron Jadwal', 'Periode Akademik', 'Konfigurasi Nilai', 'Log Aktivitas'] : (user.role === 'dosen' ? ['Ringkasan', 'Aktivitas & Presensi', 'Hasil Penilaian'] : ['Ringkasan', 'Kelas Praktikum']));
+  const student = user.role === 'mahasiswa', hasStudentRole = (user.roles || []).includes('MAHASISWA');
+  const canManageAccess = Boolean(user.can_manage_access || user.role === 'admin' || (user.roles || []).some(r => ['SUPER_ADMIN', 'ADMIN_ICLABS', 'KEPALA_LAB', 'LABORAN'].includes(r)));
+  const nav = student ? ['Nilai Saya'] : (user.role === 'admin' ? ['Ringkasan', 'Kelas Praktikum', 'Sinkron Jadwal', 'Periode Akademik', 'Konfigurasi Nilai', 'Log Aktivitas'] : (user.role === 'dosen' ? ['Ringkasan', 'Aktivitas & Presensi', 'Hasil Penilaian'] : ['Ringkasan', 'Kelas Praktikum']));
+  if (canManageAccess && !nav.includes('Manajemen Akses')) nav.push('Manajemen Akses');
   if(!student&&hasStudentRole)nav.push('Nilai Saya');
   const initials=(user.name||user.email||'IC').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
   app.innerHTML=`<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">MENU</div><nav class="nav">${nav.map(x=>`<button data-api-nav="${x}" class="${page===x?'active':''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Mode API Terhubung</span></span></div><button id="api-logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="api-menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span><span class="badge badge-api-indicator">API Pusat</span></div></div><div class="profile"><div class="avatar">${esc(initials)}</div><button id="api-account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="api-header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="api-period-summary">${apiPeriodSummary()}</div><div id="api-view"></div></main></div></div>`;
   document.querySelectorAll('[data-api-nav]').forEach(b=>b.onclick=()=>{if(window.apiDraftStorageFailed&&!confirm('Draft presensi gagal disimpan pada perangkat ini. Tetap tinggalkan halaman?'))return;window.apiDraftStorageFailed=false;page=b.dataset.apiNav;apiCurrent=null;renderApiMode()});$('#api-logout').onclick=logout;$('#api-header-logout').onclick=logout;$('#api-account').onclick=account;$('#api-menu').onclick=()=>$('.sidebar').classList.toggle('open');
-  if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else apiDashboard();
+  if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else if (page === 'Manajemen Akses') accessManagementPage(); else apiDashboard();
 }
 let googleSheetReview=null,googleSheetRenderTimer=null;
 let googleSheetAssistantRecommendationTimer=null;
@@ -568,6 +571,653 @@ async function gradeConfigPage(){const view=$('#api-view');view.innerHTML='<div 
 async function periodManagementPage(){const view=$('#api-view');view.innerHTML='<div class="empty">Memuat periode akademik dari API pusat…</div>';try{const data=await api('/admin/periods'),periods=Array.isArray(data.periode)?data.periode:[],semesters=Array.isArray(data.semester)?data.semester:[];view.innerHTML=`<div class="intro"><h1>Periode Akademik</h1></div><section class="card"><div class="card-head row between"><div><h2>Siklus akademik</h2><p>Satu periode operasional aktif pada satu waktu. Periode aktif menerima transaksi Praktikum baru.</p></div><button class="primary" id="period-create">+ Buat periode</button></div><div class="table-wrap"><table><thead><tr><th>TAHUN AJARAN</th><th>SEMESTER</th><th>RENTANG</th><th>KELAS</th><th>STATUS</th><th>AKSI</th></tr></thead><tbody>${periods.map(period=>`<tr><td>${esc(period.tahun_akademik)}</td><td>${esc(period.semester?.nama||'—')} <small>(${esc(period.semester?.kode||'—')})</small></td><td>${esc(period.tanggal_mulai)} – ${esc(period.tanggal_selesai)}</td><td>${Number(period.jumlah_kelas||0)}</td><td><span class="badge ${period.aktif?'green':''}">${period.aktif?'Aktif':'Ditutup'}</span></td><td>${period.aktif?'<span class="help">Periode berjalan</span>':`<button class="small" data-period-edit="${Number(period.id_periode_akademik)}">Ubah tanggal</button> <button class="small" data-period-activate="${Number(period.id_periode_akademik)}">Aktifkan</button>`}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Belum ada periode akademik.</td></tr>'}</tbody></table></div></section>`;$('#period-create').onclick=()=>periodForm(semesters);document.querySelectorAll('[data-period-edit]').forEach(button=>button.onclick=()=>{const period=periods.find(item=>Number(item.id_periode_akademik)===Number(button.dataset.periodEdit));periodForm(semesters,period)});document.querySelectorAll('[data-period-activate]').forEach(button=>button.onclick=async()=>{const period=periods.find(item=>Number(item.id_periode_akademik)===Number(button.dataset.periodActivate));if(!period||!confirm(`Aktifkan ${period.tahun_akademik} ${period.semester.nama}? Periode lain akan ditutup untuk transaksi baru, tanpa menghapus histori.`))return;button.disabled=true;try{await api(`/admin/periods/${Number(period.id_periode_akademik)}/activate`,{},'POST');activePeriod=await api('/active-period');selectedAcademicPeriod='';classes=user.role==='mahasiswa'?[]:await api('/classes');toast('Periode aktif diperbarui. Histori lama tetap tersimpan.');periodManagementPage();renderPeriodSummary()}catch(error){toast(error.message);button.disabled=false}})}catch(error){view.innerHTML=`<div class="error" role="alert">${esc(error.message)}</div>`}}
 function periodForm(semesters,period){const semesterOptions=semesters.map(semester=>`<option value="${Number(semester.id)}" ${Number(period?.semester?.id)===Number(semester.id)?'selected':''}>${esc(semester.nama)} (${esc(semester.kode)})</option>`).join('');const modal=dialog(`<form><h2>${period?'Ubah periode':'Buat periode akademik'}</h2>${period?'<p>Periode yang sudah memiliki kelas tidak dapat diubah. Periode aktif juga dikunci.</p>':'<p>Periode baru dibuat nonaktif. Data batch sebelumnya tidak akan disalin.</p>'}<label>Tahun akademik<input name="tahun_akademik" type="text" placeholder="2027/2028" pattern="[0-9]{4}/[0-9]{4}" value="${esc(period?.tahun_akademik||'')}" ${period?'readonly':''} required></label>${period?'':`<label>Semester<select name="id_semester" required>${semesterOptions}</select></label>`}<div class="form-grid"><label>Tanggal mulai<input name="tanggal_mulai" type="date" value="${esc(period?.tanggal_mulai||'')}" required></label><label>Tanggal selesai<input name="tanggal_selesai" type="date" value="${esc(period?.tanggal_selesai||'')}" required></label></div><div class="row"><button type="button" data-close>Batal</button><button class="primary" type="submit">${period?'Simpan':'Buat periode'}</button></div></form>`);modal.querySelector('form').onsubmit=async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));if(!period)values.id_semester=Number(values.id_semester);const button=event.currentTarget.querySelector('[type=submit]');button.disabled=true;try{await api(period?`/admin/periods/${Number(period.id_periode_akademik)}`:'/admin/periods',values,period?'PATCH':'POST');modal.close();toast(period?'Tanggal periode diperbarui.':'Periode dibuat sebagai nonaktif.');periodManagementPage()}catch(error){toast(error.message);button.disabled=false}}}
 function renderPeriodSummary(){const summary=$('#api-period-summary');if(summary)summary.innerHTML=apiPeriodSummary()}
+let accessSearchTimer=null,accessFilterState={cari:'',kode_peran:'',status_akun:''};
+async function accessManagementPage(){
+  const view=$('#api-view');
+  view.innerHTML='<div class="empty">Memuat data pengguna dan peran dari API pusat…</div>';
+  try{
+    const roles=await api('/admin/access-management/roles');
+    const query=new URLSearchParams();
+    if(accessFilterState.cari)query.set('cari',accessFilterState.cari);
+    if(accessFilterState.kode_peran)query.set('kode_peran',accessFilterState.kode_peran);
+    if(accessFilterState.status_akun)query.set('status_akun',accessFilterState.status_akun);
+    const qs=query.toString()?`?${query.toString()}`:'';
+    const users=await api(`/admin/access-management/users${qs}`);
+    const roleOptions=roles.map(r=>`<option value="${esc(r.kode)}" ${accessFilterState.kode_peran===r.kode?'selected':''}>${esc(r.nama)}</option>`).join('');
+    const statusOptions=[['','Semua status akun'],['AKTIF','Aktif'],['PENDING_AKTIVASI','Menunggu Aktivasi'],['TERKUNCI','Terkunci'],['DITANGGUHKAN','Ditangguhkan']].map(([val,label])=>`<option value="${esc(val)}" ${accessFilterState.status_akun===val?'selected':''}>${esc(label)}</option>`).join('');
+    const statusTone={AKTIF:'green',PENDING_AKTIVASI:'yellow',TERKUNCI:'red',DITANGGUHKAN:'red'};
+    view.innerHTML=`
+      <div class="intro">
+        <div class="eyebrow">ADMINISTRASI / RBAC PUSAT</div>
+        <h1>Manajemen Akses</h1>
+        <p>Kelola akun pengguna, penetapan peran kanonikal, cakupan laboratorium, dan otorisasi sistem ICLabs.</p>
+      </div>
+      <section class="card">
+        <div class="card-head row between">
+          <div>
+            <h2>Daftar Pengguna</h2>
+            <p>${users.length} akun ditemukan berdasarkan filter.</p>
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="small" id="access-bulk-assign">Penetapan Peran Massal</button>
+            <button class="primary small" id="access-create-user">+ Tambah Pengguna</button>
+          </div>
+        </div>
+        <div class="card-body row" style="gap:10px;flex-wrap:wrap">
+          <input id="access-search" type="search" placeholder="Cari nama, email, username, NIM…" value="${esc(accessFilterState.cari)}" style="flex:1;min-width:220px">
+          <select id="access-role-filter" style="width:auto;min-width:180px">
+            <option value="">Semua peran</option>
+            ${roleOptions}
+          </select>
+          <select id="access-status-filter" style="width:auto;min-width:180px">
+            ${statusOptions}
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PENGGUNA</th>
+                <th>EMAIL & IDENTITAS</th>
+                <th>STATUS</th>
+                <th>PERAN AKTIF</th>
+                <th>AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u=>{
+                const tone=statusTone[u.status_akun?.kode]||'';
+                const roleBadges=(u.peran||[]).map(p=>`<span class="badge blue" title="Diberikan ${esc(p.mulai_pada||'')}">${esc(p.peran?.nama||p.peran?.kode||'Peran')}</span>`).join(' ')||'<span class="muted">Belum ada peran</span>';
+                return `<tr>
+                  <td>
+                    <strong>${esc(u.nama_lengkap||'Pengguna')}</strong>
+                    ${u.username?`<br><small class="muted">@${esc(u.username)}</small>`:''}
+                  </td>
+                  <td>
+                    <span>${esc(u.email_login)}</span>
+                    ${u.nim?`<br><small class="muted">NIM: ${esc(u.nim)}</small>`:''}
+                  </td>
+                  <td><span class="badge ${tone}">${esc(u.status_akun?.nama||u.status_akun?.kode||'—')}</span></td>
+                  <td>${roleBadges}</td>
+                  <td>
+                    <button class="small" data-access-user="${Number(u.id)}">Detail & Kelola</button>
+                  </td>
+                </tr>`;
+              }).join('')||'<tr><td colspan="5" class="empty">Tidak ada pengguna yang cocok dengan kriteria pencarian.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+    $('#access-search').oninput=e=>{
+      clearTimeout(accessSearchTimer);
+      accessFilterState.cari=e.target.value.trim();
+      accessSearchTimer=setTimeout(()=>accessManagementPage(),350);
+    };
+    $('#access-role-filter').onchange=e=>{
+      accessFilterState.kode_peran=e.target.value;
+      accessManagementPage();
+    };
+    $('#access-status-filter').onchange=e=>{
+      accessFilterState.status_akun=e.target.value;
+      accessManagementPage();
+    };
+    $('#access-create-user').onclick=()=>openCreateUserModal(roles);
+    $('#access-bulk-assign').onclick=()=>openBulkAssignModal(roles,users);
+    document.querySelectorAll('[data-access-user]').forEach(btn=>{
+      btn.onclick=()=>{
+        const u=users.find(x=>Number(x.id)===Number(btn.dataset.accessUser));
+        if(u)openUserDetailModal(u,roles);
+      };
+    });
+  }catch(error){
+    view.innerHTML=`<div class="error" role="alert">${esc(error.message)}</div>`;
+  }
+}
+function openCreateUserModal(roles){
+  const assignableRoles=user?.is_super_admin?roles:roles.filter(r=>r.kode!=='SUPER_ADMIN');
+  const roleOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+  const modal=dialog(`
+    <form>
+      <h2>Tambah Pengguna Baru</h2>
+      <p>Membuat akun internal baru berstatus <em>Menunggu Aktivasi</em> dan menetapkan peran awal.</p>
+      <label>Nama lengkap
+        <input name="nama_lengkap" type="text" maxlength="200" required placeholder="Nama lengkap pengguna">
+      </label>
+      <label>Email login
+        <input name="email_login" type="email" maxlength="254" required placeholder="nama@umi.ac.id">
+      </label>
+      <label>Username (opsional)
+        <input name="username" type="text" maxlength="100" pattern="[a-zA-Z0-9_-]+" placeholder="username_pengguna">
+      </label>
+      <label>Peran awal
+        <select name="kode_peran" required>
+          ${roleOptions}
+        </select>
+      </label>
+      <label>Catatan pemberian peran
+        <textarea name="catatan_pemberian" rows="2" maxlength="500" placeholder="Catatan awal pemberian peran (opsional)"></textarea>
+      </label>
+      <div class="row">
+        <button type="button" data-close>Batal</button>
+        <button class="primary" type="submit">Buat Pengguna</button>
+      </div>
+    </form>
+  `);
+  modal.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();
+    const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+    submitBtn.disabled=true;
+    const values=Object.fromEntries(new FormData(event.currentTarget));
+    if(!values.username)delete values.username;
+    if(!values.catatan_pemberian)delete values.catatan_pemberian;
+    try{
+      const res=await api('/admin/access-management/users',values,'POST');
+      modal.close();
+      const activationMsg=res.email_aktivasi?.pesan||'';
+      toast(`Pengguna ${esc(values.nama_lengkap)} berhasil didaftarkan. ${activationMsg}`);
+      accessManagementPage();
+    }catch(err){
+      toast(err.message);
+      submitBtn.disabled=false;
+    }
+  };
+}
+function openBulkAssignModal(roles,users){
+  const assignableRoles=roles.filter(r=>r.kode!=='SUPER_ADMIN');
+  const roleOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+  const eligibleUsers=users.filter(u=>u.dapat_diberi_peran&&Number(u.id)!==Number(user?.id));
+  const modal=dialog(`
+    <form>
+      <h2>Penetapan Peran Massal</h2>
+      <p>Tetapkan satu peran kanonikal kepada beberapa pengguna aktif atau menunggu aktivasi sekaligus (maksimal 100 pengguna).</p>
+      <label>Pilih peran tujuan
+        <select name="kode_peran" required>
+          ${roleOptions}
+        </select>
+      </label>
+      <label>Catatan pemberian
+        <input name="catatan_pemberian" type="text" maxlength="500" placeholder="Alasan pemberian peran massal (opsional)">
+      </label>
+      <div style="margin: 12px 0">
+        <label><strong>Pilih akun target:</strong></label>
+        <div class="table-wrap" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border)">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px"><input type="checkbox" id="bulk-select-all"></th>
+                <th>Nama Pengguna</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eligibleUsers.map(u=>`
+                <tr>
+                  <td><input type="checkbox" name="id_pengguna" value="${Number(u.id)}"></td>
+                  <td>${esc(u.nama_lengkap)}</td>
+                  <td>${esc(u.email_login)}</td>
+                </tr>
+              `).join('')||'<tr><td colspan="3" class="empty">Tidak ada pengguna yang memenuhi syarat.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="row">
+        <button type="button" data-close>Batal</button>
+        <button class="primary" type="submit" id="bulk-submit-btn">Tetapkan Peran</button>
+      </div>
+    </form>
+  `);
+  const selectAll=modal.querySelector('#bulk-select-all');
+  if(selectAll){
+    selectAll.onchange=e=>{
+      modal.querySelectorAll('input[name="id_pengguna"]').forEach(cb=>cb.checked=e.target.checked);
+    };
+  }
+  modal.querySelector('form').onsubmit=async event=>{
+    event.preventDefault();
+    const checked=[...modal.querySelectorAll('input[name="id_pengguna"]:checked')].map(cb=>Number(cb.value));
+    if(!checked.length){
+      toast('Pilih minimal satu akun pengguna.');
+      return;
+    }
+    const roleCode=modal.querySelector('select[name="kode_peran"]').value;
+    const note=modal.querySelector('input[name="catatan_pemberian"]').value.trim();
+    const submitBtn=modal.querySelector('#bulk-submit-btn');
+    submitBtn.disabled=true;
+    try{
+      const payload={
+        id_pengguna:checked,
+        kode_peran:roleCode,
+        ...(note?{catatan_pemberian:note}:{})
+      };
+      const res=await api('/admin/access-management/roles/bulk',payload,'POST');
+      modal.close();
+      const countSuccess=res.berhasil?.length||0;
+      const countSkipped=res.dilewati?.length||0;
+      toast(`Peran massal berhasil ditetapkan ke ${countSuccess} akun. (${countSkipped} dilewati)`);
+      accessManagementPage();
+    }catch(err){
+      toast(err.message);
+      submitBtn.disabled=false;
+    }
+  };
+}
+function openUserDetailModal(u,roles){
+  const isSelf=Number(u.id)===Number(user?.id);
+  const activeRoleCodes=(u.peran||[]).map(p=>p.peran?.kode);
+  const assignableRoles=roles.filter(r=>{
+    if(activeRoleCodes.includes(r.kode))return false;
+    if(r.kode==='SUPER_ADMIN'&&!user?.is_super_admin)return false;
+    return true;
+  });
+  const assignableOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+
+  const modal=dialog(`
+    <div>
+      <div class="row between" style="align-items:flex-start">
+        <div>
+          <h2>${esc(u.nama_lengkap||'Pengguna')}</h2>
+          <small class="muted">${esc(u.email_login)}${u.username?` · @${esc(u.username)}`:''}${u.nim?` · NIM ${esc(u.nim)}`:''}</small>
+        </div>
+        <span class="badge ${u.status_akun?.kode==='AKTIF'?'green':'yellow'}">${esc(u.status_akun?.nama||u.status_akun?.kode||'')}</span>
+      </div>
+
+      <section class="card" style="margin-top:14px">
+        <div class="card-head"><h2>Profil Akun</h2></div>
+        <form id="edit-profile-form" class="card-body">
+          <label>Nama Lengkap
+            <input name="nama_lengkap" type="text" maxlength="200" required value="${esc(u.nama_lengkap||'')}">
+          </label>
+          <div class="row between" style="margin-top:8px">
+            <small class="muted">Versi profil: ${Number(u.versi_profil||1)}</small>
+            <button type="submit" class="small primary">Simpan Nama</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top:14px">
+        <div class="card-head"><h2>Aksi Keamanan Akun</h2></div>
+        <div class="card-body row" style="gap:8px;flex-wrap:wrap">
+          ${u.status_akun?.kode==='PENDING_AKTIVASI'?`<button type="button" class="small" id="btn-send-activation">Kirim Ulang Email Aktivasi</button>`:''}
+          ${user?.is_super_admin?`<button type="button" class="small" id="btn-issue-token">Terbitkan Token Aktivasi</button>`:''}
+          ${user?.is_super_admin&&u.status_akun?.kode==='AKTIF'&&!isSelf?`<button type="button" class="small danger" id="btn-reset-password">Reset Password Akun</button>`:''}
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:14px">
+        <div class="card-head"><h2>Peran Aktif (${(u.peran||[]).length})</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PERAN</th>
+                <th>PEMBERIAN</th>
+                <th>CATATAN</th>
+                <th>AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(u.peran||[]).map(p=>{
+                const isLaboran=p.peran?.kode==='LABORAN';
+                return `<tr>
+                  <td>
+                    <strong>${esc(p.peran?.nama||p.peran?.kode)}</strong>
+                    <br><small class="muted">Versi ${Number(p.versi)}</small>
+                  </td>
+                  <td><small>${esc(p.mulai_pada||'—')}</small></td>
+                  <td><small>${esc(p.catatan_pemberian||'—')}</small></td>
+                  <td>
+                    <div class="row" style="gap:4px">
+                      ${isLaboran?`<button type="button" class="small" data-lab-scope="${Number(p.id)}">Cakupan Lab</button>`:''}
+                      ${!isSelf?`<button type="button" class="small danger" data-end-role="${Number(p.id)}" data-role-version="${Number(p.versi)}">Akhiri</button>`:'<small class="muted">Akun sendiri</small>'}
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('')||'<tr><td colspan="4" class="empty">Tidak ada peran aktif pada akun ini.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      ${!isSelf&&u.dapat_diberi_peran&&assignableRoles.length?`
+      <section class="card" style="margin-top:14px">
+        <div class="card-head"><h2>Tetapkan Peran Baru</h2></div>
+        <form id="assign-role-form" class="card-body">
+          <label>Pilih Peran
+            <select name="kode_peran" required>
+              ${assignableOptions}
+            </select>
+          </label>
+          <label>Alasan / Catatan Pemberian (minimal 10 karakter)
+            <textarea name="catatan_pemberian" rows="2" minlength="10" maxlength="500" required placeholder="Tuliskan alasan penetapan peran ini…"></textarea>
+          </label>
+          <div class="row" style="margin-top:8px">
+            <button type="submit" class="small primary">Tetapkan Peran</button>
+          </div>
+        </form>
+      </section>
+      `:''}
+
+      <div class="row" style="margin-top:18px">
+        <button type="button" data-close>Tutup</button>
+      </div>
+    </div>
+  `);
+
+  const editProfileForm=modal.querySelector('#edit-profile-form');
+  if(editProfileForm){
+    editProfileForm.onsubmit=async event=>{
+      event.preventDefault();
+      const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+      submitBtn.disabled=true;
+      const newName=editProfileForm.elements.nama_lengkap.value.trim();
+      try{
+        await api(`/admin/access-management/users/${Number(u.id)}/profile`,{nama_lengkap:newName,versi:Number(u.versi_profil||1)},'PATCH');
+        u.nama_lengkap=newName;
+        u.versi_profil=Number(u.versi_profil||1)+1;
+        modal.close();
+        toast('Nama profil pengguna berhasil diperbarui.');
+        accessManagementPage();
+      }catch(err){
+        toast(err.message);
+        submitBtn.disabled=false;
+      }
+    };
+  }
+
+  const btnSendActivation=modal.querySelector('#btn-send-activation');
+  if(btnSendActivation){
+    btnSendActivation.onclick=async()=>{
+      btnSendActivation.disabled=true;
+      try{
+        const res=await api(`/admin/access-management/users/${Number(u.id)}/activation-email`,{},'POST');
+        toast(res.message||'Email aktivasi berhasil dikirim.');
+      }catch(err){
+        toast(err.message);
+      }finally{
+        btnSendActivation.disabled=false;
+      }
+    };
+  }
+
+  const btnIssueToken=modal.querySelector('#btn-issue-token');
+  if(btnIssueToken){
+    btnIssueToken.onclick=async()=>{
+      btnIssueToken.disabled=true;
+      try{
+        const res=await api(`/admin/access-management/users/${Number(u.id)}/activation-token`,{},'POST');
+        const tokenVal=res.token||res.data?.token||'';
+        const expVal=res.kadaluarsa_pada||res.data?.kadaluarsa_pada||'';
+        dialog(`
+          <div>
+            <h2>Token Aktivasi Manual</h2>
+            <p>Token berhasil diterbitkan untuk akun <strong>${esc(u.email_login)}</strong>.</p>
+            <label>Token Aktivasi (salin sebelum ditutup)
+              <input type="text" readonly value="${esc(tokenVal)}" style="font-family:monospace;font-weight:bold" onclick="this.select()">
+            </label>
+            <p class="help">Kedaluwarsa pada: ${esc(expVal)}</p>
+            <div class="row"><button type="button" data-close>Tutup</button></div>
+          </div>
+        `);
+      }catch(err){
+        toast(err.message);
+      }finally{
+        btnIssueToken.disabled=false;
+      }
+    };
+  }
+
+  const btnResetPassword=modal.querySelector('#btn-reset-password');
+  if(btnResetPassword){
+    btnResetPassword.onclick=()=>{
+      const passModal=dialog(`
+        <form>
+          <h2>Reset Password Akun</h2>
+          <p>Password baru akan langsung diaktifkan untuk akun <strong>${esc(u.email_login)}</strong>. Seluruh sesi login lama akun ini akan dicabut.</p>
+          <label>Password Baru (minimal 6 karakter)
+            <input name="password" type="password" minlength="6" required autocomplete="new-password">
+          </label>
+          <label>Konfirmasi Password Baru
+            <input name="password_confirmation" type="password" minlength="6" required autocomplete="new-password">
+          </label>
+          <div class="row">
+            <button type="button" data-close>Batal</button>
+            <button class="primary danger" type="submit">Ubah Password</button>
+          </div>
+        </form>
+      `);
+      passModal.querySelector('form').onsubmit=async event=>{
+        event.preventDefault();
+        const p1=passModal.querySelector('input[name="password"]').value;
+        const p2=passModal.querySelector('input[name="password_confirmation"]').value;
+        if(p1!==p2){
+          toast('Konfirmasi password tidak cocok.');
+          return;
+        }
+        const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+        submitBtn.disabled=true;
+        try{
+          await api(`/admin/access-management/users/${Number(u.id)}/password`,{password:p1,password_confirmation:p2},'PATCH');
+          passModal.close();
+          toast('Password akun berhasil diperbarui. Semua sesi aktif akun tersebut telah dicabut.');
+        }catch(err){
+          toast(err.message);
+          submitBtn.disabled=false;
+        }
+      };
+    };
+  }
+
+  modal.querySelectorAll('[data-end-role]').forEach(btn=>{
+    btn.onclick=()=>{
+      const assignmentId=Number(btn.dataset.endRole);
+      const roleVersion=Number(btn.dataset.roleVersion);
+      const endModal=dialog(`
+        <form>
+          <h2>Akhiri Peran Pengguna</h2>
+          <p>Peran akan dinonaktifkan secara permanen dengan pencatatan audit.</p>
+          <label>Alasan Pengakhiran Peran (minimal 10 karakter)
+            <textarea name="catatan_berakhir" rows="3" minlength="10" maxlength="500" required placeholder="Tuliskan alasan pengakhiran peran ini…"></textarea>
+          </label>
+          <div class="row">
+            <button type="button" data-close>Batal</button>
+            <button class="small danger" type="submit">Konfirmasi Akhiri Peran</button>
+          </div>
+        </form>
+      `);
+      endModal.querySelector('form').onsubmit=async event=>{
+        event.preventDefault();
+        const reason=endModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
+        const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+        submitBtn.disabled=true;
+        try{
+          await api(`/admin/access-management/users/${Number(u.id)}/roles/${assignmentId}/end`,{versi:roleVersion,catatan_berakhir:reason},'PATCH');
+          endModal.close();
+          modal.close();
+          toast('Peran pengguna berhasil diakhiri.');
+          accessManagementPage();
+        }catch(err){
+          toast(err.message);
+          submitBtn.disabled=false;
+        }
+      };
+    };
+  });
+
+  modal.querySelectorAll('[data-lab-scope]').forEach(btn=>{
+    btn.onclick=()=>{
+      const assignmentId=Number(btn.dataset.labScope);
+      const assignment=(u.peran||[]).find(p=>Number(p.id)===assignmentId);
+      if(assignment)openLaboratoryScopesModal(u,assignment);
+    };
+  });
+
+  const assignRoleForm=modal.querySelector('#assign-role-form');
+  if(assignRoleForm){
+    assignRoleForm.onsubmit=async event=>{
+      event.preventDefault();
+      const roleCode=assignRoleForm.elements.kode_peran.value;
+      const note=assignRoleForm.elements.catatan_pemberian.value.trim();
+      const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+      submitBtn.disabled=true;
+      try{
+        await api(`/admin/access-management/users/${Number(u.id)}/roles`,{kode_peran:roleCode,catatan_pemberian:note},'POST');
+        modal.close();
+        toast('Peran baru berhasil ditetapkan.');
+        accessManagementPage();
+      }catch(err){
+        toast(err.message);
+        submitBtn.disabled=false;
+      }
+    };
+  }
+}
+async function openLaboratoryScopesModal(u,assignment){
+  const modal=dialog(`
+    <div>
+      <h2>Cakupan Laboratorium · ${esc(u.nama_lengkap)}</h2>
+      <p>Kelola akses laboratorium untuk peran <strong>${esc(assignment.peran?.nama||'Laboran')}</strong>.</p>
+      <div id="scopes-list-view"><div class="empty">Memuat cakupan laboratorium…</div></div>
+      <div class="row" style="margin-top:14px">
+        <button type="button" data-close>Tutup</button>
+      </div>
+    </div>
+  `);
+  const renderScopes=async()=>{
+    const listView=modal.querySelector('#scopes-list-view');
+    try{
+      const [scopes,refs]=await Promise.all([
+        api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes`),
+        api('/references')
+      ]);
+      const labs=Array.isArray(refs.laboratorium)?refs.laboratorium:[];
+      const activeScopes=scopes.filter(s=>s.status?.kode==='AKTIF'&&!s.berakhir_pada);
+      const labOptions=labs.map(l=>`<option value="${Number(l.id)}">${esc(l.nama)} (${esc(l.kode)})</option>`).join('');
+
+      listView.innerHTML=`
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>JENIS CAKUPAN</th>
+                <th>LABORATORIUM</th>
+                <th>CATATAN</th>
+                <th>AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activeScopes.map(s=>`
+                <tr>
+                  <td><strong>${esc(s.jenis_cakupan?.nama||s.jenis_cakupan?.kode)}</strong></td>
+                  <td>${s.laboratorium?esc(s.laboratorium.nama):'<span class="muted">Semua Laboratorium</span>'}</td>
+                  <td><small>${esc(s.catatan_pemberian||'—')}</small></td>
+                  <td>
+                    <button class="small danger" data-end-scope="${Number(s.id)}" data-scope-version="${Number(s.versi)}">Akhiri</button>
+                  </td>
+                </tr>
+              `).join('')||'<tr><td colspan="4" class="empty">Belum ada cakupan laboratorium aktif.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+
+        <section class="card" style="margin-top:14px">
+          <div class="card-head"><h2>Tambah Cakupan Laboratorium</h2></div>
+          <form id="add-scope-form" class="card-body">
+            <label>Jenis Cakupan
+              <select name="kode_jenis_cakupan" id="scope-type-select" required>
+                <option value="SEMUA_LAB">Semua Laboratorium (SEMUA_LAB)</option>
+                <option value="LABORATORIUM">Laboratorium Tertentu (LABORATORIUM)</option>
+              </select>
+            </label>
+            <div id="scope-lab-field" style="display:none">
+              <label>Pilih Laboratorium
+                <select name="id_laboratorium">
+                  ${labOptions}
+                </select>
+              </label>
+            </div>
+            <label>Catatan / Alasan Pemberian (minimal 10 karakter)
+              <textarea name="catatan_pemberian" rows="2" minlength="10" maxlength="500" required placeholder="Alasan penetapan cakupan ini…"></textarea>
+            </label>
+            <div class="row" style="margin-top:8px">
+              <button class="small primary" type="submit">Simpan Cakupan</button>
+            </div>
+          </form>
+        </section>
+      `;
+
+      const typeSelect=listView.querySelector('#scope-type-select');
+      const labField=listView.querySelector('#scope-lab-field');
+      if(typeSelect&&labField){
+        typeSelect.onchange=e=>{
+          labField.style.display=e.target.value==='LABORATORIUM'?'block':'none';
+        };
+      }
+
+      listView.querySelectorAll('[data-end-scope]').forEach(btn=>{
+        btn.onclick=()=>{
+          const scopeId=Number(btn.dataset.endScope);
+          const scopeVer=Number(btn.dataset.scopeVersion);
+          const endScopeModal=dialog(`
+            <form>
+              <h2>Akhiri Cakupan Laboratorium</h2>
+              <label>Alasan Pengakhiran (minimal 10 karakter)
+                <textarea name="catatan_berakhir" rows="3" minlength="10" maxlength="500" required placeholder="Tuliskan alasan pengakhiran cakupan…"></textarea>
+              </label>
+              <div class="row">
+                <button type="button" data-close>Batal</button>
+                <button class="small danger" type="submit">Akhiri Cakupan</button>
+              </div>
+            </form>
+          `);
+          endScopeModal.querySelector('form').onsubmit=async event=>{
+            event.preventDefault();
+            const note=endScopeModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
+            const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+            submitBtn.disabled=true;
+            try{
+              await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes/${scopeId}/end`,{versi:scopeVer,catatan_berakhir:note},'PATCH');
+              endScopeModal.close();
+              toast('Cakupan laboratorium berhasil diakhiri.');
+              renderScopes();
+            }catch(err){
+              toast(err.message);
+              submitBtn.disabled=false;
+            }
+          };
+        };
+      });
+
+      const addScopeForm=listView.querySelector('#add-scope-form');
+      if(addScopeForm){
+        addScopeForm.onsubmit=async event=>{
+          event.preventDefault();
+          const typeVal=addScopeForm.elements.kode_jenis_cakupan.value;
+          const labVal=typeVal==='LABORATORIUM'?Number(addScopeForm.elements.id_laboratorium.value):null;
+          const note=addScopeForm.elements.catatan_pemberian.value.trim();
+          const submitBtn=event.currentTarget.querySelector('[type="submit"]');
+          submitBtn.disabled=true;
+          try{
+            await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes`,{
+              kode_jenis_cakupan:typeVal,
+              id_laboratorium:labVal,
+              catatan_pemberian:note
+            },'POST');
+            toast('Cakupan laboratorium berhasil ditambahkan.');
+            renderScopes();
+          }catch(err){
+            toast(err.message);
+            submitBtn.disabled=false;
+          }
+        };
+      }
+    }catch(err){
+      listView.innerHTML=`<div class="error" role="alert">${esc(err.message)}</div>`;
+    }
+  };
+  renderScopes();
+}
 async function setComponents(values){
   await api('/classes/'+current.class.id+'/components',{...values,version:current.class.version});
   current=await api('/classes/'+current.class.id);classes=await api('/classes');meeting=Math.min(meeting,current.class.meeting_count);renderClass();toast('Jumlah pengisian diperbarui.');
@@ -787,7 +1437,7 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule){
   const session=(c.sesi||[]).find(x=>Number(x.nomor_pertemuan)===meeting&&(!scheduleId||Number(x.id_jadwal_kelas_kuliah||0)===scheduleId))||(c.sesi||[]).find(x=>Number(x.nomor_pertemuan)===meeting)||{};
   const attendanceFor=s=>{const saved=(s.kehadiran||[]).find(a=>Number(a.nomor_pertemuan)===meeting&&(!scheduleId||Number(a.id_jadwal_kelas_kuliah||0)===scheduleId))||(s.kehadiran||[]).find(a=>Number(a.nomor_pertemuan)===meeting)||{};return draft.attendance?.[String(s.id_mahasiswa)]?{...saved,...draft.attendance[String(s.id_mahasiswa)]}:saved};
   const gradeFor=(s,code)=>(s.nilai||[]).find(g=>g.kode_komponen===code);
-  const tabs = canEdit ? [['attendance', 'Presensi'], ['grading', 'Nilai pertemuan'], ['semester', 'Nilai akhir'], ['sessions', 'Riwayat sesi'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap peserta']] : isLecturer ? (lecturerResultsView ? [['grading', 'Hasil penilaian'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap nilai']] : [['attendance', 'Rekap presensi'], ['sessions', 'Riwayat sesi']]) : hasRoster ? [['sessions', 'Sesi praktikum'], ['attendance', 'Presensi'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap peserta']] : [['sessions', 'Sesi praktikum'], ['components', 'Komponen akhir semester'], ['roster', 'Ringkasan nilai']];
+  const tabs = canEdit ? [['attendance', 'Presensi'], ['grading', 'Nilai pertemuan'], ['semester', 'Nilai akhir'], ['sessions', 'Riwayat sesi'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap peserta']] : isLecturer ? (lecturerResultsView ? [['grading', 'Hasil penilaian'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap nilai']] : [['attendance', 'Rekap presensi'], ['sessions', 'Riwayat sesi'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap nilai']]) : hasRoster ? [['sessions', 'Sesi praktikum'], ['attendance', 'Presensi'], ['components', 'Komponen akhir semester'], ['roster', 'Rekap peserta']] : [['sessions', 'Sesi praktikum'], ['components', 'Komponen akhir semester'], ['roster', 'Ringkasan nilai']];
   let activeTab = tabs.some(([key]) => key === window.apiDetailTab) ? window.apiDetailTab : (canEdit ? 'attendance' : isLecturer ? (lecturerResultsView ? 'grading' : 'attendance') : 'sessions'); window.apiDetailTab = activeTab;
   const canDeleteDraftSchedule=user.role==='admin'&&Number(c.periode.id)===Number(activePeriod?.id)&&c.status==='DRAF';
   const countWorkflowEditable = schedules.every(schedule => ['DRAF', 'PERLU_REVISI'].includes(schedule.status_workflow || 'DRAF'));
