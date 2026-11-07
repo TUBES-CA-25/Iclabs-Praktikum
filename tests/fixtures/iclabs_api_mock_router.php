@@ -20,7 +20,10 @@ if ($isAssistant3) {
         'jenis_akun' => array('kode' => 'INTERNAL', 'nama' => 'Internal'),
         'status_akun' => array('kode' => 'AKTIF', 'nama' => 'Aktif'),
         'profil' => array('nama_lengkap' => 'Asisten 3 Uji', 'gelar_depan' => null, 'gelar_belakang' => null),
-        'peran' => array(array('kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium')),
+        'peran' => array(
+            array('kode' => 'ASISTEN', 'nama' => 'Asisten Laboratorium'),
+            array('kode' => 'MAHASISWA', 'nama' => 'Mahasiswa')
+        ),
     );
 } elseif ($isParticipant) {
     $user = array(
@@ -370,7 +373,7 @@ if ($path === '/api/v1/praktikum/kelas/10/peserta/pindah' && $method === 'POST')
     return;
 }
 if ($path === '/api/v1/praktikum/nilai/saya') {
-    if (!$isStudent) {
+    if (!$isStudent && !$isAssistant3 && !$isParticipant) {
         http_response_code(403);
         echo json_encode(array('message' => 'Endpoint ini hanya untuk Mahasiswa.'));
         return;

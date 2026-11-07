@@ -1522,7 +1522,9 @@ try {
     }
 
     if ($route === '/student/grades' && $method === 'GET') {
-        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'mahasiswa') {
+        $isStudent = (($_SESSION['iclabs_user']['role'] ?? '') === 'mahasiswa')
+            || in_array('MAHASISWA', $_SESSION['iclabs_user']['roles'] ?? array(), true);
+        if (!$isStudent) {
             api_mode_json(array('error' => 'Akses khusus mahasiswa.'), 403);
         }
         $response = api_mode_request('GET', 'praktikum/nilai/saya');

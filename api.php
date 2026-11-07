@@ -102,7 +102,10 @@ try {
     }
 
     if ($path === '/student/grades') {
-        if ($user['role'] !== 'mahasiswa') {
+        $isStudent = ($user['role'] ?? '') === 'mahasiswa'
+            || in_array('MAHASISWA', $user['roles'] ?? array(), true)
+            || in_array('mahasiswa', $user['roles'] ?? array(), true);
+        if (!$isStudent) {
             reject('Akses khusus mahasiswa.', 403);
         }
 

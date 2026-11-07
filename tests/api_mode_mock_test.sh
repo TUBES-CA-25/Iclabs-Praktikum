@@ -248,6 +248,8 @@ if grep -q '"ringkasan_nilai"' <<<"$asisten3_detail"; then
     echo "FAIL: Asisten 3 tidak boleh melihat nilai praktikum peserta: $asisten3_detail"
     exit 1
 fi
+asisten3_grades="$(curl -sS -b "$asisten3_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fstudent%2Fgrades")"
+grep -q '"kode_komponen":"MID"' <<<"$asisten3_grades" || { echo "FAIL: Asisten 3 harus bisa melihat nilai miliknya sendiri di Nilai Saya: $asisten3_grades"; exit 1; }
 asisten3_change_status="$(curl -sS -o "$test_dir/asisten3-change.json" -w '%{http_code}' -b "$asisten3_cookies" -X PUT -H "X-CSRF-Token: $asisten3_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nilai":[{"id_mahasiswa":700,"kode_komponen":"EVALUASI_1","nilai":90}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fchanges")"
 [[ "$asisten3_change_status" == 403 ]] || { echo "FAIL: Asisten 3 tidak boleh mengubah nilai praktikum; HTTP $asisten3_change_status"; exit 1; }
 
