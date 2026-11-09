@@ -1481,14 +1481,16 @@ dialog h2 {
     font-weight: 600;
 }
 
-.activation-panel .activation-intro {
+.activation-panel .activation-intro,
+.reset-password-panel .activation-intro {
     color: var(--slate-300);
     font-size: 13px;
     line-height: 1.6;
     margin: -8px 0 20px;
 }
 
-.activation-panel .activation-form {
+.activation-panel .activation-form,
+.reset-password-panel .activation-form {
     gap: 16px;
 }
 
@@ -1522,7 +1524,8 @@ dialog h2 {
     margin: 0;
 }
 
-.activation-panel .activation-login-link {
+.activation-panel .activation-login-link,
+.reset-password-panel .activation-login-link {
     display: block;
     box-sizing: border-box;
     text-align: center;

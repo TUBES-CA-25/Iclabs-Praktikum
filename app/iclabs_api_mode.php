@@ -547,9 +547,7 @@ try {
             ? 'auth/aktivasi/request'
             : 'auth/reset-password/request';
         $requestPayload = array('email_login' => $email);
-        if ($route === '/auth/activation-request') {
-            $requestPayload['kode_aplikasi'] = 'ICLABS_PRAKTIKUM';
-        }
+        $requestPayload['kode_aplikasi'] = 'ICLABS_PRAKTIKUM';
         $response = api_mode_request('POST', $centralPath, $requestPayload, false);
         if ($response['status'] >= 200 && $response['status'] < 300) {
             api_mode_json(array(
@@ -610,6 +608,53 @@ try {
         }
 
         api_mode_json(array('ok' => true, 'message' => 'Akun berhasil diaktifkan. Silakan masuk.'));
+    }
+
+    if ($route === '/auth/reset-password') {
+        if ($method !== 'POST') api_mode_json(array('error' => 'Metode tidak diizinkan.'), 405);
+        $sessionCsrf = (string) ($_SESSION['iclabs_csrf'] ?? '');
+        $requestCsrf = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if ($sessionCsrf === '' || $requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf)) {
+            api_mode_json(array('error' => 'Sesi formulir tidak valid. Muat ulang halaman lalu coba kembali.'), 403);
+        }
+
+        $token = $payload['token'] ?? null;
+        $password = $payload['password'] ?? null;
+        $passwordConfirmation = $payload['password_confirmation'] ?? null;
+        if (!is_string($token) || preg_match('/\A[A-Za-z0-9]{64}\z/', $token) !== 1) {
+            api_mode_json(array('error' => 'Tautan reset tidak valid atau sudah kedaluwarsa. Minta email reset baru.'), 422);
+        }
+        if (!is_string($password) || !is_string($passwordConfirmation) || !hash_equals($password, $passwordConfirmation)) {
+            api_mode_json(array('error' => 'Konfirmasi kata sandi tidak sama.'), 422);
+        }
+
+        $response = api_mode_request('POST', 'auth/reset-password', array(
+            'token' => $token,
+            'password' => $password,
+            'password_confirmation' => $passwordConfirmation,
+            'nama_perangkat' => 'ICLabs Praktikum - Reset Kata Sandi',
+        ), false);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            $fallback = $response['status'] >= 500
+                ? 'Reset kata sandi belum dapat diproses. Coba kembali nanti.'
+                : 'Tautan reset tidak valid atau sudah kedaluwarsa. Minta email reset baru.';
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), $fallback)), $response['status']);
+        }
+
+        $resetSessionToken = $response['data']['data']['token'] ?? null;
+        if (is_string($resetSessionToken) && $resetSessionToken !== '') {
+            try {
+                $client = new IclabsApiClient($config);
+                $logoutResponse = $client->request('POST', 'auth/logout', array(), $resetSessionToken);
+                if ($logoutResponse['status'] < 200 || $logoutResponse['status'] >= 300) {
+                    error_log('ICLabs Praktikum gagal mencabut sesi sementara setelah reset kata sandi (HTTP ' . $logoutResponse['status'] . ').');
+                }
+            } catch (Throwable $exception) {
+                error_log('ICLabs Praktikum gagal mencabut sesi sementara setelah reset kata sandi (' . get_class($exception) . ').');
+            }
+        }
+
+        api_mode_json(array('ok' => true, 'message' => 'Kata sandi berhasil diatur ulang. Silakan masuk kembali.'));
     }
 
     if ($route === '/login') {

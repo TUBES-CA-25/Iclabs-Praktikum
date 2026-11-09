@@ -9,5 +9,6 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^aktivasi-akun/?$ aktivasi.php [L,QSA]
+    RewriteRule ^reset-password/?$ reset-password.php [L,QSA]
     RewriteRule (^|/)\.(?!well-known/) - [F,L]
 </IfModule>
