@@ -384,6 +384,11 @@ if ($path === '/api/v1/praktikum/nilai/saya') {
         'semester' => 'Ganjil', 'kode_komponen' => 'MID', 'nama_komponen' => 'Ujian Tengah Semester',
         'bobot_persen' => 30, 'nilai' => 85,
         'ringkasan_nilai' => array('konfigurasi_nilai_tersedia' => true, 'rata_evaluasi' => 80, 'rata_asistensi' => 90, 'nilai_akhir' => 85, 'predikat' => 'A'),
+        'kehadiran' => array(
+            array('nomor_pertemuan' => 1, 'tanggal_sesi' => '2026-09-21', 'topik' => 'Pertemuan 1', 'materi' => 'Pengenalan', 'status' => 'HADIR', 'nama_status' => 'Hadir', 'catatan' => null),
+            array('nomor_pertemuan' => 2, 'tanggal_sesi' => '2026-09-28', 'topik' => 'Pertemuan 2', 'materi' => 'Variabel & Tipe Data', 'status' => 'HADIR', 'nama_status' => 'Hadir', 'catatan' => null),
+        ),
+        'ringkasan_kehadiran' => array('total_hadir' => 2, 'total_sesi' => 2, 'persentase' => 100),
     ))));
     return;
 }

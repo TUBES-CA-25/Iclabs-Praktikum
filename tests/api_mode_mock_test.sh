@@ -225,6 +225,8 @@ grep -q '"role":"mahasiswa"' <<<"$student_me" || { echo "FAIL: role Mahasiswa"; 
 student_grades="$(curl -sS -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fstudent%2Fgrades")"
 grep -q '"kode_komponen":"MID"' <<<"$student_grades" || { echo "FAIL: nilai pribadi Mahasiswa"; exit 1; }
 grep -q '"bobot_persen":30' <<<"$student_grades" || { echo "FAIL: bobot komponen nilai Mahasiswa"; exit 1; }
+grep -q '"kehadiran"' <<<"$student_grades" || { echo "FAIL: absensi mahasiswa harus ada di student/grades"; exit 1; }
+grep -q '"total_hadir":2' <<<"$student_grades" || { echo "FAIL: ringkasan kehadiran mahasiswa harus ada di student/grades"; exit 1; }
 student_access_users_status="$(curl -sS -o "$test_dir/student-access-users.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Fusers")"
 [[ "$student_access_users_status" == 403 ]] || { echo "FAIL: manajemen akses pengguna harus ditolak untuk Mahasiswa"; exit 1; }
 student_access_roles_status="$(curl -sS -o "$test_dir/student-access-roles.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Faccess-management%2Froles")"

@@ -83,7 +83,7 @@ function renderApiMode() {
   if (!student && hasStudentRole) nav.push('Nilai Saya');
   const initials = (user.name || user.email || 'IC').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
   app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">MENU</div><nav class="nav">${nav.map(x => `<button data-api-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Mode API Terhubung</span></span></div><button id="api-logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="api-menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span><span class="badge badge-api-indicator">API Pusat</span></div></div><div class="profile"><div class="avatar">${esc(initials)}</div><button id="api-account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="api-header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="api-period-summary">${apiPeriodSummary()}</div><div id="api-view"></div></main></div></div>`;
-  document.querySelectorAll('[data-api-nav]').forEach(b => b.onclick = () => { if (window.apiDraftStorageFailed && !confirm('Draft presensi gagal disimpan pada perangkat ini. Tetap tinggalkan halaman?')) return; window.apiDraftStorageFailed = false; page = b.dataset.apiNav; apiCurrent = null; renderApiMode() }); $('#api-logout').onclick = logout; $('#api-header-logout').onclick = logout; $('#api-account').onclick = account; $('#api-menu').onclick = () => $('.sidebar').classList.toggle('open');
+  document.querySelectorAll('[data-api-nav]').forEach(b => b.onclick = () => { if (window.apiDraftStorageFailed && !confirm('Draft presensi gagal disimpan pada perangkat ini. Tetap tinggalkan halaman?')) return; window.apiDraftStorageFailed = false; page = b.dataset.apiNav; apiCurrent = null; window.selectedStudentClassId = null; renderApiMode() }); $('#api-logout').onclick = logout; $('#api-header-logout').onclick = logout; $('#api-account').onclick = account; $('#api-menu').onclick = () => $('.sidebar').classList.toggle('open');
   if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else if (page === 'Manajemen Akses') accessManagementPage(); else apiDashboard();
 }
 let googleSheetReview = null, googleSheetRenderTimer = null;
@@ -513,7 +513,7 @@ async function apiClassList() { if (user?.role === 'admin') return apiClassListP
 async function apiClassDetail(id) { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat detail kelas…</div>'; try { const c = await api('/classes/' + id); apiCurrent = id; const schedules = c.jadwal || [], sessions = c.sesi || [], components = c.komponen_nilai || [], students = c.peserta || []; const weekday = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; view.innerHTML = `<div class="intro"><div class="row between"><button class="small" id="api-back">← Kembali ke kelas</button>${user.role === 'admin' && Number(c.periode.id) === Number(activePeriod?.id) && c.status === 'DRAF' ? '<button class="small danger" id="api-delete-draft">Hapus kelas draft</button>' : ''}</div><div style="margin-top:16px"><small class="muted">${esc(c.mata_kuliah.kode)} · ${esc(c.program_studi.nama)} · ${esc(c.periode.tahun_akademik)} ${esc(c.periode.semester)}</small><h1 style="margin-top:4px">${esc(c.mata_kuliah.nama)}</h1><p>Kelompok ${esc(c.kelompok.nama || c.kelompok.kode)} · Kode ${esc(c.kelompok.kode)} · ${esc(apiStatus(c.status))} · ${Number(c.jumlah_pertemuan_rencana)} pertemuan</p></div>${c.catatan ? `<div class="warning">${esc(c.catatan)}</div>` : ''}</div><section class="card"><div class="card-head"><h2>Jadwal dan penugasan</h2></div>${schedules.length ? schedules.map(s => `<div class="api-detail-row"><strong>${esc(weekday[Number(s.hari_ke)] || 'Hari belum ditentukan')} · ${esc(String(s.jam_mulai || '').slice(0, 5))}–${esc(String(s.jam_selesai || '').slice(0, 5))}</strong><span>${esc(s.nama_laboratorium || s.nama_ruang || s.kode_ruang || 'Ruang belum ditentukan')} · ${esc(apiStatus(s.status))}</span><small>${esc(s.tanggal_mulai || '—')} – ${esc(s.tanggal_selesai || '—')} · ${esc(apiStatus(s.pola_perulangan))} · Workflow ${esc(apiStatus(s.status_workflow))}</small><small>${(s.pengajar || []).map(p => `${esc(p.nama_peran || p.peran)}: ${esc(p.nama || '—')}`).join(' · ') || 'Belum ada penugasan'}</small></div>`).join('') : '<div class="empty">Jadwal praktikum belum tersedia.</div>'}</section><section class="card"><div class="card-head"><h2>Sesi praktikum</h2></div>${sessions.length ? `<div class="table-wrap"><table><thead><tr><th>PERTEMUAN</th><th>TANGGAL</th><th>TOPIK / MATERI</th><th>STATUS</th></tr></thead><tbody>${sessions.map(s => `<tr><td>${Number(s.nomor_pertemuan)}</td><td>${esc(s.tanggal_sesi || '—')}</td><td>${esc([s.topik, s.materi].filter(Boolean).join(' · ') || '—')}</td><td>${esc(apiStatus(s.status))}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Belum ada sesi yang tercatat.</div>'}</section><section class="card"><div class="card-head"><h2>Komponen penilaian</h2></div>${components.length ? `<div class="table-wrap"><table><thead><tr><th>KODE</th><th>NAMA</th><th>BOBOT</th><th>STATUS</th></tr></thead><tbody>${components.map(x => `<tr><td>${esc(x.kode)}</td><td>${esc(x.nama)}</td><td>${Number(x.bobot_persen)}%</td><td>${x.aktif ? 'Aktif' : 'Nonaktif'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Komponen nilai belum disiapkan.</div>'}</section>${Object.prototype.hasOwnProperty.call(c, 'peserta') ? `<section class="card"><div class="card-head"><h2>Peserta aktif · ${students.length}</h2></div>${students.length ? `<div class="table-wrap"><table><thead><tr><th>NIM</th><th>NAMA</th><th>KEHADIRAN TERCATAT</th><th>NILAI TERCATAT</th></tr></thead><tbody>${students.map(s => `<tr><td>${esc(s.nim)}</td><td>${esc(s.nama)}</td><td>${(s.kehadiran || []).length}</td><td>${(s.nilai || []).length}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Belum ada peserta aktif.</div>'}</section>` : `<section class="card"><div class="card-head"><h2>Ringkasan Anda</h2></div><div class="card-body"><p>Kehadiran tercatat: ${(c.kehadiran_saya || []).length} · Komponen nilai tercatat: ${(c.nilai_saya || []).length}</p><p>Detail nilai hanya memuat data akun Anda.</p></div></section>`}<p class="help">Mode API saat ini menyediakan pembacaan data. Perubahan absensi, nilai, jadwal, dan workflow akan diaktifkan setelah masing-masing form terhubung ke endpoint pusat.</p>`; $('#api-back').onclick = () => { apiCurrent = null; apiClassList() }; if ($('#api-delete-draft')) $('#api-delete-draft').onclick = () => apiDeleteDraftClass(c) } catch (e) { apiCurrent = null; view.innerHTML = `<div class="error" role="alert">${esc(e.message)}</div><button class="small" id="api-back">← Kembali</button>`; $('#api-back').onclick = apiClassList } }
 async function apiStudentGrades() {
   const view = $('#api-view');
-  view.innerHTML = '<div class="empty">Memuat nilai dari API pusat…</div>';
+  view.innerHTML = '<div class="empty">Memuat data praktikum dari API pusat…</div>';
   try {
     const [rows, meetingResult] = await Promise.all([
       api('/student/grades'),
@@ -523,7 +523,15 @@ async function apiStudentGrades() {
     const groups = new Map(), meetingGroups = new Map();
     for (const row of rows) {
       const key = String(row.id_kelas_kuliah);
-      if (!groups.has(key)) groups.set(key, { first: row, summary: row.ringkasan_nilai, components: [] });
+      if (!groups.has(key)) {
+        groups.set(key, {
+          first: row,
+          summary: row.ringkasan_nilai,
+          attendance: row.kehadiran || [],
+          attendanceSummary: row.ringkasan_kehadiran || { total_hadir: 0, total_sesi: 0, persentase: 0 },
+          components: []
+        });
+      }
       if (row.kode_komponen) groups.get(key).components.push(row);
     }
     for (const meeting of meetingResult.items) {
@@ -532,11 +540,235 @@ async function apiStudentGrades() {
       meetingGroups.get(key).meetings.push(meeting);
     }
     const fmt = value => value === null || value === undefined ? '—' : Number(value).toFixed(2);
-    const legacyCards = [...groups.values()].map(({ first: r, summary: s, components }) => `<section class="card"><div class="card-head"><h2>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</h2><p>${esc(r.semester)} ${esc(r.tahun_akademik)} · Kelompok ${esc(r.kode_kelompok)}</p></div><div class="card-body"><div class="stats"><div class="stat"><span class="label">Rata-rata Evaluasi</span><b>${fmt(s?.rata_evaluasi)}</b></div><div class="stat"><span class="label">Rata-rata Asistensi</span><b>${fmt(s?.rata_asistensi)}</b></div><div class="stat"><span class="label">Nilai Akhir</span><b>${fmt(s?.nilai_akhir)}</b><small>${s?.predikat ? `Predikat ${esc(s.predikat)}` : s?.konfigurasi_nilai_tersedia ? 'Belum lengkap' : 'Konfigurasi nilai belum tersedia'}</small></div></div></div><div class="table-wrap"><table><thead><tr><th>KOMPONEN</th><th>NILAI</th><th>BOBOT</th></tr></thead><tbody>${components.map(c => `<tr><td>${esc(c.nama_komponen || c.kode_komponen)}</td><td>${fmt(c.nilai)}</td><td>${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td></tr>`).join('') || '<tr><td colspan="3">Belum ada komponen nilai.</td></tr>'}</tbody></table></div></section>`).join('');
-    const historyCards = [...meetingGroups.values()].map(({ first, meetings }) => `<section class="card"><div class="card-head"><h2>${esc(first.kode_mata_kuliah)} · ${esc(first.nama_mata_kuliah)}</h2><p>Riwayat nilai kategori per pertemuan</p></div>${meetings.map(meeting => `<div class="card-body"><h3>Pertemuan ${Number(meeting.nomor_pertemuan)} · ${esc(meeting.tanggal_sesi || 'tanggal belum tersedia')}</h3><p>Nilai pertemuan: <strong>${meeting.nilai_pertemuan === null ? 'Belum lengkap' : fmt(meeting.nilai_pertemuan)}</strong> · ${meeting.lengkap ? 'Lengkap' : 'Nilai belum lengkap'}</p><div class="table-wrap"><table><thead><tr><th>KATEGORI</th><th>BOBOT</th><th>NILAI</th><th>CATATAN</th></tr></thead><tbody>${meeting.komponen.map(component => `<tr><td>${esc(component.nama)}</td><td>${Number(component.bobot_persen)}%</td><td>${fmt(component.nilai)}</td><td>${esc(component.catatan || '—')}</td></tr>`).join('')}</tbody></table></div></div>`).join('')}</section>`).join('');
-    const historyError = meetingResult.error ? `<section class="card"><div class="warning">Riwayat nilai pertemuan belum dapat dimuat: ${esc(meetingResult.error)}</div></section>` : '';
-    view.innerHTML = `<div class="intro"><h1>Nilai Saya</h1><p>${esc(user.name)} · Hasil Penilaian Praktikum</p></div><h2>Nilai akhir semester</h2>${legacyCards || '<section class="card"><div class="empty">Belum ada nilai akhir praktikum.</div></section>'}<h2>Nilai tiap pertemuan</h2>${historyError}${historyCards || (!meetingResult.error ? '<section class="card"><div class="empty">Belum ada nilai kategori per pertemuan.</div></section>' : '')}`;
-  } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` }
+    const attendanceTone = { HADIR: 'green', IZIN: 'yellow', SAKIT: 'yellow', ALPA: 'red', TERLAMBAT: 'yellow' };
+    const attendanceLabel = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
+
+    if (!groups.size) {
+      view.innerHTML = `<div class="intro"><div class="eyebrow">RUANG KERJA / MAHASISWA</div><h1>Praktikum Saya</h1><p>${esc(user.name)} · Hasil Penilaian & Presensi Praktikum</p></div><section class="card"><div class="empty">Belum ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
+      return;
+    }
+
+    const selectedId = window.selectedStudentClassId && groups.has(String(window.selectedStudentClassId))
+      ? String(window.selectedStudentClassId)
+      : null;
+
+    if (!selectedId) {
+      view.innerHTML = `
+        <div class="intro">
+          <div class="eyebrow">RUANG KERJA / MAHASISWA</div>
+          <h1>Praktikum Saya</h1>
+          <p>${esc(user.name)} · ${groups.size} frekuensi praktikum terdaftar sebagai praktikan</p>
+        </div>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2>Pilih Frekuensi Praktikum</h2>
+              <p>Pilih kelas praktikum di bawah untuk melihat rincian absensi kehadiran, nilai per komponen, bobot, dan nilai pertemuan.</p>
+            </div>
+          </div>
+          ${[...groups.entries()].map(([id, group]) => {
+            const r = group.first, s = group.summary, att = group.attendanceSummary;
+            return `
+              <button class="api-class-row" data-select-student-class="${esc(id)}">
+                <span>
+                  <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
+                  <small>Kelompok ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)} · ${group.components.length} komponen nilai</small>
+                </span>
+                <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
+                <span class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.total_hadir} / ${att.total_sesi} Hadir (${att.persentase}%)</span>
+                ${s?.nilai_akhir != null ? `<span class="badge">${fmt(s.nilai_akhir)}${s.predikat ? ` (${esc(s.predikat)})` : ''}</span>` : '<span class="badge">Nilai berjalan</span>'}
+                <span aria-hidden="true">↗</span>
+              </button>
+            `;
+          }).join('')}
+        </section>
+      `;
+      document.querySelectorAll('[data-select-student-class]').forEach(b => {
+        b.onclick = () => {
+          window.selectedStudentClassId = b.dataset.selectStudentClass;
+          apiStudentGrades();
+        };
+      });
+      return;
+    }
+
+    const selectedGroup = groups.get(selectedId);
+    const r = selectedGroup.first, s = selectedGroup.summary, att = selectedGroup.attendanceSummary;
+    const components = selectedGroup.components, attendance = selectedGroup.attendance;
+    const classMeetings = meetingGroups.get(selectedId)?.meetings || [];
+
+    const attendanceRows = attendance.length ? `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PERTEMUAN</th>
+              <th>TANGGAL SESI</th>
+              <th>MATERI / TOPIK</th>
+              <th>STATUS KEHADIRAN</th>
+              <th>CATATAN</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${attendance.map(a => `
+              <tr>
+                <td><strong>Pertemuan ${Number(a.nomor_pertemuan)}</strong></td>
+                <td>${esc(a.tanggal_sesi || '—')}</td>
+                <td>${esc([a.topik, a.materi].filter(Boolean).join(' · ') || '—')}</td>
+                <td><span class="badge ${attendanceTone[a.status] || ''}">${esc(a.nama_status || attendanceLabel[a.status] || a.status)}</span></td>
+                <td>${esc(a.catatan || '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '<div class="empty">Belum ada sesi presensi yang dicatat oleh Asisten.</div>';
+
+    const componentRows = components.length ? `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>KOMPONEN</th>
+              <th>BOBOT PERSEN</th>
+              <th>NILAI ANDA</th>
+              <th>TANGGAL INPUT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${components.map(c => `
+              <tr>
+                <td>${esc(c.nama_komponen || c.kode_komponen)}</td>
+                <td>${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
+                <td><strong>${fmt(c.nilai)}</strong></td>
+                <td>${esc(c.diubah_pada || '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '<div class="empty">Belum ada komponen nilai akhir yang tercatat.</div>';
+
+    const meetingRows = classMeetings.length ? classMeetings.map(meeting => `
+      <div class="card-body" style="border-bottom:1px solid var(--border-color, #e2e8f0);padding-bottom:16px;margin-bottom:16px">
+        <div class="row between" style="margin-bottom:8px">
+          <h3 style="margin:0">Pertemuan ${Number(meeting.nomor_pertemuan)} · ${esc(meeting.tanggal_sesi || 'Tanggal belum ditentukan')}</h3>
+          <span class="badge ${meeting.lengkap ? 'green' : 'yellow'}">Nilai pertemuan: ${meeting.nilai_pertemuan === null ? 'Belum lengkap' : fmt(meeting.nilai_pertemuan)}</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>KATEGORI</th>
+                <th>BOBOT</th>
+                <th>NILAI</th>
+                <th>CATATAN</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${meeting.komponen.map(component => `
+                <tr>
+                  <td>${esc(component.nama)}</td>
+                  <td>${Number(component.bobot_persen)}%</td>
+                  <td>${fmt(component.nilai)}</td>
+                  <td>${esc(component.catatan || '—')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join('') : '<div class="empty">Belum ada nilai kategori per pertemuan.</div>';
+
+    view.innerHTML = `
+      <div class="intro">
+        <div class="row between">
+          <button class="small" id="student-back-to-classes">← Kembali ke daftar kelas praktikum</button>
+          ${groups.size > 1 ? `
+            <label class="inline-field" style="margin:0">
+              Pindah frekuensi:
+              <select id="student-class-selector">
+                ${[...groups.entries()].map(([gid, g]) => `<option value="${esc(gid)}" ${gid === selectedId ? 'selected' : ''}>${esc(g.first.kode_kelompok)} · ${esc(g.first.nama_mata_kuliah)}</option>`).join('')}
+              </select>
+            </label>
+          ` : ''}
+        </div>
+        <div style="margin-top:16px">
+          <small class="muted">${esc(r.kode_mata_kuliah)} · Frekuensi ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
+          <h1 style="margin-top:4px">${esc(r.nama_mata_kuliah)}</h1>
+          <p>Praktikan · Kelompok ${esc(r.kode_kelompok)} · Total ${att.total_hadir} dari ${att.total_sesi} sesi hadir (${att.persentase}%)</p>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Ringkasan kehadiran & nilai</h2>
+        </div>
+        <div class="card-body">
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Total Kehadiran</span>
+              <b>${att.total_hadir} <small style="font-weight:normal;font-size:13px">/ ${att.total_sesi} sesi</small></b>
+              <small class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.persentase}% Kehadiran</small>
+            </div>
+            <div class="stat">
+              <span class="label">Rata-rata Evaluasi</span>
+              <b>${fmt(s?.rata_evaluasi)}</b>
+              <small>${components.filter(c => c.kode_komponen?.startsWith('EVALUASI')).length} evaluasi dinilai</small>
+            </div>
+            <div class="stat">
+              <span class="label">Rata-rata Asistensi</span>
+              <b>${fmt(s?.rata_asistensi)}</b>
+              <small>${components.filter(c => c.kode_komponen?.startsWith('ASISTENSI')).length} asistensi dinilai</small>
+            </div>
+            <div class="stat">
+              <span class="label">Nilai Akhir</span>
+              <b>${fmt(s?.nilai_akhir)}</b>
+              <small>${s?.predikat ? `Predikat ${esc(s.predikat)}` : (s?.konfigurasi_nilai_tersedia ? 'Belum lengkap' : 'Konfigurasi belum tersedia')}</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Presensi mahasiswa · ${att.total_hadir} Hadir (${att.persentase}%)</h2>
+          <p>Catatan kehadiran Anda pada setiap pertemuan praktikum.</p>
+        </div>
+        ${attendanceRows}
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Komponen & bobot nilai akhir semester</h2>
+          <p>Rincian perolehan nilai dan bobot persentase pada kelas praktikum ini.</p>
+        </div>
+        ${componentRows}
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Nilai tiap pertemuan</h2>
+          <p>Riwayat nilai kategori dan umpan balik asisten per pertemuan.</p>
+        </div>
+        ${meetingResult.error ? `<div class="warning">${esc(meetingResult.error)}</div>` : ''}
+        ${meetingRows}
+      </section>
+    `;
+
+    $('#student-back-to-classes').onclick = () => {
+      window.selectedStudentClassId = null;
+      apiStudentGrades();
+    };
+    if ($('#student-class-selector')) {
+      $('#student-class-selector').onchange = e => {
+        window.selectedStudentClassId = e.target.value;
+        apiStudentGrades();
+      };
+    }
+  } catch (error) {
+    view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>`;
+  }
 }
 function hasUnsaved() { return changes.size || window.apiDraftStorageFailed || $('#meeting-date')?.dataset.dirty === '1' || $('#material')?.dataset.dirty === '1' || !!document.querySelector('#api-view [data-dirty="1"]') }
 function navigate(p) { if (hasUnsaved() && !confirm('Perubahan belum tersimpan di browser atau API. Tinggalkan halaman?')) return; window.apiDraftStorageFailed = false; changes.clear(); current = null; page = p; render() }
