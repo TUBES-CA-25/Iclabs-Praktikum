@@ -128,17 +128,19 @@ function initLoginInteractive() {
   // 5. Theme Mode Management (Dark Mode default)
   const themeToggleBtn = document.getElementById("auth-theme-toggle");
   const loginRoot = document.querySelector(".iclabs-login-split");
-  const sunSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
-  const moonSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
 
   const applyTheme = (theme) => {
     if (!loginRoot) return;
     const isLight = theme === 'light';
     loginRoot.classList.toggle('theme-light', isLight);
+    const themeIcon = document.getElementById("auth-theme-icon");
+    if (themeIcon) {
+      themeIcon.className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+    }
     if (themeToggleBtn) {
-      themeToggleBtn.innerHTML = isLight ? moonSvg : sunSvg;
-      themeToggleBtn.setAttribute('aria-label', isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang');
-      themeToggleBtn.setAttribute('title', isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang');
+      const label = isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang';
+      themeToggleBtn.setAttribute('aria-label', label);
+      themeToggleBtn.setAttribute('title', label);
     }
   };
 
@@ -146,7 +148,9 @@ function initLoginInteractive() {
   applyTheme(savedTheme);
 
   if (themeToggleBtn) {
-    themeToggleBtn.onclick = () => {
+    themeToggleBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const currentIsLight = loginRoot?.classList.contains('theme-light');
       const nextTheme = currentIsLight ? 'dark' : 'light';
       try { localStorage.setItem('iclabs-auth-theme', nextTheme); } catch { }
@@ -172,7 +176,7 @@ function login() {
         <div class="brand auth-split-logo-badge animate-levitate">
           <img src="assets/navbar-icon.webp" alt="Logo ICLabs" class="brand-logo">
         </div>
-        <h1 class="auth-split-title animate-enter">IC-LABS</h1>
+        <h1 class="auth-split-title animate-enter">ICLABS-PRAKTIKUM</h1>
         <p class="auth-split-subtitle animate-enter" style="animation-delay: 0.2s">
           Sistem Informasi Praktikum Laboratorium<br>Terintegrasi & Real-time.
         </p>
@@ -193,14 +197,6 @@ function login() {
       <div class="glow-sphere glow-sphere-1"></div>
       <div class="glow-sphere glow-sphere-2"></div>
 
-      <button type="button" id="auth-theme-toggle" class="auth-theme-toggle" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
-        <i class="fas fa-sun" id="auth-theme-icon"></i>
-      </button>
-
-      <button type="button" id="auth-theme-toggle" class="auth-theme-toggle" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      </button>
-
       <div id="login-card" class="tilt-card animate-enter" style="animation-delay: 0.3s">
         <div class="glass-card">
           <!-- Mobile Brand Banner -->
@@ -212,9 +208,14 @@ function login() {
             </div>
           </div>
 
-          <div class="auth-panel-heading">
-            <h2>Login ICLabs</h2>
-            <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
+          <div class="auth-card-top-row">
+            <div class="auth-panel-heading">
+              <h2>Login ICLabs</h2>
+              <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
+            </div>
+            <button type="button" id="auth-theme-toggle" class="auth-theme-pill" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
+              <i class="fa-solid fa-sun" id="auth-theme-icon"></i>
+            </button>
           </div>
 
           <div id="login-error" role="alert" aria-live="assertive"></div>
