@@ -2241,7 +2241,9 @@ dialog h2 {
 .iclabs-intro-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(240, 243, 238, 0.97);
+    background: rgba(9, 13, 26, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .iclabs-intro-stage {
@@ -2291,9 +2293,9 @@ dialog h2 {
     opacity: 0;
 }
 
-.iclabs-intro-name { text-align: center; color: #214943; }
-.iclabs-intro-name strong { display: block; font-size: 26px; font-weight: 650; letter-spacing: -0.04em; }
-.iclabs-intro-name span { display: block; margin-top: 5px; font-size: 12px; color: #52665f; }
+.iclabs-intro-name { text-align: center; color: #ffffff; }
+.iclabs-intro-name strong { display: block; font-size: 26px; font-weight: 650; letter-spacing: -0.04em; color: #ffffff; }
+.iclabs-intro-name span { display: block; margin-top: 5px; font-size: 12px; color: #94a3b8; }
 
 .iclabs-intro-skip {
     position: absolute;
@@ -2304,16 +2306,17 @@ dialog h2 {
     gap: 16px;
     min-height: 44px;
     padding: 10px 14px;
-    border: 1px solid #a6b9ac;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
-    background: #f0f3ee;
-    color: #31584e;
+    background: rgba(30, 41, 59, 0.85);
+    color: #cbd5e1;
     font: 500 12px/1 var(--font-sans);
     pointer-events: auto;
     cursor: pointer;
+    backdrop-filter: blur(8px);
 }
-.iclabs-intro-skip:hover { background: #e3ebe2; }
-.iclabs-intro-skip:focus-visible { outline: 2px solid #176b70; outline-offset: 4px; }
+.iclabs-intro-skip:hover { background: rgba(51, 65, 85, 0.95); color: #ffffff; }
+.iclabs-intro-skip:focus-visible { outline: 2px solid #3b82f6; outline-offset: 4px; }
 html.iclabs-intro-active [data-intro-destination] { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2981,11 +2984,40 @@ dialog select.assistant-select-error {
 }
 
 /* ==========================================================================
-   ICLabs Split Screen Login (Sumber Daya Parity)
+   ICLabs Split Screen Login (Sumber Daya Parity + Dark/Light Theme)
    ========================================================================== */
 
-/* Fullscreen split container */
+/* Fullscreen split container - Dark Mode by default */
 .iclabs-login.iclabs-login-split {
+    --auth-bg-right: #090d1a;
+    --auth-text-main: #ffffff;
+    --auth-text-sub: #94a3b8;
+    --auth-card-bg: rgba(15, 23, 42, 0.78);
+    --auth-card-border: rgba(255, 255, 255, 0.14);
+    --auth-card-shadow: 0 0 50px -10px rgba(37, 99, 235, 0.3), 0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    --auth-grid-color: rgba(59, 130, 246, 0.08);
+    --auth-input-bg: rgba(2, 6, 23, 0.65);
+    --auth-input-border: rgba(148, 163, 184, 0.25);
+    --auth-input-color: #ffffff;
+    --auth-input-focus-bg: rgba(2, 6, 23, 0.9);
+    --auth-input-icon: #60a5fa;
+    --auth-details-bg: rgba(2, 6, 23, 0.45);
+    --auth-details-border: rgba(148, 163, 184, 0.2);
+    --auth-details-text: #60a5fa;
+    --auth-details-input-bg: rgba(2, 6, 23, 0.85);
+    --auth-details-input-border: rgba(148, 163, 184, 0.3);
+    --auth-details-sec-bg: rgba(30, 58, 138, 0.4);
+    --auth-details-sec-border: rgba(59, 130, 246, 0.5);
+    --auth-details-sec-text: #93c5fd;
+    --auth-glow-sphere-1: radial-gradient(circle, rgba(59, 130, 246, 0.55) 0%, rgba(37, 99, 235, 0.3) 50%, transparent 70%);
+    --auth-glow-sphere-2: radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, rgba(99, 102, 241, 0.25) 50%, transparent 70%);
+    --auth-glow-blend: normal;
+    --auth-error-bg: rgba(127, 29, 29, 0.45);
+    --auth-error-border: rgba(239, 68, 68, 0.5);
+    --auth-error-color: #fca5a5;
+    --auth-footer-border: rgba(255, 255, 255, 0.12);
+    --auth-footer-link: #60a5fa;
+
     position: fixed;
     inset: 0;
     width: 100vw;
@@ -2995,10 +3027,43 @@ dialog select.assistant-select-error {
     overflow: hidden;
     padding: 0;
     margin: 0;
-    background-color: #f8fafc;
-    color: #1e293b;
+    background-color: var(--auth-bg-right);
+    color: var(--auth-text-main);
     font-family: 'Plus Jakarta Sans', sans-serif;
     z-index: 100;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light Theme Override */
+.iclabs-login.iclabs-login-split.theme-light {
+    --auth-bg-right: #f8fafc;
+    --auth-text-main: #1e293b;
+    --auth-text-sub: #64748b;
+    --auth-card-bg: rgba(255, 255, 255, 0.78);
+    --auth-card-border: rgba(255, 255, 255, 0.9);
+    --auth-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 20px 40px -6px rgba(0, 0, 0, 0.1), inset 0 0 20px rgba(255, 255, 255, 0.5);
+    --auth-grid-color: rgba(226, 232, 240, 0.5);
+    --auth-input-bg: rgba(255, 255, 255, 0.7);
+    --auth-input-border: #cbd5e1;
+    --auth-input-color: #0f172a;
+    --auth-input-focus-bg: #ffffff;
+    --auth-input-icon: #94a3b8;
+    --auth-details-bg: rgba(255, 255, 255, 0.7);
+    --auth-details-border: #e2e8f0;
+    --auth-details-text: #1d4ed8;
+    --auth-details-input-bg: #ffffff;
+    --auth-details-input-border: #cbd5e1;
+    --auth-details-sec-bg: #eff6ff;
+    --auth-details-sec-border: #bfdbfe;
+    --auth-details-sec-text: #1d4ed8;
+    --auth-glow-sphere-1: rgba(147, 197, 253, 0.3);
+    --auth-glow-sphere-2: rgba(165, 180, 252, 0.3);
+    --auth-glow-blend: multiply;
+    --auth-error-bg: rgba(254, 242, 242, 0.85);
+    --auth-error-border: #fecaca;
+    --auth-error-color: #dc2626;
+    --auth-footer-border: rgba(226, 232, 240, 0.6);
+    --auth-footer-link: #2563eb;
 }
 
 /* Keyframe animations */
@@ -3015,7 +3080,7 @@ dialog select.assistant-select-error {
 
 @keyframes pulse-soft {
     0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(1.05); }
+    50% { opacity: 0.55; transform: scale(1.08); }
 }
 
 .animate-enter {
@@ -3147,17 +3212,23 @@ dialog select.assistant-select-error {
     height: 100%;
 }
 
+.auth-split-divider .wave-front {
+    fill: var(--auth-bg-right);
+    transition: fill 0.3s ease;
+}
+
 /* Right Panel */
 .auth-split-panel {
     position: relative;
     width: 100%;
     height: 100%;
-    background-color: #f8fafc;
+    background-color: var(--auth-bg-right);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
     overflow-y: auto;
+    transition: background-color 0.3s ease;
 }
 
 @media (min-width: 1024px) {
@@ -3173,33 +3244,82 @@ dialog select.assistant-select-error {
     z-index: 0;
     background-size: 40px 40px;
     background-image: 
-        linear-gradient(to right, rgba(226, 232, 240, 0.5) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(226, 232, 240, 0.5) 1px, transparent 1px);
+        linear-gradient(to right, var(--auth-grid-color) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--auth-grid-color) 1px, transparent 1px);
     pointer-events: none;
+    transition: background-image 0.3s ease;
 }
 
 .glow-sphere {
     position: absolute;
-    width: 18rem;
-    height: 18rem;
+    width: 26rem;
+    height: 26rem;
     border-radius: 9999px;
-    mix-blend-mode: multiply;
-    filter: blur(80px);
+    mix-blend-mode: var(--auth-glow-blend);
+    filter: blur(60px);
     pointer-events: none;
     animation: pulse-soft 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    transition: mix-blend-mode 0.3s ease, background 0.3s ease;
 }
 
 .glow-sphere-1 {
-    top: 25%;
-    right: 25%;
-    background: rgba(147, 197, 253, 0.3);
+    top: 15%;
+    right: 15%;
+    background: var(--auth-glow-sphere-1);
 }
 
 .glow-sphere-2 {
-    bottom: 25%;
-    left: 25%;
-    background: rgba(165, 180, 252, 0.3);
+    bottom: 15%;
+    left: 15%;
+    background: var(--auth-glow-sphere-2);
     animation-delay: 2s;
+}
+
+/* Theme Toggle Button */
+.auth-theme-toggle {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 50;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 640px) {
+    .auth-theme-toggle {
+        top: 0.875rem;
+        right: 0.875rem;
+        width: 2.25rem;
+        height: 2.25rem;
+    }
+}
+
+.iclabs-login-split.theme-light .auth-theme-toggle {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.auth-theme-toggle:hover {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.iclabs-login-split.theme-light .auth-theme-toggle:hover {
+    background: #ffffff;
 }
 
 /* 3D Tilt Wrapper */
@@ -3219,18 +3339,16 @@ dialog select.assistant-select-error {
 
 /* Glassmorphism Card */
 .glass-card {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 
-        0 4px 6px -1px rgba(0, 0, 0, 0.05),
-        0 20px 40px -6px rgba(0, 0, 0, 0.1),
-        inset 0 0 20px rgba(255, 255, 255, 0.5);
+    background: var(--auth-card-bg);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid var(--auth-card-border);
+    box-shadow: var(--auth-card-shadow);
     border-radius: 2rem;
     padding: 2rem;
     position: relative;
     box-sizing: border-box;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 @media (min-width: 640px) {
@@ -3246,7 +3364,8 @@ dialog select.assistant-select-error {
     gap: 0.875rem;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    border-bottom: 1px solid var(--auth-card-border);
+    transition: border-color 0.3s ease;
 }
 
 @media (min-width: 1024px) {
@@ -3264,14 +3383,16 @@ dialog select.assistant-select-error {
 .auth-mobile-header strong {
     font-size: 1.125rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--auth-text-main);
     display: block;
     line-height: 1.2;
+    transition: color 0.3s ease;
 }
 
 .auth-mobile-header small {
     font-size: 0.75rem;
-    color: #64748b;
+    color: var(--auth-text-sub);
+    transition: color 0.3s ease;
 }
 
 /* Card Header */
@@ -3283,16 +3404,18 @@ dialog select.assistant-select-error {
     font-size: 1.875rem;
     line-height: 2.25rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--auth-text-main);
     letter-spacing: -0.025em;
     margin: 0;
+    transition: color 0.3s ease;
 }
 
 .auth-panel-heading p {
-    color: #64748b;
+    color: var(--auth-text-sub);
     margin-top: 0.5rem;
     font-size: 0.875rem;
     margin-bottom: 0;
+    transition: color 0.3s ease;
 }
 
 /* Alerts */
@@ -3303,12 +3426,13 @@ dialog select.assistant-select-error {
     padding: 0.875rem 1rem;
     margin-bottom: 1.25rem;
     font-size: 0.875rem;
-    color: #dc2626;
-    background: rgba(254, 242, 242, 0.85);
+    color: var(--auth-error-color);
+    background: var(--auth-error-bg);
     border-radius: 1rem;
-    border: 1px solid #fecaca;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--auth-error-border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(4px);
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 #login-error.is-visible {
@@ -3324,10 +3448,11 @@ dialog select.assistant-select-error {
     display: block;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #475569;
+    color: var(--auth-text-sub);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 0.5rem;
+    transition: color 0.3s ease;
 }
 
 .auth-input-wrap {
@@ -3342,13 +3467,13 @@ dialog select.assistant-select-error {
     display: flex;
     align-items: center;
     pointer-events: none;
-    color: #94a3b8;
-    transition: color 0.15s ease;
+    color: var(--auth-input-icon);
+    transition: color 0.2s ease;
     font-size: 0.875rem;
 }
 
 .auth-input-wrap:focus-within .auth-input-icon-left {
-    color: #2563eb;
+    color: #3b82f6;
 }
 
 .auth-input-control {
@@ -3357,20 +3482,20 @@ dialog select.assistant-select-error {
     box-sizing: border-box;
     padding: 0.875rem 1rem 0.875rem 2.75rem;
     font-size: 0.875rem;
-    color: #0f172a;
-    background: rgba(255, 255, 255, 0.7);
+    color: var(--auth-input-color);
+    background: var(--auth-input-bg);
     border-radius: 0.75rem;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--auth-input-border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
     font-family: inherit;
 }
 
 .auth-input-control:focus {
     outline: none;
-    background: #ffffff;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background: var(--auth-input-focus-bg);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 .auth-toggle-pwd {
@@ -3381,7 +3506,7 @@ dialog select.assistant-select-error {
     background: none;
     border: none;
     padding: 0.25rem;
-    color: #94a3b8;
+    color: var(--auth-input-icon);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -3392,7 +3517,7 @@ dialog select.assistant-select-error {
 }
 
 .auth-toggle-pwd:hover {
-    color: #475569;
+    color: var(--auth-text-main);
 }
 
 /* Remember Option */
@@ -3408,9 +3533,10 @@ dialog select.assistant-select-error {
     align-items: center;
     gap: 0.5rem;
     font-size: 0.8125rem;
-    color: #64748b;
+    color: var(--auth-text-sub);
     cursor: pointer;
     user-select: none;
+    transition: color 0.3s ease;
 }
 
 .auth-remember-check input {
@@ -3434,8 +3560,8 @@ dialog select.assistant-select-error {
     letter-spacing: 0.025em;
     border-radius: 0.75rem;
     color: #ffffff;
-    background-color: #2563eb;
-    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -2px rgba(37, 99, 235, 0.2);
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 10px 20px -3px rgba(37, 99, 235, 0.4), 0 4px 6px -2px rgba(37, 99, 235, 0.2);
     cursor: pointer;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -3445,9 +3571,9 @@ dialog select.assistant-select-error {
 }
 
 .auth-btn-primary:hover {
-    background-color: #1d4ed8;
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
     transform: translateY(-2px);
-    box-shadow: 0 14px 20px -3px rgba(37, 99, 235, 0.4);
+    box-shadow: 0 14px 24px -3px rgba(37, 99, 235, 0.5);
 }
 
 .auth-btn-primary:active {
@@ -3466,7 +3592,7 @@ dialog select.assistant-select-error {
     inset: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.25), transparent);
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.28), transparent);
     transform: translateX(-120%);
     transition: transform 0.7s ease-in-out;
     pointer-events: none;
@@ -3500,28 +3626,29 @@ dialog select.assistant-select-error {
 
 .auth-details-box {
     border-radius: 0.75rem;
-    border: 1px solid #e2e8f0;
-    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--auth-details-border);
+    background: var(--auth-details-bg);
     padding: 0.875rem 1rem;
     transition: all 0.2s ease;
 }
 
 .auth-details-box[open] {
-    background: rgba(255, 255, 255, 0.95);
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+    background: var(--auth-card-bg);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.2);
 }
 
 .auth-details-summary {
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #1d4ed8;
+    color: var(--auth-details-text);
     display: flex;
     align-items: center;
     gap: 0.5rem;
     list-style: none;
     user-select: none;
+    transition: color 0.2s ease;
 }
 
 .auth-details-summary::-webkit-details-marker {
@@ -3544,9 +3671,10 @@ dialog select.assistant-select-error {
 .auth-details-content p {
     font-size: 0.75rem;
     line-height: 1.25rem;
-    color: #64748b;
+    color: var(--auth-text-sub);
     margin-bottom: 0.75rem;
     margin-top: 0;
+    transition: color 0.3s ease;
 }
 
 .auth-details-content form {
@@ -3560,17 +3688,19 @@ dialog select.assistant-select-error {
     width: 100%;
     box-sizing: border-box;
     border-radius: 0.5rem;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--auth-details-input-border);
     padding: 0.625rem 0.75rem;
     font-size: 0.875rem;
-    color: #0f172a;
+    color: var(--auth-input-color);
+    background: var(--auth-details-input-bg);
     font-family: inherit;
+    transition: all 0.2s ease;
 }
 
 .auth-details-input:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 .auth-details-submit {
@@ -3596,13 +3726,14 @@ dialog select.assistant-select-error {
 }
 
 .auth-details-submit-secondary {
-    border: 1px solid #bfdbfe;
-    background-color: #eff6ff;
-    color: #1d4ed8;
+    border: 1px solid var(--auth-details-sec-border);
+    background-color: var(--auth-details-sec-bg);
+    color: var(--auth-details-sec-text);
 }
 
 .auth-details-submit-secondary:hover {
-    background-color: #dbeafe;
+    background-color: rgba(37, 99, 235, 0.5);
+    color: #ffffff;
 }
 
 /* Status Messages for activation and reset */
@@ -3617,23 +3748,23 @@ dialog select.assistant-select-error {
 
 .account-action-status.is-pending {
     display: block;
-    background-color: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
+    background-color: rgba(30, 58, 138, 0.35);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
 .account-action-status.is-success {
     display: block;
-    background-color: #ecfdf5;
-    color: #065f46;
-    border: 1px solid #a7f3d0;
+    background-color: rgba(6, 78, 59, 0.35);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .account-action-status.is-error {
     display: block;
-    background-color: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
+    background-color: rgba(127, 29, 29, 0.4);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 /* Card Bottom Links & Copyright */
@@ -3641,7 +3772,8 @@ dialog select.assistant-select-error {
     margin-top: 1.75rem;
     text-align: center;
     padding-top: 1.25rem;
-    border-top: 1px solid rgba(226, 232, 240, 0.6);
+    border-top: 1px solid var(--auth-footer-border);
+    transition: border-color 0.3s ease;
 }
 
 .auth-link-token {
@@ -3650,14 +3782,14 @@ dialog select.assistant-select-error {
     gap: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #2563eb;
+    color: var(--auth-footer-link);
     text-decoration: none;
     transition: color 0.2s ease;
     margin-bottom: 0.5rem;
 }
 
 .auth-link-token:hover {
-    color: #1d4ed8;
+    color: #93c5fd;
     text-decoration: underline;
 }
 
@@ -3667,20 +3799,22 @@ dialog select.assistant-select-error {
     gap: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #94a3b8;
+    color: var(--auth-text-sub);
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
 .auth-link-home:hover {
-    color: #2563eb;
+    color: #60a5fa;
 }
 
 .auth-copyright-text {
     margin-top: 1.25rem;
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--auth-text-sub);
     letter-spacing: 0.01em;
+    transition: color 0.3s ease;
 }
+
 
 

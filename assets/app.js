@@ -124,6 +124,35 @@ function initLoginInteractive() {
       }
     });
   });
+
+  // 5. Theme Mode Management (Dark Mode default)
+  const themeToggleBtn = document.getElementById("auth-theme-toggle");
+  const loginRoot = document.querySelector(".iclabs-login-split");
+  const sunSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+  const moonSvg = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+
+  const applyTheme = (theme) => {
+    if (!loginRoot) return;
+    const isLight = theme === 'light';
+    loginRoot.classList.toggle('theme-light', isLight);
+    if (themeToggleBtn) {
+      themeToggleBtn.innerHTML = isLight ? moonSvg : sunSvg;
+      themeToggleBtn.setAttribute('aria-label', isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang');
+      themeToggleBtn.setAttribute('title', isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang');
+    }
+  };
+
+  const savedTheme = localStorage.getItem('iclabs-auth-theme') || 'dark';
+  applyTheme(savedTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.onclick = () => {
+      const currentIsLight = loginRoot?.classList.contains('theme-light');
+      const nextTheme = currentIsLight ? 'dark' : 'light';
+      try { localStorage.setItem('iclabs-auth-theme', nextTheme); } catch { }
+      applyTheme(nextTheme);
+    };
+  }
 }
 
 function login() {
@@ -153,7 +182,7 @@ function login() {
         <svg preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
           <path d="M 100 0 C 60 20 40 60 100 100 Z" fill="#93c5fd" opacity="0.2" transform="translate(-15, 0)"></path>
           <path d="M 100 0 C 50 40 20 80 100 100 Z" fill="#60a5fa" opacity="0.3" transform="translate(-8, 0)"></path>
-          <path d="M 100 0 C 30 30 10 70 100 100 Z" fill="#f8fafc"></path>
+          <path class="wave-front" d="M 100 0 C 30 30 10 70 100 100 Z" fill="var(--auth-bg-right)"></path>
         </svg>
       </div>
     </div>
@@ -163,6 +192,14 @@ function login() {
       <div class="bg-grid-slate"></div>
       <div class="glow-sphere glow-sphere-1"></div>
       <div class="glow-sphere glow-sphere-2"></div>
+
+      <button type="button" id="auth-theme-toggle" class="auth-theme-toggle" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
+        <i class="fas fa-sun" id="auth-theme-icon"></i>
+      </button>
+
+      <button type="button" id="auth-theme-toggle" class="auth-theme-toggle" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
 
       <div id="login-card" class="tilt-card animate-enter" style="animation-delay: 0.3s">
         <div class="glass-card">
@@ -868,7 +905,7 @@ async function apiStudentGrades() {
     const attendanceLabel = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
 
     if (!groups.size) {
-      view.innerHTML = `<div class="intro"><div class="eyebrow">RUANG KERJA / MAHASISWA</div><h1>Praktikum Saya</h1><p>${esc(user.name)} · Hasil Penilaian & Presensi Praktikum</p></div><section class="card"><div class="empty">Belum ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
+      view.innerHTML = `<div class="intro"><div class="eyebrow">RUANG KERJA / MAHASISWA</div><h1>Praktikum Saya</h1><p>${esc(user.name)} · Hasil Penilaian & Presensi Praktikum</p></div><section class="card"><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
       return;
     }
 
@@ -891,8 +928,8 @@ async function apiStudentGrades() {
             </div>
           </div>
           ${[...groups.entries()].map(([id, group]) => {
-            const r = group.first, s = group.summary, att = group.attendanceSummary;
-            return `
+        const r = group.first, s = group.summary, att = group.attendanceSummary;
+        return `
               <button class="api-class-row" data-select-student-class="${esc(id)}">
                 <span>
                   <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
@@ -904,7 +941,7 @@ async function apiStudentGrades() {
                 <span aria-hidden="true">↗</span>
               </button>
             `;
-          }).join('')}
+      }).join('')}
         </section>
       `;
       document.querySelectorAll('[data-select-student-class]').forEach(b => {
@@ -1149,22 +1186,22 @@ async function gradeConfigPage() { const view = $('#api-view'); view.innerHTML =
 async function periodManagementPage() { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat periode akademik dari API pusat…</div>'; try { const data = await api('/admin/periods'), periods = Array.isArray(data.periode) ? data.periode : [], semesters = Array.isArray(data.semester) ? data.semester : []; view.innerHTML = `<div class="intro"><h1>Periode Akademik</h1></div><section class="card"><div class="card-head row between"><div><h2>Siklus akademik</h2><p>Satu periode operasional aktif pada satu waktu. Periode aktif menerima transaksi Praktikum baru.</p></div><button class="primary" id="period-create">+ Buat periode</button></div><div class="table-wrap"><table><thead><tr><th>TAHUN AJARAN</th><th>SEMESTER</th><th>RENTANG</th><th>KELAS</th><th>STATUS</th><th>AKSI</th></tr></thead><tbody>${periods.map(period => `<tr><td>${esc(period.tahun_akademik)}</td><td>${esc(period.semester?.nama || '—')} <small>(${esc(period.semester?.kode || '—')})</small></td><td>${esc(period.tanggal_mulai)} – ${esc(period.tanggal_selesai)}</td><td>${Number(period.jumlah_kelas || 0)}</td><td><span class="badge ${period.aktif ? 'green' : ''}">${period.aktif ? 'Aktif' : 'Ditutup'}</span></td><td>${period.aktif ? '<span class="help">Periode berjalan</span>' : `<button class="small" data-period-edit="${Number(period.id_periode_akademik)}">Ubah tanggal</button> <button class="small" data-period-activate="${Number(period.id_periode_akademik)}">Aktifkan</button>`}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Belum ada periode akademik.</td></tr>'}</tbody></table></div></section>`; $('#period-create').onclick = () => periodForm(semesters); document.querySelectorAll('[data-period-edit]').forEach(button => button.onclick = () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodEdit)); periodForm(semesters, period) }); document.querySelectorAll('[data-period-activate]').forEach(button => button.onclick = async () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodActivate)); if (!period || !confirm(`Aktifkan ${period.tahun_akademik} ${period.semester.nama}? Periode lain akan ditutup untuk transaksi baru, tanpa menghapus histori.`)) return; button.disabled = true; try { await api(`/admin/periods/${Number(period.id_periode_akademik)}/activate`, {}, 'POST'); activePeriod = await api('/active-period'); selectedAcademicPeriod = ''; classes = user.role === 'mahasiswa' ? [] : await api('/classes'); toast('Periode aktif diperbarui. Histori lama tetap tersimpan.'); periodManagementPage(); renderPeriodSummary() } catch (error) { toast(error.message); button.disabled = false } }) } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` } }
 function periodForm(semesters, period) { const semesterOptions = semesters.map(semester => `<option value="${Number(semester.id)}" ${Number(period?.semester?.id) === Number(semester.id) ? 'selected' : ''}>${esc(semester.nama)} (${esc(semester.kode)})</option>`).join(''); const modal = dialog(`<form><h2>${period ? 'Ubah periode' : 'Buat periode akademik'}</h2>${period ? '<p>Periode yang sudah memiliki kelas tidak dapat diubah. Periode aktif juga dikunci.</p>' : '<p>Periode baru dibuat nonaktif. Data batch sebelumnya tidak akan disalin.</p>'}<label>Tahun akademik<input name="tahun_akademik" type="text" placeholder="2027/2028" pattern="[0-9]{4}/[0-9]{4}" value="${esc(period?.tahun_akademik || '')}" ${period ? 'readonly' : ''} required></label>${period ? '' : `<label>Semester<select name="id_semester" required>${semesterOptions}</select></label>`}<div class="form-grid"><label>Tanggal mulai<input name="tanggal_mulai" type="date" value="${esc(period?.tanggal_mulai || '')}" required></label><label>Tanggal selesai<input name="tanggal_selesai" type="date" value="${esc(period?.tanggal_selesai || '')}" required></label></div><div class="row"><button type="button" data-close>Batal</button><button class="primary" type="submit">${period ? 'Simpan' : 'Buat periode'}</button></div></form>`); modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); if (!period) values.id_semester = Number(values.id_semester); const button = event.currentTarget.querySelector('[type=submit]'); button.disabled = true; try { await api(period ? `/admin/periods/${Number(period.id_periode_akademik)}` : '/admin/periods', values, period ? 'PATCH' : 'POST'); modal.close(); toast(period ? 'Tanggal periode diperbarui.' : 'Periode dibuat sebagai nonaktif.'); periodManagementPage() } catch (error) { toast(error.message); button.disabled = false } } }
 function renderPeriodSummary() { const summary = $('#api-period-summary'); if (summary) summary.innerHTML = apiPeriodSummary() }
-let accessSearchTimer=null,accessFilterState={cari:'',kode_peran:'',status_akun:''};
-async function accessManagementPage(){
-  const view=$('#api-view');
-  view.innerHTML='<div class="empty">Memuat data pengguna dan peran dari API pusat…</div>';
-  try{
-    const roles=await api('/admin/access-management/roles');
-    const query=new URLSearchParams();
-    if(accessFilterState.cari)query.set('cari',accessFilterState.cari);
-    if(accessFilterState.kode_peran)query.set('kode_peran',accessFilterState.kode_peran);
-    if(accessFilterState.status_akun)query.set('status_akun',accessFilterState.status_akun);
-    const qs=query.toString()?`?${query.toString()}`:'';
-    const users=await api(`/admin/access-management/users${qs}`);
-    const roleOptions=roles.map(r=>`<option value="${esc(r.kode)}" ${accessFilterState.kode_peran===r.kode?'selected':''}>${esc(r.nama)}</option>`).join('');
-    const statusOptions=[['','Semua status akun'],['AKTIF','Aktif'],['PENDING_AKTIVASI','Menunggu Aktivasi'],['TERKUNCI','Terkunci'],['DITANGGUHKAN','Ditangguhkan']].map(([val,label])=>`<option value="${esc(val)}" ${accessFilterState.status_akun===val?'selected':''}>${esc(label)}</option>`).join('');
-    const statusTone={AKTIF:'green',PENDING_AKTIVASI:'yellow',TERKUNCI:'red',DITANGGUHKAN:'red'};
-    view.innerHTML=`
+let accessSearchTimer = null, accessFilterState = { cari: '', kode_peran: '', status_akun: '' };
+async function accessManagementPage() {
+  const view = $('#api-view');
+  view.innerHTML = '<div class="empty">Memuat data pengguna dan peran dari API pusat…</div>';
+  try {
+    const roles = await api('/admin/access-management/roles');
+    const query = new URLSearchParams();
+    if (accessFilterState.cari) query.set('cari', accessFilterState.cari);
+    if (accessFilterState.kode_peran) query.set('kode_peran', accessFilterState.kode_peran);
+    if (accessFilterState.status_akun) query.set('status_akun', accessFilterState.status_akun);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    const users = await api(`/admin/access-management/users${qs}`);
+    const roleOptions = roles.map(r => `<option value="${esc(r.kode)}" ${accessFilterState.kode_peran === r.kode ? 'selected' : ''}>${esc(r.nama)}</option>`).join('');
+    const statusOptions = [['', 'Semua status akun'], ['AKTIF', 'Aktif'], ['PENDING_AKTIVASI', 'Menunggu Aktivasi'], ['TERKUNCI', 'Terkunci'], ['DITANGGUHKAN', 'Ditangguhkan']].map(([val, label]) => `<option value="${esc(val)}" ${accessFilterState.status_akun === val ? 'selected' : ''}>${esc(label)}</option>`).join('');
+    const statusTone = { AKTIF: 'green', PENDING_AKTIVASI: 'yellow', TERKUNCI: 'red', DITANGGUHKAN: 'red' };
+    view.innerHTML = `
       <div class="intro">
         <div class="eyebrow">ADMINISTRASI / RBAC PUSAT</div>
         <h1>Manajemen Akses</h1>
@@ -1203,59 +1240,59 @@ async function accessManagementPage(){
               </tr>
             </thead>
             <tbody>
-              ${users.map(u=>{
-                const tone=statusTone[u.status_akun?.kode]||'';
-                const roleBadges=(u.peran||[]).map(p=>`<span class="badge blue" title="Diberikan ${esc(p.mulai_pada||'')}">${esc(p.peran?.nama||p.peran?.kode||'Peran')}</span>`).join(' ')||'<span class="muted">Belum ada peran</span>';
-                return `<tr>
+              ${users.map(u => {
+      const tone = statusTone[u.status_akun?.kode] || '';
+      const roleBadges = (u.peran || []).map(p => `<span class="badge blue" title="Diberikan ${esc(p.mulai_pada || '')}">${esc(p.peran?.nama || p.peran?.kode || 'Peran')}</span>`).join(' ') || '<span class="muted">Belum ada peran</span>';
+      return `<tr>
                   <td>
-                    <strong>${esc(u.nama_lengkap||'Pengguna')}</strong>
-                    ${u.username?`<br><small class="muted">@${esc(u.username)}</small>`:''}
+                    <strong>${esc(u.nama_lengkap || 'Pengguna')}</strong>
+                    ${u.username ? `<br><small class="muted">@${esc(u.username)}</small>` : ''}
                   </td>
                   <td>
                     <span>${esc(u.email_login)}</span>
-                    ${u.nim?`<br><small class="muted">NIM: ${esc(u.nim)}</small>`:''}
+                    ${u.nim ? `<br><small class="muted">NIM: ${esc(u.nim)}</small>` : ''}
                   </td>
-                  <td><span class="badge ${tone}">${esc(u.status_akun?.nama||u.status_akun?.kode||'—')}</span></td>
+                  <td><span class="badge ${tone}">${esc(u.status_akun?.nama || u.status_akun?.kode || '—')}</span></td>
                   <td>${roleBadges}</td>
                   <td>
                     <button class="small" data-access-user="${Number(u.id)}">Detail & Kelola</button>
                   </td>
                 </tr>`;
-              }).join('')||'<tr><td colspan="5" class="empty">Tidak ada pengguna yang cocok dengan kriteria pencarian.</td></tr>'}
+    }).join('') || '<tr><td colspan="5" class="empty">Tidak ada pengguna yang cocok dengan kriteria pencarian.</td></tr>'}
             </tbody>
           </table>
         </div>
       </section>
     `;
-    $('#access-search').oninput=e=>{
+    $('#access-search').oninput = e => {
       clearTimeout(accessSearchTimer);
-      accessFilterState.cari=e.target.value.trim();
-      accessSearchTimer=setTimeout(()=>accessManagementPage(),350);
+      accessFilterState.cari = e.target.value.trim();
+      accessSearchTimer = setTimeout(() => accessManagementPage(), 350);
     };
-    $('#access-role-filter').onchange=e=>{
-      accessFilterState.kode_peran=e.target.value;
+    $('#access-role-filter').onchange = e => {
+      accessFilterState.kode_peran = e.target.value;
       accessManagementPage();
     };
-    $('#access-status-filter').onchange=e=>{
-      accessFilterState.status_akun=e.target.value;
+    $('#access-status-filter').onchange = e => {
+      accessFilterState.status_akun = e.target.value;
       accessManagementPage();
     };
-    $('#access-create-user').onclick=()=>openCreateUserModal(roles);
-    $('#access-bulk-assign').onclick=()=>openBulkAssignModal(roles,users);
-    document.querySelectorAll('[data-access-user]').forEach(btn=>{
-      btn.onclick=()=>{
-        const u=users.find(x=>Number(x.id)===Number(btn.dataset.accessUser));
-        if(u)openUserDetailModal(u,roles);
+    $('#access-create-user').onclick = () => openCreateUserModal(roles);
+    $('#access-bulk-assign').onclick = () => openBulkAssignModal(roles, users);
+    document.querySelectorAll('[data-access-user]').forEach(btn => {
+      btn.onclick = () => {
+        const u = users.find(x => Number(x.id) === Number(btn.dataset.accessUser));
+        if (u) openUserDetailModal(u, roles);
       };
     });
-  }catch(error){
-    view.innerHTML=`<div class="error" role="alert">${esc(error.message)}</div>`;
+  } catch (error) {
+    view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>`;
   }
 }
-function openCreateUserModal(roles){
-  const assignableRoles=user?.is_super_admin?roles:roles.filter(r=>r.kode!=='SUPER_ADMIN');
-  const roleOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
-  const modal=dialog(`
+function openCreateUserModal(roles) {
+  const assignableRoles = user?.is_super_admin ? roles : roles.filter(r => r.kode !== 'SUPER_ADMIN');
+  const roleOptions = assignableRoles.map(r => `<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+  const modal = dialog(`
     <form>
       <h2>Tambah Pengguna Baru</h2>
       <p>Membuat akun internal baru berstatus <em>Menunggu Aktivasi</em> dan menetapkan peran awal.</p>
@@ -1282,30 +1319,30 @@ function openCreateUserModal(roles){
       </div>
     </form>
   `);
-  modal.querySelector('form').onsubmit=async event=>{
+  modal.querySelector('form').onsubmit = async event => {
     event.preventDefault();
-    const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-    submitBtn.disabled=true;
-    const values=Object.fromEntries(new FormData(event.currentTarget));
-    if(!values.username)delete values.username;
-    if(!values.catatan_pemberian)delete values.catatan_pemberian;
-    try{
-      const res=await api('/admin/access-management/users',values,'POST');
+    const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+    submitBtn.disabled = true;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    if (!values.username) delete values.username;
+    if (!values.catatan_pemberian) delete values.catatan_pemberian;
+    try {
+      const res = await api('/admin/access-management/users', values, 'POST');
       modal.close();
-      const activationMsg=res.email_aktivasi?.pesan||'';
+      const activationMsg = res.email_aktivasi?.pesan || '';
       toast(`Pengguna ${esc(values.nama_lengkap)} berhasil didaftarkan. ${activationMsg}`);
       accessManagementPage();
-    }catch(err){
+    } catch (err) {
       toast(err.message);
-      submitBtn.disabled=false;
+      submitBtn.disabled = false;
     }
   };
 }
-function openBulkAssignModal(roles,users){
-  const assignableRoles=roles.filter(r=>r.kode!=='SUPER_ADMIN');
-  const roleOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
-  const eligibleUsers=users.filter(u=>u.dapat_diberi_peran&&Number(u.id)!==Number(user?.id));
-  const modal=dialog(`
+function openBulkAssignModal(roles, users) {
+  const assignableRoles = roles.filter(r => r.kode !== 'SUPER_ADMIN');
+  const roleOptions = assignableRoles.map(r => `<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+  const eligibleUsers = users.filter(u => u.dapat_diberi_peran && Number(u.id) !== Number(user?.id));
+  const modal = dialog(`
     <form>
       <h2>Penetapan Peran Massal</h2>
       <p>Tetapkan satu peran kanonikal kepada beberapa pengguna aktif atau menunggu aktivasi sekaligus (maksimal 100 pengguna).</p>
@@ -1329,13 +1366,13 @@ function openBulkAssignModal(roles,users){
               </tr>
             </thead>
             <tbody>
-              ${eligibleUsers.map(u=>`
+              ${eligibleUsers.map(u => `
                 <tr>
                   <td><input type="checkbox" name="id_pengguna" value="${Number(u.id)}"></td>
                   <td>${esc(u.nama_lengkap)}</td>
                   <td>${esc(u.email_login)}</td>
                 </tr>
-              `).join('')||'<tr><td colspan="3" class="empty">Tidak ada pengguna yang memenuhi syarat.</td></tr>'}
+              `).join('') || '<tr><td colspan="3" class="empty">Tidak ada pengguna yang memenuhi syarat.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1346,69 +1383,69 @@ function openBulkAssignModal(roles,users){
       </div>
     </form>
   `);
-  const selectAll=modal.querySelector('#bulk-select-all');
-  if(selectAll){
-    selectAll.onchange=e=>{
-      modal.querySelectorAll('input[name="id_pengguna"]').forEach(cb=>cb.checked=e.target.checked);
+  const selectAll = modal.querySelector('#bulk-select-all');
+  if (selectAll) {
+    selectAll.onchange = e => {
+      modal.querySelectorAll('input[name="id_pengguna"]').forEach(cb => cb.checked = e.target.checked);
     };
   }
-  modal.querySelector('form').onsubmit=async event=>{
+  modal.querySelector('form').onsubmit = async event => {
     event.preventDefault();
-    const checked=[...modal.querySelectorAll('input[name="id_pengguna"]:checked')].map(cb=>Number(cb.value));
-    if(!checked.length){
+    const checked = [...modal.querySelectorAll('input[name="id_pengguna"]:checked')].map(cb => Number(cb.value));
+    if (!checked.length) {
       toast('Pilih minimal satu akun pengguna.');
       return;
     }
-    const roleCode=modal.querySelector('select[name="kode_peran"]').value;
-    const note=modal.querySelector('input[name="catatan_pemberian"]').value.trim();
-    const submitBtn=modal.querySelector('#bulk-submit-btn');
-    submitBtn.disabled=true;
-    try{
-      const payload={
-        id_pengguna:checked,
-        kode_peran:roleCode,
-        ...(note?{catatan_pemberian:note}:{})
+    const roleCode = modal.querySelector('select[name="kode_peran"]').value;
+    const note = modal.querySelector('input[name="catatan_pemberian"]').value.trim();
+    const submitBtn = modal.querySelector('#bulk-submit-btn');
+    submitBtn.disabled = true;
+    try {
+      const payload = {
+        id_pengguna: checked,
+        kode_peran: roleCode,
+        ...(note ? { catatan_pemberian: note } : {})
       };
-      const res=await api('/admin/access-management/roles/bulk',payload,'POST');
+      const res = await api('/admin/access-management/roles/bulk', payload, 'POST');
       modal.close();
-      const countSuccess=res.berhasil?.length||0;
-      const countSkipped=res.dilewati?.length||0;
+      const countSuccess = res.berhasil?.length || 0;
+      const countSkipped = res.dilewati?.length || 0;
       toast(`Peran massal berhasil ditetapkan ke ${countSuccess} akun. (${countSkipped} dilewati)`);
       accessManagementPage();
-    }catch(err){
+    } catch (err) {
       toast(err.message);
-      submitBtn.disabled=false;
+      submitBtn.disabled = false;
     }
   };
 }
-function openUserDetailModal(u,roles){
-  const isSelf=Number(u.id)===Number(user?.id);
-  const activeRoleCodes=(u.peran||[]).map(p=>p.peran?.kode);
-  const assignableRoles=roles.filter(r=>{
-    if(activeRoleCodes.includes(r.kode))return false;
-    if(r.kode==='SUPER_ADMIN'&&!user?.is_super_admin)return false;
+function openUserDetailModal(u, roles) {
+  const isSelf = Number(u.id) === Number(user?.id);
+  const activeRoleCodes = (u.peran || []).map(p => p.peran?.kode);
+  const assignableRoles = roles.filter(r => {
+    if (activeRoleCodes.includes(r.kode)) return false;
+    if (r.kode === 'SUPER_ADMIN' && !user?.is_super_admin) return false;
     return true;
   });
-  const assignableOptions=assignableRoles.map(r=>`<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
+  const assignableOptions = assignableRoles.map(r => `<option value="${esc(r.kode)}">${esc(r.nama)} (${esc(r.kode)})</option>`).join('');
 
-  const modal=dialog(`
+  const modal = dialog(`
     <div>
       <div class="row between" style="align-items:flex-start">
         <div>
-          <h2>${esc(u.nama_lengkap||'Pengguna')}</h2>
-          <small class="muted">${esc(u.email_login)}${u.username?` · @${esc(u.username)}`:''}${u.nim?` · NIM ${esc(u.nim)}`:''}</small>
+          <h2>${esc(u.nama_lengkap || 'Pengguna')}</h2>
+          <small class="muted">${esc(u.email_login)}${u.username ? ` · @${esc(u.username)}` : ''}${u.nim ? ` · NIM ${esc(u.nim)}` : ''}</small>
         </div>
-        <span class="badge ${u.status_akun?.kode==='AKTIF'?'green':'yellow'}">${esc(u.status_akun?.nama||u.status_akun?.kode||'')}</span>
+        <span class="badge ${u.status_akun?.kode === 'AKTIF' ? 'green' : 'yellow'}">${esc(u.status_akun?.nama || u.status_akun?.kode || '')}</span>
       </div>
 
       <section class="card" style="margin-top:14px">
         <div class="card-head"><h2>Profil Akun</h2></div>
         <form id="edit-profile-form" class="card-body">
           <label>Nama Lengkap
-            <input name="nama_lengkap" type="text" maxlength="200" required value="${esc(u.nama_lengkap||'')}">
+            <input name="nama_lengkap" type="text" maxlength="200" required value="${esc(u.nama_lengkap || '')}">
           </label>
           <div class="row between" style="margin-top:8px">
-            <small class="muted">Versi profil: ${Number(u.versi_profil||1)}</small>
+            <small class="muted">Versi profil: ${Number(u.versi_profil || 1)}</small>
             <button type="submit" class="small primary">Simpan Nama</button>
           </div>
         </form>
@@ -1417,14 +1454,14 @@ function openUserDetailModal(u,roles){
       <section class="card" style="margin-top:14px">
         <div class="card-head"><h2>Aksi Keamanan Akun</h2></div>
         <div class="card-body row" style="gap:8px;flex-wrap:wrap">
-          ${u.status_akun?.kode==='PENDING_AKTIVASI'?`<button type="button" class="small" id="btn-send-activation">Kirim Ulang Email Aktivasi</button>`:''}
-          ${user?.is_super_admin?`<button type="button" class="small" id="btn-issue-token">Terbitkan Token Aktivasi</button>`:''}
-          ${user?.is_super_admin&&u.status_akun?.kode==='AKTIF'&&!isSelf?`<button type="button" class="small danger" id="btn-reset-password">Reset Password Akun</button>`:''}
+          ${u.status_akun?.kode === 'PENDING_AKTIVASI' ? `<button type="button" class="small" id="btn-send-activation">Kirim Ulang Email Aktivasi</button>` : ''}
+          ${user?.is_super_admin ? `<button type="button" class="small" id="btn-issue-token">Terbitkan Token Aktivasi</button>` : ''}
+          ${user?.is_super_admin && u.status_akun?.kode === 'AKTIF' && !isSelf ? `<button type="button" class="small danger" id="btn-reset-password">Reset Password Akun</button>` : ''}
         </div>
       </section>
 
       <section class="card" style="margin-top:14px">
-        <div class="card-head"><h2>Peran Aktif (${(u.peran||[]).length})</h2></div>
+        <div class="card-head"><h2>Peran Aktif (${(u.peran || []).length})</h2></div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -1436,29 +1473,29 @@ function openUserDetailModal(u,roles){
               </tr>
             </thead>
             <tbody>
-              ${(u.peran||[]).map(p=>{
-                const isLaboran=p.peran?.kode==='LABORAN';
-                return `<tr>
+              ${(u.peran || []).map(p => {
+    const isLaboran = p.peran?.kode === 'LABORAN';
+    return `<tr>
                   <td>
-                    <strong>${esc(p.peran?.nama||p.peran?.kode)}</strong>
+                    <strong>${esc(p.peran?.nama || p.peran?.kode)}</strong>
                     <br><small class="muted">Versi ${Number(p.versi)}</small>
                   </td>
-                  <td><small>${esc(p.mulai_pada||'—')}</small></td>
-                  <td><small>${esc(p.catatan_pemberian||'—')}</small></td>
+                  <td><small>${esc(p.mulai_pada || '—')}</small></td>
+                  <td><small>${esc(p.catatan_pemberian || '—')}</small></td>
                   <td>
                     <div class="row" style="gap:4px">
-                      ${isLaboran?`<button type="button" class="small" data-lab-scope="${Number(p.id)}">Cakupan Lab</button>`:''}
-                      ${!isSelf?`<button type="button" class="small danger" data-end-role="${Number(p.id)}" data-role-version="${Number(p.versi)}">Akhiri</button>`:'<small class="muted">Akun sendiri</small>'}
+                      ${isLaboran ? `<button type="button" class="small" data-lab-scope="${Number(p.id)}">Cakupan Lab</button>` : ''}
+                      ${!isSelf ? `<button type="button" class="small danger" data-end-role="${Number(p.id)}" data-role-version="${Number(p.versi)}">Akhiri</button>` : '<small class="muted">Akun sendiri</small>'}
                     </div>
                   </td>
                 </tr>`;
-              }).join('')||'<tr><td colspan="4" class="empty">Tidak ada peran aktif pada akun ini.</td></tr>'}
+  }).join('') || '<tr><td colspan="4" class="empty">Tidak ada peran aktif pada akun ini.</td></tr>'}
             </tbody>
           </table>
         </div>
       </section>
 
-      ${!isSelf&&u.dapat_diberi_peran&&assignableRoles.length?`
+      ${!isSelf && u.dapat_diberi_peran && assignableRoles.length ? `
       <section class="card" style="margin-top:14px">
         <div class="card-head"><h2>Tetapkan Peran Baru</h2></div>
         <form id="assign-role-form" class="card-body">
@@ -1475,7 +1512,7 @@ function openUserDetailModal(u,roles){
           </div>
         </form>
       </section>
-      `:''}
+      `: ''}
 
       <div class="row" style="margin-top:18px">
         <button type="button" data-close>Tutup</button>
@@ -1483,50 +1520,50 @@ function openUserDetailModal(u,roles){
     </div>
   `);
 
-  const editProfileForm=modal.querySelector('#edit-profile-form');
-  if(editProfileForm){
-    editProfileForm.onsubmit=async event=>{
+  const editProfileForm = modal.querySelector('#edit-profile-form');
+  if (editProfileForm) {
+    editProfileForm.onsubmit = async event => {
       event.preventDefault();
-      const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-      submitBtn.disabled=true;
-      const newName=editProfileForm.elements.nama_lengkap.value.trim();
-      try{
-        await api(`/admin/access-management/users/${Number(u.id)}/profile`,{nama_lengkap:newName,versi:Number(u.versi_profil||1)},'PATCH');
-        u.nama_lengkap=newName;
-        u.versi_profil=Number(u.versi_profil||1)+1;
+      const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+      submitBtn.disabled = true;
+      const newName = editProfileForm.elements.nama_lengkap.value.trim();
+      try {
+        await api(`/admin/access-management/users/${Number(u.id)}/profile`, { nama_lengkap: newName, versi: Number(u.versi_profil || 1) }, 'PATCH');
+        u.nama_lengkap = newName;
+        u.versi_profil = Number(u.versi_profil || 1) + 1;
         modal.close();
         toast('Nama profil pengguna berhasil diperbarui.');
         accessManagementPage();
-      }catch(err){
+      } catch (err) {
         toast(err.message);
-        submitBtn.disabled=false;
+        submitBtn.disabled = false;
       }
     };
   }
 
-  const btnSendActivation=modal.querySelector('#btn-send-activation');
-  if(btnSendActivation){
-    btnSendActivation.onclick=async()=>{
-      btnSendActivation.disabled=true;
-      try{
-        const res=await api(`/admin/access-management/users/${Number(u.id)}/activation-email`,{},'POST');
-        toast(res.message||'Email aktivasi berhasil dikirim.');
-      }catch(err){
+  const btnSendActivation = modal.querySelector('#btn-send-activation');
+  if (btnSendActivation) {
+    btnSendActivation.onclick = async () => {
+      btnSendActivation.disabled = true;
+      try {
+        const res = await api(`/admin/access-management/users/${Number(u.id)}/activation-email`, {}, 'POST');
+        toast(res.message || 'Email aktivasi berhasil dikirim.');
+      } catch (err) {
         toast(err.message);
-      }finally{
-        btnSendActivation.disabled=false;
+      } finally {
+        btnSendActivation.disabled = false;
       }
     };
   }
 
-  const btnIssueToken=modal.querySelector('#btn-issue-token');
-  if(btnIssueToken){
-    btnIssueToken.onclick=async()=>{
-      btnIssueToken.disabled=true;
-      try{
-        const res=await api(`/admin/access-management/users/${Number(u.id)}/activation-token`,{},'POST');
-        const tokenVal=res.token||res.data?.token||'';
-        const expVal=res.kadaluarsa_pada||res.data?.kadaluarsa_pada||'';
+  const btnIssueToken = modal.querySelector('#btn-issue-token');
+  if (btnIssueToken) {
+    btnIssueToken.onclick = async () => {
+      btnIssueToken.disabled = true;
+      try {
+        const res = await api(`/admin/access-management/users/${Number(u.id)}/activation-token`, {}, 'POST');
+        const tokenVal = res.token || res.data?.token || '';
+        const expVal = res.kadaluarsa_pada || res.data?.kadaluarsa_pada || '';
         dialog(`
           <div>
             <h2>Token Aktivasi Manual</h2>
@@ -1538,18 +1575,18 @@ function openUserDetailModal(u,roles){
             <div class="row"><button type="button" data-close>Tutup</button></div>
           </div>
         `);
-      }catch(err){
+      } catch (err) {
         toast(err.message);
-      }finally{
-        btnIssueToken.disabled=false;
+      } finally {
+        btnIssueToken.disabled = false;
       }
     };
   }
 
-  const btnResetPassword=modal.querySelector('#btn-reset-password');
-  if(btnResetPassword){
-    btnResetPassword.onclick=()=>{
-      const passModal=dialog(`
+  const btnResetPassword = modal.querySelector('#btn-reset-password');
+  if (btnResetPassword) {
+    btnResetPassword.onclick = () => {
+      const passModal = dialog(`
         <form>
           <h2>Reset Password Akun</h2>
           <p>Password baru akan langsung diaktifkan untuk akun <strong>${esc(u.email_login)}</strong>. Seluruh sesi login lama akun ini akan dicabut.</p>
@@ -1565,33 +1602,33 @@ function openUserDetailModal(u,roles){
           </div>
         </form>
       `);
-      passModal.querySelector('form').onsubmit=async event=>{
+      passModal.querySelector('form').onsubmit = async event => {
         event.preventDefault();
-        const p1=passModal.querySelector('input[name="password"]').value;
-        const p2=passModal.querySelector('input[name="password_confirmation"]').value;
-        if(p1!==p2){
+        const p1 = passModal.querySelector('input[name="password"]').value;
+        const p2 = passModal.querySelector('input[name="password_confirmation"]').value;
+        if (p1 !== p2) {
           toast('Konfirmasi password tidak cocok.');
           return;
         }
-        const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-        submitBtn.disabled=true;
-        try{
-          await api(`/admin/access-management/users/${Number(u.id)}/password`,{password:p1,password_confirmation:p2},'PATCH');
+        const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+        try {
+          await api(`/admin/access-management/users/${Number(u.id)}/password`, { password: p1, password_confirmation: p2 }, 'PATCH');
           passModal.close();
           toast('Password akun berhasil diperbarui. Semua sesi aktif akun tersebut telah dicabut.');
-        }catch(err){
+        } catch (err) {
           toast(err.message);
-          submitBtn.disabled=false;
+          submitBtn.disabled = false;
         }
       };
     };
   }
 
-  modal.querySelectorAll('[data-end-role]').forEach(btn=>{
-    btn.onclick=()=>{
-      const assignmentId=Number(btn.dataset.endRole);
-      const roleVersion=Number(btn.dataset.roleVersion);
-      const endModal=dialog(`
+  modal.querySelectorAll('[data-end-role]').forEach(btn => {
+    btn.onclick = () => {
+      const assignmentId = Number(btn.dataset.endRole);
+      const roleVersion = Number(btn.dataset.roleVersion);
+      const endModal = dialog(`
         <form>
           <h2>Akhiri Peran Pengguna</h2>
           <p>Peran akan dinonaktifkan secara permanen dengan pencatatan audit.</p>
@@ -1604,76 +1641,76 @@ function openUserDetailModal(u,roles){
           </div>
         </form>
       `);
-      endModal.querySelector('form').onsubmit=async event=>{
+      endModal.querySelector('form').onsubmit = async event => {
         event.preventDefault();
-        const reason=endModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
-        const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-        submitBtn.disabled=true;
-        try{
-          await api(`/admin/access-management/users/${Number(u.id)}/roles/${assignmentId}/end`,{versi:roleVersion,catatan_berakhir:reason},'PATCH');
+        const reason = endModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
+        const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+        try {
+          await api(`/admin/access-management/users/${Number(u.id)}/roles/${assignmentId}/end`, { versi: roleVersion, catatan_berakhir: reason }, 'PATCH');
           endModal.close();
           modal.close();
           toast('Peran pengguna berhasil diakhiri.');
           accessManagementPage();
-        }catch(err){
+        } catch (err) {
           toast(err.message);
-          submitBtn.disabled=false;
+          submitBtn.disabled = false;
         }
       };
     };
   });
 
-  modal.querySelectorAll('[data-lab-scope]').forEach(btn=>{
-    btn.onclick=()=>{
-      const assignmentId=Number(btn.dataset.labScope);
-      const assignment=(u.peran||[]).find(p=>Number(p.id)===assignmentId);
-      if(assignment)openLaboratoryScopesModal(u,assignment);
+  modal.querySelectorAll('[data-lab-scope]').forEach(btn => {
+    btn.onclick = () => {
+      const assignmentId = Number(btn.dataset.labScope);
+      const assignment = (u.peran || []).find(p => Number(p.id) === assignmentId);
+      if (assignment) openLaboratoryScopesModal(u, assignment);
     };
   });
 
-  const assignRoleForm=modal.querySelector('#assign-role-form');
-  if(assignRoleForm){
-    assignRoleForm.onsubmit=async event=>{
+  const assignRoleForm = modal.querySelector('#assign-role-form');
+  if (assignRoleForm) {
+    assignRoleForm.onsubmit = async event => {
       event.preventDefault();
-      const roleCode=assignRoleForm.elements.kode_peran.value;
-      const note=assignRoleForm.elements.catatan_pemberian.value.trim();
-      const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-      submitBtn.disabled=true;
-      try{
-        await api(`/admin/access-management/users/${Number(u.id)}/roles`,{kode_peran:roleCode,catatan_pemberian:note},'POST');
+      const roleCode = assignRoleForm.elements.kode_peran.value;
+      const note = assignRoleForm.elements.catatan_pemberian.value.trim();
+      const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+      submitBtn.disabled = true;
+      try {
+        await api(`/admin/access-management/users/${Number(u.id)}/roles`, { kode_peran: roleCode, catatan_pemberian: note }, 'POST');
         modal.close();
         toast('Peran baru berhasil ditetapkan.');
         accessManagementPage();
-      }catch(err){
+      } catch (err) {
         toast(err.message);
-        submitBtn.disabled=false;
+        submitBtn.disabled = false;
       }
     };
   }
 }
-async function openLaboratoryScopesModal(u,assignment){
-  const modal=dialog(`
+async function openLaboratoryScopesModal(u, assignment) {
+  const modal = dialog(`
     <div>
       <h2>Cakupan Laboratorium · ${esc(u.nama_lengkap)}</h2>
-      <p>Kelola akses laboratorium untuk peran <strong>${esc(assignment.peran?.nama||'Laboran')}</strong>.</p>
+      <p>Kelola akses laboratorium untuk peran <strong>${esc(assignment.peran?.nama || 'Laboran')}</strong>.</p>
       <div id="scopes-list-view"><div class="empty">Memuat cakupan laboratorium…</div></div>
       <div class="row" style="margin-top:14px">
         <button type="button" data-close>Tutup</button>
       </div>
     </div>
   `);
-  const renderScopes=async()=>{
-    const listView=modal.querySelector('#scopes-list-view');
-    try{
-      const [scopes,refs]=await Promise.all([
+  const renderScopes = async () => {
+    const listView = modal.querySelector('#scopes-list-view');
+    try {
+      const [scopes, refs] = await Promise.all([
         api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes`),
         api('/references')
       ]);
-      const labs=Array.isArray(refs.laboratorium)?refs.laboratorium:[];
-      const activeScopes=scopes.filter(s=>s.status?.kode==='AKTIF'&&!s.berakhir_pada);
-      const labOptions=labs.map(l=>`<option value="${Number(l.id)}">${esc(l.nama)} (${esc(l.kode)})</option>`).join('');
+      const labs = Array.isArray(refs.laboratorium) ? refs.laboratorium : [];
+      const activeScopes = scopes.filter(s => s.status?.kode === 'AKTIF' && !s.berakhir_pada);
+      const labOptions = labs.map(l => `<option value="${Number(l.id)}">${esc(l.nama)} (${esc(l.kode)})</option>`).join('');
 
-      listView.innerHTML=`
+      listView.innerHTML = `
         <div class="table-wrap">
           <table>
             <thead>
@@ -1685,16 +1722,16 @@ async function openLaboratoryScopesModal(u,assignment){
               </tr>
             </thead>
             <tbody>
-              ${activeScopes.map(s=>`
+              ${activeScopes.map(s => `
                 <tr>
-                  <td><strong>${esc(s.jenis_cakupan?.nama||s.jenis_cakupan?.kode)}</strong></td>
-                  <td>${s.laboratorium?esc(s.laboratorium.nama):'<span class="muted">Semua Laboratorium</span>'}</td>
-                  <td><small>${esc(s.catatan_pemberian||'—')}</small></td>
+                  <td><strong>${esc(s.jenis_cakupan?.nama || s.jenis_cakupan?.kode)}</strong></td>
+                  <td>${s.laboratorium ? esc(s.laboratorium.nama) : '<span class="muted">Semua Laboratorium</span>'}</td>
+                  <td><small>${esc(s.catatan_pemberian || '—')}</small></td>
                   <td>
                     <button class="small danger" data-end-scope="${Number(s.id)}" data-scope-version="${Number(s.versi)}">Akhiri</button>
                   </td>
                 </tr>
-              `).join('')||'<tr><td colspan="4" class="empty">Belum ada cakupan laboratorium aktif.</td></tr>'}
+              `).join('') || '<tr><td colspan="4" class="empty">Belum ada cakupan laboratorium aktif.</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -1725,19 +1762,19 @@ async function openLaboratoryScopesModal(u,assignment){
         </section>
       `;
 
-      const typeSelect=listView.querySelector('#scope-type-select');
-      const labField=listView.querySelector('#scope-lab-field');
-      if(typeSelect&&labField){
-        typeSelect.onchange=e=>{
-          labField.style.display=e.target.value==='LABORATORIUM'?'block':'none';
+      const typeSelect = listView.querySelector('#scope-type-select');
+      const labField = listView.querySelector('#scope-lab-field');
+      if (typeSelect && labField) {
+        typeSelect.onchange = e => {
+          labField.style.display = e.target.value === 'LABORATORIUM' ? 'block' : 'none';
         };
       }
 
-      listView.querySelectorAll('[data-end-scope]').forEach(btn=>{
-        btn.onclick=()=>{
-          const scopeId=Number(btn.dataset.endScope);
-          const scopeVer=Number(btn.dataset.scopeVersion);
-          const endScopeModal=dialog(`
+      listView.querySelectorAll('[data-end-scope]').forEach(btn => {
+        btn.onclick = () => {
+          const scopeId = Number(btn.dataset.endScope);
+          const scopeVer = Number(btn.dataset.scopeVersion);
+          const endScopeModal = dialog(`
             <form>
               <h2>Akhiri Cakupan Laboratorium</h2>
               <label>Alasan Pengakhiran (minimal 10 karakter)
@@ -1749,49 +1786,49 @@ async function openLaboratoryScopesModal(u,assignment){
               </div>
             </form>
           `);
-          endScopeModal.querySelector('form').onsubmit=async event=>{
+          endScopeModal.querySelector('form').onsubmit = async event => {
             event.preventDefault();
-            const note=endScopeModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
-            const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-            submitBtn.disabled=true;
-            try{
-              await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes/${scopeId}/end`,{versi:scopeVer,catatan_berakhir:note},'PATCH');
+            const note = endScopeModal.querySelector('textarea[name="catatan_berakhir"]').value.trim();
+            const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+            submitBtn.disabled = true;
+            try {
+              await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes/${scopeId}/end`, { versi: scopeVer, catatan_berakhir: note }, 'PATCH');
               endScopeModal.close();
               toast('Cakupan laboratorium berhasil diakhiri.');
               renderScopes();
-            }catch(err){
+            } catch (err) {
               toast(err.message);
-              submitBtn.disabled=false;
+              submitBtn.disabled = false;
             }
           };
         };
       });
 
-      const addScopeForm=listView.querySelector('#add-scope-form');
-      if(addScopeForm){
-        addScopeForm.onsubmit=async event=>{
+      const addScopeForm = listView.querySelector('#add-scope-form');
+      if (addScopeForm) {
+        addScopeForm.onsubmit = async event => {
           event.preventDefault();
-          const typeVal=addScopeForm.elements.kode_jenis_cakupan.value;
-          const labVal=typeVal==='LABORATORIUM'?Number(addScopeForm.elements.id_laboratorium.value):null;
-          const note=addScopeForm.elements.catatan_pemberian.value.trim();
-          const submitBtn=event.currentTarget.querySelector('[type="submit"]');
-          submitBtn.disabled=true;
-          try{
-            await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes`,{
-              kode_jenis_cakupan:typeVal,
-              id_laboratorium:labVal,
-              catatan_pemberian:note
-            },'POST');
+          const typeVal = addScopeForm.elements.kode_jenis_cakupan.value;
+          const labVal = typeVal === 'LABORATORIUM' ? Number(addScopeForm.elements.id_laboratorium.value) : null;
+          const note = addScopeForm.elements.catatan_pemberian.value.trim();
+          const submitBtn = event.currentTarget.querySelector('[type="submit"]');
+          submitBtn.disabled = true;
+          try {
+            await api(`/admin/access-management/users/${Number(u.id)}/roles/${Number(assignment.id)}/lab-scopes`, {
+              kode_jenis_cakupan: typeVal,
+              id_laboratorium: labVal,
+              catatan_pemberian: note
+            }, 'POST');
             toast('Cakupan laboratorium berhasil ditambahkan.');
             renderScopes();
-          }catch(err){
+          } catch (err) {
             toast(err.message);
-            submitBtn.disabled=false;
+            submitBtn.disabled = false;
           }
         };
       }
-    }catch(err){
-      listView.innerHTML=`<div class="error" role="alert">${esc(err.message)}</div>`;
+    } catch (err) {
+      listView.innerHTML = `<div class="error" role="alert">${esc(err.message)}</div>`;
     }
   };
   renderScopes();
