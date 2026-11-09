@@ -8,42 +8,366 @@ async function api(path, data, method) { const r = await fetch(apiUrl(path), { m
 function toast(s) { $('#toast').textContent = s; $('#toast').style.display = 'block'; setTimeout(() => $('#toast').style.display = 'none', 4500) }
 function badge(s) { return `<span class="badge ${['Dikunci', 'Terverifikasi', 'Lengkap'].includes(s) ? 'green' : s === 'Perlu Revisi' ? 'red' : ['Diajukan', 'Draft'].includes(s) ? 'yellow' : ''}">${esc(s)}</span>` }
 function brand() { return '<div class="brand"><img class="brand-logo" src="assets/logo-iclabs.jpg" alt="Logo ICLabs" width="44" height="47"><div><strong>ICLabs Praktikum</strong><small>FIKOM UMI</small></div></div>' }
+function initLoginInteractive() {
+  const canvas = document.getElementById("particle-canvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    let particlesArray = [];
+    const setCanvasSize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+    };
+    setCanvasSize();
+    window.addEventListener("resize", setCanvasSize);
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = Math.random() * 0.3 - 0.15;
+        this.speedY = Math.random() * 0.3 - 0.15;
+        this.color = "rgba(255, 255, 255, 0.4)";
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x > canvas.width || this.x < 0) this.speedX = -this.speedX;
+        if (this.y > canvas.height || this.y < 0) this.speedY = -this.speedY;
+      }
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const initP = () => {
+      particlesArray = [];
+      const numberOfParticles = Math.floor((canvas.height * canvas.width) / 15000);
+      for (let i = 0; i < numberOfParticles; i++) particlesArray.push(new Particle());
+    };
+
+    let animId;
+    const animate = () => {
+      if (!document.getElementById("particle-canvas")) {
+        cancelAnimationFrame(animId);
+        return;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].update();
+        particlesArray[i].draw();
+        for (let j = i + 1; j < particlesArray.length; j++) {
+          const dx = particlesArray[i].x - particlesArray[j].x;
+          const dy = particlesArray[i].y - particlesArray[j].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < 100) {
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.15 - distance / 800})`;
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+            ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+            ctx.stroke();
+            ctx.closePath();
+          }
+        }
+      }
+      animId = requestAnimationFrame(animate);
+    };
+    initP();
+    animate();
+  }
+
+  const card = document.getElementById("login-card");
+  if (card) {
+    const handleMove = (e) => {
+      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
+      const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+      const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+      card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+    };
+    const handleEnter = () => {
+      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
+      card.style.transition = "none";
+    };
+    const handleLeave = () => {
+      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
+      card.style.transition = "all 0.5s ease";
+      card.style.transform = "rotateY(0deg) rotateX(0deg)";
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseenter", handleEnter);
+    window.addEventListener("mouseleave", handleLeave);
+  }
+
+  const toggleBtn = document.getElementById("toggle-password");
+  const pwdInput = document.getElementById("login-password");
+  const toggleIcon = document.getElementById("toggle-password-icon");
+  if (toggleBtn && pwdInput && toggleIcon) {
+    toggleBtn.onclick = () => {
+      const show = pwdInput.type === "password";
+      pwdInput.type = show ? "text" : "password";
+      toggleIcon.className = show ? "fas fa-eye-slash" : "fas fa-eye";
+      toggleBtn.setAttribute("aria-label", show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi");
+    };
+  }
+
+  document.querySelectorAll(".auth-details-box").forEach(box => {
+    box.addEventListener("toggle", () => {
+      if (box.open) {
+        document.querySelectorAll(".auth-details-box").forEach(other => {
+          if (other !== box) other.open = false;
+        });
+      }
+    });
+  });
+}
+
 function login() {
   user = null;
-  app.innerHTML = `<main class="iclabs-login auth-page"><div class="auth-layout">
-    <section class="auth-showcase" aria-label="Laboratorium ICLabs">
-      <div class="auth-brand"><img src="assets/logo-iclabs.jpg" alt="" width="48" height="48"><span><strong>ICLabs</strong><small>FIKOM · UMI</small></span></div>
-      <div class="auth-showcase-copy"><p class="auth-showcase-eyebrow">LABORATORIUM KOMPUTER</p><h2>Praktikum<br>ICLabs.</h2><p>Jadwal, presensi, dan nilai praktikum.</p></div>
-      <p class="auth-showcase-footer">Fakultas Ilmu Komputer<br>Universitas Muslim Indonesia</p>
-    </section>
-    <section class="login-panel auth-form-panel" aria-labelledby="login-title">
-      <div class="login-heading"><h1 id="login-title">Masuk ke Praktikum</h1><p>Gunakan email atau username akun ICLabs Anda.</p></div>
-      <form id="login" class="auth-login-form">
-        <div class="auth-field"><label for="login-email">Email atau username</label><div class="login-input"><svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg><input id="login-email" name="email" type="text" placeholder="Email atau username" autocomplete="username" required></div></div>
-        <div class="auth-field"><div class="auth-label-row"><label for="login-password">Kata sandi</label></div><div class="login-input"><svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="12" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg><input id="login-password" name="password" type="password" placeholder="Masukkan kata sandi" autocomplete="current-password" required><button type="button" id="toggle-password" aria-label="Tampilkan kata sandi" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
-        <div class="auth-login-options"><label class="login-remember"><input id="remember-email" type="checkbox"><span>Ingat email di perangkat ini</span></label></div>
-        <div id="login-error" role="alert" aria-live="assertive"></div><button id="login-submit" class="login-submit" type="submit"><span>Masuk ke Praktikum</span><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 10h13M10 4l6 6-6 6"/></svg></button>
-      </form>
-      <div class="login-account-actions" aria-label="Bantuan akun">
-        <details class="account-action-card"><summary><span class="account-action-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.5h.01"/></svg></span><span class="account-action-copy"><strong>Aktivasi akun</strong><small>Belum pernah masuk ke ICLabs?</small></span><svg class="account-action-chevron" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary><div class="account-action-content"><p>Masukkan email akun pusat. Jika akun memenuhi syarat, tautan aktivasi akan dikirim ke email terdaftar.</p><form id="activation-request"><label for="activation-email">Email akun</label><div class="account-input-wrap"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="m3.5 5 6.5 5 6.5-5"/></svg><input id="activation-email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required></div><button class="account-action-submit" type="submit"><span>Kirim tautan aktivasi</span><span aria-hidden="true">→</span></button><div class="account-action-status" id="activation-status" role="status" aria-live="polite"></div></form></div></details>
-        <details class="account-action-card"><summary><span class="account-action-icon account-action-icon--reset" aria-hidden="true"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7V3.5M3.5 3.5H7M3.8 4A7 7 0 1 1 3 11"/><path d="M10 6.5v4l2.5 1.5"/></svg></span><span class="account-action-copy"><strong>Lupa kata sandi?</strong><small>Kirim tautan untuk membuat kata sandi baru</small></span><svg class="account-action-chevron" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary><div class="account-action-content"><p>Masukkan email akun aktif. Kami akan mengirim tautan reset yang hanya dapat digunakan sekali.</p><form id="password-reset-request"><label for="reset-email">Email akun</label><div class="account-input-wrap"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="m3.5 5 6.5 5 6.5-5"/></svg><input id="reset-email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required></div><button class="account-action-submit" type="submit"><span>Kirim tautan reset</span><span aria-hidden="true">→</span></button><div class="account-action-status" id="reset-status" role="status" aria-live="polite"></div></form></div></details>
+  app.innerHTML = `<main class="iclabs-login auth-page iclabs-login-split">
+    <!-- Left Showcase Panel (Desktop) -->
+    <div class="auth-split-showcase" aria-label="Laboratorium ICLabs">
+      <div class="auth-split-bg">
+        <img src="assets/gedungfikomm.webp" alt="Gedung FIKOM UMI">
+        <div class="overlay-grad-1"></div>
+        <div class="overlay-grad-2"></div>
       </div>
-      <p class="login-copyright">ICLabs · Fakultas Ilmu Komputer UMI</p>
-    </section>
-  </div></main>`;
+
+      <canvas id="particle-canvas"></canvas>
+
+      <div class="auth-split-content">
+        <div class="brand auth-split-logo-badge animate-levitate">
+          <img src="assets/navbar-icon.webp" alt="Logo ICLabs" class="brand-logo">
+        </div>
+        <h1 class="auth-split-title animate-enter">IC-LABS</h1>
+        <p class="auth-split-subtitle animate-enter" style="animation-delay: 0.2s">
+          Sistem Informasi Praktikum Laboratorium<br>Terintegrasi & Real-time.
+        </p>
+      </div>
+
+      <div class="auth-split-divider">
+        <svg preserveAspectRatio="none" viewBox="0 0 100 100" fill="currentColor">
+          <path d="M 100 0 C 60 20 40 60 100 100 Z" fill="#93c5fd" opacity="0.2" transform="translate(-15, 0)"></path>
+          <path d="M 100 0 C 50 40 20 80 100 100 Z" fill="#60a5fa" opacity="0.3" transform="translate(-8, 0)"></path>
+          <path d="M 100 0 C 30 30 10 70 100 100 Z" fill="#f8fafc"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Right Form Panel -->
+    <div class="auth-split-panel tilt-wrapper">
+      <div class="bg-grid-slate"></div>
+      <div class="glow-sphere glow-sphere-1"></div>
+      <div class="glow-sphere glow-sphere-2"></div>
+
+      <div id="login-card" class="tilt-card animate-enter" style="animation-delay: 0.3s">
+        <div class="glass-card">
+          <!-- Mobile Brand Banner -->
+          <div class="auth-mobile-header">
+            <img src="assets/navbar-icon.webp" alt="ICLabs Logo">
+            <div>
+              <strong>IC-LABS PRAKTIKUM</strong>
+              <small>Fakultas Ilmu Komputer UMI</small>
+            </div>
+          </div>
+
+          <div class="auth-panel-heading">
+            <h2>Login ICLabs</h2>
+            <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
+          </div>
+
+          <div id="login-error" role="alert" aria-live="assertive"></div>
+
+          <form id="login">
+            <div class="auth-field-group">
+              <label for="login-email" class="auth-field-label">Email akun pusat</label>
+              <div class="auth-input-wrap">
+                <div class="auth-input-icon-left">
+                  <i class="fas fa-envelope"></i>
+                </div>
+                <input id="login-email" name="email" type="text" class="auth-input-control" placeholder="nama@student.umi.ac.id" autocomplete="username" required>
+              </div>
+            </div>
+
+            <div class="auth-field-group">
+              <label for="login-password" class="auth-field-label">Kata sandi</label>
+              <div class="auth-input-wrap">
+                <div class="auth-input-icon-left">
+                  <i class="fas fa-lock"></i>
+                </div>
+                <input id="login-password" name="password" type="password" class="auth-input-control" placeholder="Masukkan kata sandi" autocomplete="current-password" required>
+                <button type="button" id="toggle-password" class="auth-toggle-pwd" aria-label="Tampilkan kata sandi">
+                  <i class="fas fa-eye" id="toggle-password-icon"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-options-row">
+              <label class="auth-remember-check" for="remember-email">
+                <input id="remember-email" type="checkbox">
+                <span>Ingat email di perangkat ini</span>
+              </label>
+            </div>
+
+            <button id="login-submit" class="auth-btn-primary" type="submit">
+              <div class="shimmer-fx"></div>
+              <span class="btn-text-content">
+                <span class="auth-submit-text">LOGIN SEKARANG</span>
+                <i class="fas fa-arrow-right"></i>
+              </span>
+            </button>
+          </form>
+
+          <div class="auth-accordion-container">
+            <details class="auth-details-box" id="activation-card">
+              <summary class="auth-details-summary">
+                <i class="fas fa-play details-caret"></i>
+                <span>Minta email aktivasi akun</span>
+              </summary>
+              <div class="auth-details-content">
+                <p>Masukkan email akun pusat. Jika akun memenuhi syarat, instruksi aktivasi akan dikirim ke email.</p>
+                <form id="activation-request">
+                  <label class="sr-only" for="activation-email">Email akun untuk aktivasi</label>
+                  <input id="activation-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
+                  <button type="submit" class="auth-details-submit auth-details-submit-primary">Kirim instruksi aktivasi</button>
+                  <div class="account-action-status" id="activation-status" role="status" aria-live="polite"></div>
+                </form>
+              </div>
+            </details>
+
+            <details class="auth-details-box" id="reset-card">
+              <summary class="auth-details-summary">
+                <i class="fas fa-play details-caret"></i>
+                <span>Lupa kata sandi?</span>
+              </summary>
+              <div class="auth-details-content">
+                <p>Masukkan email akun pusat. Jika akun aktif, tautan untuk mengatur ulang kata sandi akan dikirim.</p>
+                <form id="password-reset-request">
+                  <label class="sr-only" for="reset-email">Email akun untuk reset kata sandi</label>
+                  <input id="reset-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
+                  <button type="submit" class="auth-details-submit auth-details-submit-secondary">Kirim tautan reset</button>
+                  <div class="account-action-status" id="reset-status" role="status" aria-live="polite"></div>
+                </form>
+              </div>
+            </details>
+          </div>
+
+          <div class="auth-bottom-links">
+            <div>
+              <a href="aktivasi.php" class="auth-link-token">
+                <i class="fas fa-key"></i> Aktifkan akun dengan token
+              </a>
+            </div>
+            <div>
+              <a href="/sumber-daya/" class="auth-link-home">
+                <i class="fas fa-arrow-left"></i> Kembali ke Halaman Utama
+              </a>
+            </div>
+            <div class="auth-copyright-text">
+              &copy; ${new Date().getFullYear()} ICLabs Praktikum · Hak cipta dilindungi
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>`;
+
+  initLoginInteractive();
+
   authCsrf = '';
-  api('/auth/csrf').then(response => { authCsrf = response.csrf || '' }).catch(() => { ['#activation-status', '#reset-status'].forEach(selector => { const status = $(selector); if (status) { status.className = 'account-action-status is-error'; status.textContent = 'Layanan formulir belum tersedia. Muat ulang halaman lalu coba kembali.' } }) });
-  try { const remembered = localStorage.getItem('iclabs-login-email'); if (remembered) { $('#login-email').value = remembered; $('#remember-email').checked = true } } catch { }
-  $('#remember-email').onchange = () => { if (!$('#remember-email').checked) { try { localStorage.removeItem('iclabs-login-email') } catch { } } };
-  $('#toggle-password').onclick = () => { const field = $('#login-password'), show = field.type === 'password'; field.type = show ? 'text' : 'password'; $('#toggle-password').setAttribute('aria-pressed', String(show)); $('#toggle-password').setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi') };
-  document.querySelectorAll('.account-action-card').forEach(card => card.addEventListener('toggle', () => { if (card.open) document.querySelectorAll('.account-action-card').forEach(other => { if (other !== card) other.open = false }) }));
-  $('#login').onsubmit = async e => { e.preventDefault(); const form = e.target, button = $('#login-submit'), values = Object.fromEntries(new FormData(form)); button.disabled = true; button.classList.add('is-loading'); button.setAttribute('aria-busy', 'true'); button.querySelector('span').textContent = 'Memeriksa akun…'; $('#login-error').textContent = ''; $('#login-error').classList.remove('is-visible'); try { await api('/login', values); try { if ($('#remember-email').checked) localStorage.setItem('iclabs-login-email', values.email); else localStorage.removeItem('iclabs-login-email') } catch { } await init() } catch (x) { $('#login-error').textContent = x.message; $('#login-error').classList.add('is-visible') } finally { button.disabled = false; button.classList.remove('is-loading'); button.removeAttribute('aria-busy'); button.querySelector('span').textContent = 'Masuk ke Praktikum' } };
-  const bindAccountRequest = (formId, route, statusId) => { $(`#${formId}`).onsubmit = async e => { e.preventDefault(); const form = e.target, button = form.querySelector('[type=submit]'), status = $(`#${statusId}`), values = Object.fromEntries(new FormData(form)); status.className = 'account-action-status'; if (!authCsrf) { status.classList.add('is-error'); status.textContent = 'Sesi keamanan belum siap. Muat ulang halaman lalu coba kembali.'; return } button.disabled = true; button.classList.add('is-loading'); button.setAttribute('aria-busy', 'true'); status.classList.add('is-pending'); status.textContent = 'Mengirim permintaan…'; try { const response = await api(route, values); status.className = 'account-action-status is-success'; status.textContent = response.message || 'Jika email terdaftar dan akun memenuhi syarat, instruksi akan dikirim ke email tersebut.'; form.reset() } catch (error) { status.className = 'account-action-status is-error'; status.textContent = error.message || 'Permintaan belum dapat diproses. Coba kembali nanti.' } finally { button.disabled = false; button.classList.remove('is-loading'); button.removeAttribute('aria-busy') } } };
+  api('/auth/csrf').then(response => { authCsrf = response.csrf || '' }).catch(() => {
+    ['#activation-status', '#reset-status'].forEach(selector => {
+      const status = $(selector);
+      if (status) {
+        status.className = 'account-action-status is-error';
+        status.textContent = 'Layanan formulir belum tersedia. Muat ulang halaman lalu coba kembali.';
+      }
+    });
+  });
+
+  try {
+    const remembered = localStorage.getItem('iclabs-login-email');
+    if (remembered) {
+      $('#login-email').value = remembered;
+      $('#remember-email').checked = true;
+    }
+  } catch { }
+
+  $('#remember-email').onchange = () => {
+    if (!$('#remember-email').checked) {
+      try { localStorage.removeItem('iclabs-login-email'); } catch { }
+    }
+  };
+
+  $('#login').onsubmit = async e => {
+    e.preventDefault();
+    const form = e.target, button = $('#login-submit'), values = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    const textSpan = button.querySelector('.auth-submit-text');
+    if (textSpan) textSpan.textContent = 'Memeriksa akun…';
+    const errorBox = $('#login-error');
+    errorBox.innerHTML = '';
+    errorBox.classList.remove('is-visible');
+    try {
+      await api('/login', values);
+      try {
+        if ($('#remember-email').checked) localStorage.setItem('iclabs-login-email', values.email);
+        else localStorage.removeItem('iclabs-login-email');
+      } catch { }
+      await init();
+    } catch (x) {
+      errorBox.innerHTML = `<i class="fas fa-circle-exclamation text-lg"></i><span>${esc(x.message)}</span>`;
+      errorBox.classList.add('is-visible');
+    } finally {
+      button.disabled = false;
+      button.classList.remove('is-loading');
+      button.removeAttribute('aria-busy');
+      if (textSpan) textSpan.textContent = 'LOGIN SEKARANG';
+    }
+  };
+
+  const bindAccountRequest = (formId, route, statusId) => {
+    $(`#${formId}`).onsubmit = async e => {
+      e.preventDefault();
+      const form = e.target, button = form.querySelector('[type=submit]'), status = $(`#${statusId}`), values = Object.fromEntries(new FormData(form));
+      status.className = 'account-action-status';
+      if (!authCsrf) {
+        status.classList.add('is-error');
+        status.textContent = 'Sesi keamanan belum siap. Muat ulang halaman lalu coba kembali.';
+        return;
+      }
+      button.disabled = true;
+      button.classList.add('is-loading');
+      button.setAttribute('aria-busy', 'true');
+      status.classList.add('is-pending');
+      status.textContent = 'Mengirim permintaan…';
+      try {
+        const response = await api(route, values);
+        status.className = 'account-action-status is-success';
+        status.textContent = response.message || 'Jika email terdaftar dan akun memenuhi syarat, instruksi akan dikirim ke email tersebut.';
+        form.reset();
+      } catch (error) {
+        status.className = 'account-action-status is-error';
+        status.textContent = error.message || 'Permintaan belum dapat diproses. Coba kembali nanti.';
+      } finally {
+        button.disabled = false;
+        button.classList.remove('is-loading');
+        button.removeAttribute('aria-busy');
+      }
+    };
+  };
+
   bindAccountRequest('activation-request', '/auth/activation-request', 'activation-status');
   bindAccountRequest('password-reset-request', '/auth/password-reset-request', 'reset-status');
   if (typeof window.startIclabsIntro === 'function') window.startIclabsIntro();
 }
-async function init() { try { user = await api('/me'); activePeriod = await api('/active-period'); classes = user.role === 'mahasiswa' ? [] : await api('/classes'); current = null; changes.clear(); page = user.api_mode ? (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Ringkasan') : (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Dashboard'); render() } catch (e) { if (!user) { if (!$('#login')) login(); if (e.message && e.message !== 'Silakan login.' && $('#login-error')) { $('#login-error').textContent = e.message; $('#login-error').classList.add('is-visible') } return } app.innerHTML = `<main class="iclabs-login auth-page"><section class="login-panel auth-form-panel auth-fallback-panel" aria-labelledby="api-fallback-title"><div class="auth-form-overline"><span class="auth-live-dot"></span> KONEKSI SISTEM</div><div class="login-heading"><p class="auth-form-kicker">ICLABS PRAKTIKUM</p><h1 id="api-fallback-title">Layanan belum terhubung</h1><p>Data Praktikum belum dapat dimuat dari API pusat.</p></div><div class="error" role="alert">${esc(e.message || 'Fitur ini belum tersedia melalui API pusat.')}</div><div class="auth-fallback-actions"><button class="login-submit" type="button" onclick="init()">Coba lagi <span aria-hidden="true">→</span></button><button class="auth-secondary-action" type="button" onclick="logout()">Keluar dari akun</button></div></section></main>` } }
+async function init() { try { user = await api('/me'); activePeriod = await api('/active-period'); classes = user.role === 'mahasiswa' ? [] : await api('/classes'); current = null; changes.clear(); page = user.api_mode ? (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Ringkasan') : (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Dashboard'); render() } catch (e) { if (!user) { if (!$('#login')) login(); if (e.message && e.message !== 'Silakan login.' && $('#login-error')) { $('#login-error').innerHTML = `<i class="fas fa-circle-exclamation text-lg"></i><span>${esc(e.message)}</span>`; $('#login-error').classList.add('is-visible') } return } app.innerHTML = `<main class="iclabs-login auth-page"><section class="login-panel auth-form-panel auth-fallback-panel" aria-labelledby="api-fallback-title"><div class="auth-form-overline"><span class="auth-live-dot"></span> KONEKSI SISTEM</div><div class="login-heading"><p class="auth-form-kicker">ICLABS PRAKTIKUM</p><h1 id="api-fallback-title">Layanan belum terhubung</h1><p>Data Praktikum belum dapat dimuat dari API pusat.</p></div><div class="error" role="alert">${esc(e.message || 'Fitur ini belum tersedia melalui API pusat.')}</div><div class="auth-fallback-actions"><button class="login-submit" type="button" onclick="init()">Coba lagi <span aria-hidden="true">→</span></button><button class="auth-secondary-action" type="button" onclick="logout()">Keluar dari akun</button></div></section></main>` } }
 function iconSvg(name, cls = '') {
   const s = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"';
   const c = cls ? `class="${cls}"` : 'class="svg-icon"';
