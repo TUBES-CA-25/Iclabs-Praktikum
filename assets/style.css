@@ -1481,6 +1481,68 @@ dialog h2 {
     font-weight: 600;
 }
 
+.activation-panel .activation-intro {
+    color: var(--slate-300);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: -8px 0 20px;
+}
+
+.activation-panel .activation-form {
+    gap: 16px;
+}
+
+.activation-field {
+    display: grid;
+    gap: 6px;
+}
+
+.activation-field .login-input {
+    margin: 0;
+}
+
+.activation-field .login-input input {
+    padding-left: 14px;
+    padding-right: 108px;
+}
+
+.activation-field .login-input button {
+    width: auto;
+    min-width: 88px;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.activation-status:empty {
+    display: none;
+}
+
+.activation-status {
+    margin: 0;
+}
+
+.activation-panel .activation-login-link {
+    display: block;
+    box-sizing: border-box;
+    text-align: center;
+    text-decoration: none;
+    margin-top: 14px;
+}
+
+.activation-back-link {
+    display: block;
+    width: fit-content;
+    margin: 18px auto 0;
+    color: var(--slate-300);
+    font-size: 12px;
+    text-align: center;
+}
+
+.activation-back-link:hover {
+    color: #ffffff;
+}
+
 /* API Class List & Details */
 .api-class-row {
     width: 100%;

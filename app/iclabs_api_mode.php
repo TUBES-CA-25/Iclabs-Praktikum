@@ -546,7 +546,11 @@ try {
         $centralPath = $route === '/auth/activation-request'
             ? 'auth/aktivasi/request'
             : 'auth/reset-password/request';
-        $response = api_mode_request('POST', $centralPath, array('email_login' => $email), false);
+        $requestPayload = array('email_login' => $email);
+        if ($route === '/auth/activation-request') {
+            $requestPayload['kode_aplikasi'] = 'ICLABS_PRAKTIKUM';
+        }
+        $response = api_mode_request('POST', $centralPath, $requestPayload, false);
         if ($response['status'] >= 200 && $response['status'] < 300) {
             api_mode_json(array(
                 'message' => 'Jika email terdaftar dan akun memenuhi syarat, instruksi akan dikirim ke email tersebut.',
@@ -559,6 +563,53 @@ try {
             api_mode_json(array('error' => 'Layanan akun pusat sedang mengalami gangguan. Coba kembali nanti.'), 503);
         }
         api_mode_json(array('error' => 'Permintaan belum dapat diproses. Periksa email lalu coba kembali.'), $response['status'] >= 400 ? $response['status'] : 502);
+    }
+
+    if ($route === '/auth/activate') {
+        if ($method !== 'POST') api_mode_json(array('error' => 'Metode tidak diizinkan.'), 405);
+        $sessionCsrf = (string) ($_SESSION['iclabs_csrf'] ?? '');
+        $requestCsrf = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if ($sessionCsrf === '' || $requestCsrf === '' || !hash_equals($sessionCsrf, $requestCsrf)) {
+            api_mode_json(array('error' => 'Sesi formulir tidak valid. Muat ulang halaman lalu coba kembali.'), 403);
+        }
+
+        $token = $payload['token'] ?? null;
+        $password = $payload['password'] ?? null;
+        $passwordConfirmation = $payload['password_confirmation'] ?? null;
+        if (!is_string($token) || preg_match('/\A[A-Za-z0-9]{64}\z/', $token) !== 1) {
+            api_mode_json(array('error' => 'Tautan aktivasi tidak valid atau sudah kedaluwarsa. Minta email aktivasi baru.'), 422);
+        }
+        if (!is_string($password) || !is_string($passwordConfirmation) || !hash_equals($password, $passwordConfirmation)) {
+            api_mode_json(array('error' => 'Konfirmasi kata sandi tidak sama.'), 422);
+        }
+
+        $response = api_mode_request('POST', 'auth/aktivasi', array(
+            'token' => $token,
+            'password' => $password,
+            'password_confirmation' => $passwordConfirmation,
+            'nama_perangkat' => 'ICLabs Praktikum',
+        ), false);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            $fallback = $response['status'] >= 500
+                ? 'Aktivasi akun belum dapat diproses. Coba kembali nanti.'
+                : 'Tautan aktivasi tidak valid atau sudah kedaluwarsa. Minta email aktivasi baru.';
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), $fallback)), $response['status']);
+        }
+
+        $activationSessionToken = $response['data']['data']['token'] ?? null;
+        if (is_string($activationSessionToken) && $activationSessionToken !== '') {
+            try {
+                $client = new IclabsApiClient($config);
+                $logoutResponse = $client->request('POST', 'auth/logout', array(), $activationSessionToken);
+                if ($logoutResponse['status'] < 200 || $logoutResponse['status'] >= 300) {
+                    error_log('ICLabs Praktikum gagal mencabut sesi sementara setelah aktivasi (HTTP ' . $logoutResponse['status'] . ').');
+                }
+            } catch (Throwable $exception) {
+                error_log('ICLabs Praktikum gagal mencabut sesi sementara setelah aktivasi (' . get_class($exception) . ').');
+            }
+        }
+
+        api_mode_json(array('ok' => true, 'message' => 'Akun berhasil diaktifkan. Silakan masuk.'));
     }
 
     if ($route === '/login') {
@@ -746,7 +797,9 @@ try {
 
     if ($route === '/admin/access-management/users' && $method === 'POST') {
         api_mode_require_access_management();
-        $response = api_mode_request('POST', 'manajemen-akses/pengguna', $payload);
+        $activationPayload = $payload;
+        $activationPayload['kode_aplikasi'] = 'ICLABS_PRAKTIKUM';
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna', $activationPayload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pembuatan akun pengguna ditolak API pusat.')), $response['status']);
         }
@@ -816,7 +869,9 @@ try {
     if (preg_match('#\A/admin/access-management/users/(\d+)/activation-email\z#', $route, $match) && $method === 'POST') {
         api_mode_require_access_management();
         $userId = (int) $match[1];
-        $response = api_mode_request('POST', 'manajemen-akses/pengguna/' . $userId . '/email-aktivasi', $payload);
+        $activationPayload = $payload;
+        $activationPayload['kode_aplikasi'] = 'ICLABS_PRAKTIKUM';
+        $response = api_mode_request('POST', 'manajemen-akses/pengguna/' . $userId . '/email-aktivasi', $activationPayload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pengiriman email aktivasi ditolak API pusat.')), $response['status']);
         }
