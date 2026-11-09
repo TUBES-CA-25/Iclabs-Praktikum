@@ -3,6 +3,7 @@
   if (!form) return;
 
   const invalidNotice = document.getElementById('activation-invalid');
+  const tokenCheck = document.getElementById('activation-token-check');
   const successPanel = document.getElementById('activation-success');
   const status = document.getElementById('activation-status');
   const submitButton = document.getElementById('activation-submit');
@@ -13,9 +14,11 @@
   window.history.replaceState(null, '', window.location.pathname);
 
   if (!/^[A-Za-z0-9]{64}$/.test(token)) {
+    tokenCheck.hidden = true;
     invalidNotice.hidden = false;
     return;
   }
+  tokenCheck.hidden = true;
   form.hidden = false;
 
   document.querySelectorAll('[data-toggle-password]').forEach((button) => {
@@ -46,6 +49,8 @@
     }
 
     submitButton.disabled = true;
+    submitButton.classList.add('is-loading');
+    submitButton.setAttribute('aria-busy', 'true');
     submitButton.textContent = 'Memproses…';
     status.textContent = 'Mengaktifkan akun…';
 
@@ -76,6 +81,8 @@
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Aktivasi akun belum berhasil. Periksa data lalu coba kembali.');
 
+      submitButton.classList.remove('is-loading');
+      submitButton.removeAttribute('aria-busy');
       form.hidden = true;
       successPanel.hidden = false;
       successPanel.querySelector('[role="status"]').textContent = body.message || 'Akun berhasil diaktifkan. Silakan masuk menggunakan akun ICLabs Anda.';
@@ -83,6 +90,8 @@
       status.className = 'activation-status error';
       status.textContent = error.message || 'Layanan aktivasi belum dapat dijangkau. Coba kembali nanti.';
       submitButton.disabled = false;
+      submitButton.classList.remove('is-loading');
+      submitButton.removeAttribute('aria-busy');
       submitButton.textContent = 'Coba aktivasi lagi';
     }
   });

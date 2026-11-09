@@ -12,6 +12,7 @@
 	<div id="app"></div>
 	<div id="toast" role="status"></div>
 	<dialog id="modal"></dialog>
+<script src="assets/intro-logo3d.js?v=<?= filemtime(__DIR__ . '/assets/intro-logo3d.js') ?>" defer></script>
 <script src="assets/app.js?v=<?= filemtime(__DIR__ . '/assets/app.js') ?>" defer></script>
 </body>
 </html>
