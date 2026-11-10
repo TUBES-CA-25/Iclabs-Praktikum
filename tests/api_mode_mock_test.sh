@@ -254,6 +254,23 @@ asisten3_grades="$(curl -sS -b "$asisten3_cookies" "http://127.0.0.1:$app_port/a
 grep -q '"kode_komponen":"MID"' <<<"$asisten3_grades" || { echo "FAIL: Asisten 3 harus bisa melihat nilai miliknya sendiri di Nilai Saya: $asisten3_grades"; exit 1; }
 asisten3_change_status="$(curl -sS -o "$test_dir/asisten3-change.json" -w '%{http_code}' -b "$asisten3_cookies" -X PUT -H "X-CSRF-Token: $asisten3_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"nilai":[{"id_mahasiswa":700,"kode_komponen":"EVALUASI_1","nilai":90}]}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fchanges")"
 [[ "$asisten3_change_status" == 403 ]] || { echo "FAIL: Asisten 3 tidak boleh mengubah nilai praktikum; HTTP $asisten3_change_status"; exit 1; }
+asisten3_sched_avail="$(curl -sS -o "$test_dir/asisten3-sched-avail.json" -w '%{http_code}' -b "$asisten3_cookies" -X POST -H "X-CSRF-Token: $asisten3_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-09-07","tanggal_selesai":"2026-12-12","pola_perulangan":"MINGGUAN","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
+[[ "$asisten3_sched_avail" == 403 ]] || { echo "FAIL: Asisten 3 tidak boleh mengakses ketersediaan jadwal; HTTP $asisten3_sched_avail"; exit 1; }
+asisten3_sched_create="$(curl -sS -o "$test_dir/asisten3-sched-create.json" -w '%{http_code}' -b "$asisten3_cookies" -X POST -H "X-CSRF-Token: $asisten3_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-10-20","pola_perulangan":"SEKALI","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules")"
+[[ "$asisten3_sched_create" == 403 ]] || { echo "FAIL: Asisten 3 tidak boleh membuat jadwal; HTTP $asisten3_sched_create"; exit 1; }
+
+# --- Pengujian Asisten Pengajar (Asisten 1 & 2 Wewenang Jadwal Ujian) ---
+asisten_cookies="$test_dir/asisten-cookies.txt"
+asisten_login="$(curl -sS -c "$asisten_cookies" -H 'Content-Type: application/json' -d '{"email":"uji-asisten@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"
+[[ "$asisten_login" == '{"ok":true}' ]] || { echo "FAIL: login Asisten Pengajar"; exit 1; }
+asisten_me="$(curl -sS -b "$asisten_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fme")"
+asisten_csrf="$(printf '%s' "$asisten_me" | php -r '$data=json_decode(stream_get_contents(STDIN),true); echo $data["csrf"] ?? "";')"
+asisten_sched_avail="$(curl -sS -b "$asisten_cookies" -X POST -H "X-CSRF-Token: $asisten_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-10-20","pola_perulangan":"SEKALI","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedule-assistant-availability")"
+grep -q '"rekomendasi_ketersediaan_asisten"' <<<"$asisten_sched_avail" || { echo "FAIL: Asisten Pengajar harus bisa memeriksa ketersediaan jadwal: $asisten_sched_avail"; exit 1; }
+asisten_sched_create="$(curl -sS -b "$asisten_cookies" -X POST -H "X-CSRF-Token: $asisten_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"id_laboratorium":2,"hari_ke":2,"jam_mulai":"09:00","jam_selesai":"11:00","tanggal_mulai":"2026-10-20","pola_perulangan":"SEKALI","status":"AKTIF","id_user_dosen":300,"id_user_asisten_utama":400,"catatan":"UJIAN_MID"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules")"
+grep -q '"id_jadwal_kelas_kuliah":100' <<<"$asisten_sched_create" || { echo "FAIL: Asisten Pengajar harus bisa membuat jadwal ujian MID: $asisten_sched_create"; exit 1; }
+asisten_sched_patch="$(curl -sS -b "$asisten_cookies" -X PATCH -H "X-CSRF-Token: $asisten_csrf" -H 'Content-Type: application/json' -d '{"versi":1,"jam_mulai":"09:00","jam_selesai":"11:00","catatan":"UJIAN_UAS"}' "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fschedules%2F99")"
+grep -q '"id_jadwal_kelas_kuliah":99' <<<"$asisten_sched_patch" || { echo "FAIL: Asisten Pengajar harus bisa mengedit jadwal ujian UAS: $asisten_sched_patch"; exit 1; }
 
 praktikan_cookies="$test_dir/praktikan-cookies.txt"
 praktikan_login="$(curl -sS -c "$praktikan_cookies" -H 'Content-Type: application/json' -d '{"email":"uji-praktikan@iclabs.test","password":"uji"}' "http://127.0.0.1:$app_port/api.php?route=%2Flogin")"

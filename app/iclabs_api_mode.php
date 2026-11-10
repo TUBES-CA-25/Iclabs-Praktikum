@@ -1454,8 +1454,9 @@ try {
     }
 
     if (preg_match('#\A/classes/(\d+)/schedule-assistant-availability\z#', $route, $match) && $method === 'POST') {
-        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
-            api_mode_json(array('error' => 'Rekomendasi ketersediaan Asisten hanya dapat diakses administrator.'), 403);
+        $userRole = $_SESSION['iclabs_user']['role'] ?? '';
+        if ($userRole !== 'admin' && $userRole !== 'asisten') {
+            api_mode_json(array('error' => 'Rekomendasi ketersediaan Asisten hanya dapat diakses administrator atau asisten.'), 403);
         }
         $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/jadwal/pratinjau-ketersediaan-asisten', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
