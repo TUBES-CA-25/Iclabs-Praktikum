@@ -1977,99 +1977,383 @@ async function apiWorkflowChange(c, s, target, needsNote) {
 }
 async function apiScheduleForm(c, schedule, examType) {
   try {
-    const refs = await api('/references'), d = schedule || {}, teachers = d.pengajar || [];
-    if (!Array.isArray(refs.laboratorium) || !Array.isArray(refs.dosen) || !Array.isArray(refs.asisten)) throw Error('Daftar laboratorium, dosen, atau asisten tidak tersedia untuk akun ini.');
-    const selected = role => teachers.find(x => x.peran === role)?.id_user || '';
-    const dateStart = d.tanggal_mulai || activePeriod?.start_date || '', dateEnd = d.tanggal_selesai || activePeriod?.end_date || '';
+    const refs = (await api('/references')) || {};
+    const d = schedule || {};
+    const schedulesList = c.jadwal || [];
+    const regularSchedule = schedulesList.find(s => s.pola_perulangan === 'MINGGUAN' && !String(s.catatan_workflow || '').includes('UJIAN_')) || schedulesList[0] || null;
+
+    // Resilient fallback jika backend hanya mengembalikan data parsial untuk akun tertentu
+    if (!Array.isArray(refs.laboratorium) || refs.laboratorium.length === 0) {
+      const extractedLab = [];
+      const seenLab = new Set();
+      schedulesList.forEach(j => {
+        if (j.id_laboratorium && !seenLab.has(j.id_laboratorium)) {
+          seenLab.add(j.id_laboratorium);
+          extractedLab.push({ id: j.id_laboratorium, kode: j.kode_laboratorium || 'LAB', nama: j.nama_laboratorium || 'Laboratorium' });
+        }
+      });
+      if (extractedLab.length > 0) refs.laboratorium = extractedLab;
+    }
+
+    if (!Array.isArray(refs.dosen) || refs.dosen.length === 0) {
+      const extractedDosen = [];
+      const seenDosen = new Set();
+      schedulesList.forEach(j => {
+        (j.pengajar || []).forEach(p => {
+          if (p.peran === 'DOSEN_PENGAMPU' && p.id_user && !seenDosen.has(p.id_user)) {
+            seenDosen.add(p.id_user);
+            extractedDosen.push({ id_user: p.id_user, nama: p.nama || p.label || 'Dosen Pengampu' });
+          }
+        });
+      });
+      if (extractedDosen.length > 0) refs.dosen = extractedDosen;
+    }
+
+    if (!Array.isArray(refs.asisten) || refs.asisten.length === 0) {
+      const extractedAsisten = [];
+      const seenAsisten = new Set();
+      schedulesList.forEach(j => {
+        (j.pengajar || []).forEach(p => {
+          if (p.id_user && !seenAsisten.has(p.id_user) && p.peran !== 'DOSEN_PENGAMPU') {
+            seenAsisten.add(p.id_user);
+            extractedAsisten.push({ id_user: p.id_user, nama: p.nama || p.label || 'Asisten', kode_tingkat_asisten: p.peran });
+          }
+        });
+      });
+      if (extractedAsisten.length > 0) refs.asisten = extractedAsisten;
+    }
+
+    if (!Array.isArray(refs.laboratorium) || !Array.isArray(refs.dosen) || !Array.isArray(refs.asisten)) {
+      throw Error('Daftar laboratorium, dosen, atau asisten tidak tersedia untuk akun ini.');
+    }
 
     const existingExamTag = String(d.catatan_workflow || '').includes('MID') ? 'MID' : (String(d.catatan_workflow || '').includes('UAS') ? 'UAS' : null);
     const effectiveExamType = examType || existingExamTag || null;
     const isExam = !!effectiveExamType;
 
-    const schedulesList = c.jadwal || [];
-    const regularSchedule = schedulesList.find(s => s.pola_perulangan === 'MINGGUAN' && !String(s.catatan_workflow || '').includes('UJIAN_')) || schedulesList[0] || null;
+    // Untuk ujian baru (!schedule && isExam), otomatis gunakan konfigurasi awal dari jadwal reguler jika tersedia
+    if (!schedule && isExam && regularSchedule) {
+      if (!d.id_laboratorium && regularSchedule.id_laboratorium) d.id_laboratorium = regularSchedule.id_laboratorium;
+      if (!d.hari_ke && regularSchedule.hari_ke) d.hari_ke = regularSchedule.hari_ke;
+      if (!d.jam_mulai && regularSchedule.jam_mulai) d.jam_mulai = regularSchedule.jam_mulai;
+      if (!d.jam_selesai && regularSchedule.jam_selesai) d.jam_selesai = regularSchedule.jam_selesai;
+      if (!d.pola_perulangan) d.pola_perulangan = 'SEKALI';
+    }
 
+    const teachers = (d && Array.isArray(d.pengajar) && d.pengajar.length) ? d.pengajar : (regularSchedule?.pengajar || []);
+    const selected = role => teachers.find(x => x.peran === role)?.id_user || '';
+    const dateStart = d.tanggal_mulai || activePeriod?.start_date || '', dateEnd = d.tanggal_selesai || activePeriod?.end_date || '';
+
+    const badgeColorClass = effectiveExamType === 'MID' ? 'is-amber' : (effectiveExamType === 'UAS' ? 'is-purple' : 'is-blue');
+    const badgeIcon = effectiveExamType === 'MID' ? '📝' : (effectiveExamType === 'UAS' ? '🎓' : '📅');
     const modalTitle = schedule
-      ? (isExam ? `Edit jadwal ujian ${effectiveExamType}` : 'Edit jadwal praktikum')
-      : (isExam ? `Atur jadwal ujian ${effectiveExamType}` : 'Tambah jadwal praktikum');
+      ? (isExam ? `Edit Jadwal Ujian ${effectiveExamType}` : 'Edit Jadwal Praktikum')
+      : (isExam ? `Atur Jadwal Ujian ${effectiveExamType}` : 'Tambah Jadwal Praktikum');
+    const modalSubtitle = `${esc(c.mata_kuliah?.nama || 'Praktikum')} · Frekuensi ${esc(c.kelompok?.kode || '')} · ${esc(c.program_studi?.nama || '')}`;
 
     const examPresetHtml = isExam ? `
-      <div class="exam-preset-box" style="margin-bottom:16px;padding:12px;background:var(--slate-50);border:1px solid var(--border);border-radius:8px">
-        <strong style="font-size:13px">Pilihan Pengaturan Jadwal Ujian ${effectiveExamType}</strong>
-        <p class="help" style="margin:4px 0 8px">Ujian dapat mengikuti slot jam jadwal reguler kelas atau ditentukan pada tanggal/jam khusus.</p>
-        <div class="row" style="gap:8px;flex-wrap:wrap">
-          <button type="button" class="small" id="api-exam-use-regular" ${regularSchedule ? '' : 'disabled'}>
-            📌 Gunakan jam jadwal reguler kelas ini ${regularSchedule ? `(${esc(['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][Number(regularSchedule.hari_ke)] || '')} ${esc(String(regularSchedule.jam_mulai || '').slice(0, 5))}–${esc(String(regularSchedule.jam_selesai || '').slice(0, 5))})` : ''}
-          </button>
-          <button type="button" class="small" id="api-exam-use-custom">
-            🗓️ Tentukan jadwal & tanggal khusus
-          </button>
-        </div>
+      <div class="exam-mode-cards" role="radiogroup" aria-label="Mode Pengaturan Jadwal Ujian">
+        <button type="button" class="exam-mode-card ${regularSchedule ? 'is-active' : 'is-disabled'}" id="api-exam-use-regular" ${regularSchedule ? '' : 'disabled'} role="radio" aria-checked="${regularSchedule ? 'true' : 'false'}">
+          <div class="exam-mode-radio">
+            <div class="exam-radio-dot"></div>
+          </div>
+          <div class="exam-mode-content">
+            <div class="exam-mode-title">
+              <span>📌 Gunakan Jam Reguler Kelas</span>
+            </div>
+            <p class="exam-mode-desc">
+              ${regularSchedule ? `${esc(['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][Number(regularSchedule.hari_ke)] || '')} · ${esc(String(regularSchedule.jam_mulai || '').slice(0, 5))}–${esc(String(regularSchedule.jam_selesai || '').slice(0, 5))}` : 'Tidak ada jadwal reguler'}
+            </p>
+            <span class="exam-mode-hint">${regularSchedule ? `Lab: ${esc(regularSchedule.nama_laboratorium || regularSchedule.kode_laboratorium || 'Sesuai reguler')}` : 'Belum disetel'}</span>
+          </div>
+        </button>
+        <button type="button" class="exam-mode-card ${regularSchedule ? '' : 'is-active'}" id="api-exam-use-custom" role="radio" aria-checked="${regularSchedule ? 'false' : 'true'}">
+          <div class="exam-mode-radio">
+            <div class="exam-radio-dot"></div>
+          </div>
+          <div class="exam-mode-content">
+            <div class="exam-mode-title">
+              <span>🗓️ Jadwal & Waktu Khusus</span>
+            </div>
+            <p class="exam-mode-desc">Tentukan hari, jam, atau ruangan lab lain secara fleksibel</p>
+            <span class="exam-mode-hint">Pola perulangan sekali ujian</span>
+          </div>
+        </button>
       </div>
     ` : '';
 
-    const modal = dialog(`<form>
-      <h2>${esc(modalTitle)}</h2>
-      ${examPresetHtml}
-      <div id="api-room-conflict-info" class="notice is-info" hidden style="margin-bottom:14px"></div>
-      <label>Laboratorium<select name="id_laboratorium" required><option value="">Pilih laboratorium…</option>${refs.laboratorium.map(x => `<option value="${Number(x.id)}" ${Number(d.id_laboratorium) === Number(x.id) ? 'selected' : ''}>${esc(x.kode)} · ${esc(x.nama)}</option>`).join('')}</select></label>
-      <div class="form-grid">
-        <label>Hari<select name="hari_ke" required>${['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map((x, i) => `<option value="${i + 1}" ${Number(d.hari_ke) === (i + 1) ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-        <label>Jam mulai<input name="jam_mulai" type="time" value="${esc(String(d.jam_mulai || '08:00').slice(0, 5))}" required></label>
-        <label>Jam selesai<input name="jam_selesai" type="time" value="${esc(String(d.jam_selesai || '10:00').slice(0, 5))}" required></label>
-        <label>Tanggal pelaksanaan (khusus pola Sekali)<input name="tanggal_sekali" type="date" ${(d.pola_perulangan === 'SEKALI' || isExam) ? 'required' : 'disabled'} value="${(d.pola_perulangan === 'SEKALI' || isExam) ? esc(d.tanggal_mulai || '') : ''}"><small>Kosong untuk jadwal berulang; rentangnya mengikuti periode akademik.</small></label>
-        <label>Pola perulangan<select name="pola_perulangan" required>${(refs.pola_perulangan || []).map(x => `<option value="${esc(x.kode)}" ${(isExam && !schedule ? 'SEKALI' : (d.pola_perulangan || 'MINGGUAN')) === x.kode ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
-        <label>Status<select name="status"><option value="AKTIF" ${d.status === 'NONAKTIF' ? '' : 'selected'}>Aktif</option><option value="NONAKTIF" ${d.status === 'NONAKTIF' ? 'selected' : ''}>Nonaktif</option></select></label>
-        <label>Dosen pengampu<select name="id_user_dosen" required><option value="">Pilih dosen…</option>${refs.dosen.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('DOSEN_PENGAMPU')) === Number(x.id_user) ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}</select></label>
-        <label>Asisten utama<select name="id_user_asisten_utama" required><option value="">Pilih asisten…</option>${refs.asisten.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('ASISTEN_UTAMA')) === Number(x.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(x))}</option>`).join('')}</select></label>
-        <label>Asisten pendamping (opsional)<select name="id_user_asisten_pendamping"><option value="">Tidak ada</option>${refs.asisten.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('ASISTEN_PENDAMPING')) === Number(x.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(x))}</option>`).join('')}</select></label>
+    const totalMeetings = Number(c.jumlah_pertemuan_rencana) || 12;
+    const defaultMidMeeting = Math.min(Math.max(1, Math.round(totalMeetings / 2)), totalMeetings);
+    const linkedMeetingNumber = d.nomor_pertemuan || (c.sesi || []).find(s => Number(s.id_jadwal_kelas_kuliah) === Number(d.id))?.nomor_pertemuan || null;
+    const recommendedMeeting = isExam && !schedule
+      ? (effectiveExamType === 'MID' ? defaultMidMeeting : totalMeetings)
+      : linkedMeetingNumber;
+
+    const meetingOptionsHtml = Array.from({ length: totalMeetings }, (_, i) => {
+      const num = i + 1;
+      const isMidRec = isExam && effectiveExamType === 'MID' && num === defaultMidMeeting;
+      const isUasRec = isExam && effectiveExamType === 'UAS' && num === totalMeetings;
+      const recTag = isMidRec ? ' (Rekomendasi UTS/MID)' : (isUasRec ? ' (Rekomendasi UAS)' : '');
+      const existingSession = (c.sesi || []).find(s => Number(s.nomor_pertemuan) === num);
+      const sessionTag = existingSession ? ` · Terisi: ${esc(existingSession.materi || 'Sesi')}` : '';
+      const isSelected = Number(recommendedMeeting) === num;
+      return `<option value="${num}" ${isSelected ? 'selected' : ''}>Pertemuan ${num}${recTag}${sessionTag}</option>`;
+    }).join('');
+
+    const modal = dialog(`<form class="modal-schedule-form">
+      <div class="modal-schedule-header">
+        <div class="modal-header-left">
+          <div class="modal-icon-badge ${badgeColorClass}">${badgeIcon}</div>
+          <div class="modal-title-wrap">
+            <h2>${esc(modalTitle)}</h2>
+            <p>${modalSubtitle}</p>
+          </div>
+        </div>
       </div>
-      <p class="help">Semua Asisten dapat dipilih. Jika ruangan memiliki jadwal lain, keterangan bentrok akan ditampilkan dan Anda dapat mengizinkan ruang bersama jika kegiatan dikoordinasikan.</p>
-      <div class="row"><button type="button" data-close>Batal</button><button class="primary" type="submit">Simpan jadwal</button></div>
+
+      <div class="modal-schedule-body">
+        ${examPresetHtml}
+        <div id="api-room-conflict-info" class="exam-conflict-alert" hidden></div>
+
+        <div class="form-section-card">
+          <div class="form-section-header">
+            <span class="section-icon">📍</span>
+            <span>Waktu & Lokasi Pelaksanaan</span>
+          </div>
+
+          <div class="form-field-group">
+            <label>Laboratorium <span style="color:var(--rose)">*</span></label>
+            <select name="id_laboratorium" required>
+              <option value="">Pilih laboratorium…</option>
+              ${refs.laboratorium.map(x => `<option value="${Number(x.id)}" ${Number(d.id_laboratorium) === Number(x.id) ? 'selected' : ''}>${esc(x.kode)} · ${esc(x.nama)}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-field-group">
+            <label>
+              <span>Masukkan ke Pertemuan Praktikum</span>
+              <span style="font-weight:normal;color:var(--text-muted);font-size:11px">Opsional</span>
+            </label>
+            <select name="nomor_pertemuan">
+              <option value="">— Tidak dimasukkan ke pertemuan tertentu —</option>
+              ${meetingOptionsHtml}
+            </select>
+            <p class="field-help-text">Jika dipilih, tanggal, jam, lab, dan materi ujian (${effectiveExamType || 'MID/UAS'}) otomatis disinkronkan ke sesi pertemuan tersebut.</p>
+          </div>
+
+          <div class="form-row-grid-2">
+            <div class="form-field-group">
+              <label>
+                <span>Tanggal Pelaksanaan</span>
+                ${isExam ? '<span style="color:var(--rose)">*</span>' : '<span style="font-weight:normal;color:var(--text-muted);font-size:11px">Khusus pola Sekali</span>'}
+              </label>
+              <input name="tanggal_sekali" type="date" ${(d.pola_perulangan === 'SEKALI' || isExam) ? 'required' : 'disabled'} value="${(d.pola_perulangan === 'SEKALI' || isExam) ? esc(d.tanggal_mulai || '') : ''}">
+              <p class="field-help-text">Hari akan disesuaikan otomatis saat tanggal dipilih.</p>
+            </div>
+
+            <div class="form-field-group">
+              <label>Hari <span style="color:var(--rose)">*</span></label>
+              <select name="hari_ke" required>
+                ${['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map((x, i) => `<option value="${i + 1}" ${Number(d.hari_ke) === (i + 1) ? 'selected' : ''}>${x}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-grid-2">
+            <div class="form-field-group">
+              <label>Jam Mulai <span style="color:var(--rose)">*</span></label>
+              <input name="jam_mulai" type="time" value="${esc(String(d.jam_mulai || '08:00').slice(0, 5))}" required>
+            </div>
+
+            <div class="form-field-group">
+              <label>Jam Selesai <span style="color:var(--rose)">*</span></label>
+              <input name="jam_selesai" type="time" value="${esc(String(d.jam_selesai || '10:00').slice(0, 5))}" required>
+            </div>
+          </div>
+
+          ${!isExam ? `
+          <div class="form-row-grid-2">
+            <div class="form-field-group">
+              <label>Pola Perulangan <span style="color:var(--rose)">*</span></label>
+              <select name="pola_perulangan" required>
+                ${(refs.pola_perulangan || []).map(x => `<option value="${esc(x.kode)}" ${(d.pola_perulangan || 'MINGGUAN') === x.kode ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="form-field-group">
+              <label>Status</label>
+              <select name="status">
+                <option value="AKTIF" ${d.status === 'NONAKTIF' ? '' : 'selected'}>Aktif</option>
+                <option value="NONAKTIF" ${d.status === 'NONAKTIF' ? 'selected' : ''}>Nonaktif</option>
+              </select>
+            </div>
+          </div>
+          ` : `
+          <input type="hidden" name="pola_perulangan" value="SEKALI">
+          <input type="hidden" name="status" value="${d.status || 'AKTIF'}">
+          `}
+        </div>
+
+        <div class="form-section-card">
+          <div class="form-section-header">
+            <span class="section-icon">👥</span>
+            <span>${isExam ? 'Dosen Pengampu & Tim Pengawas Ujian' : 'Dosen Pengampu & Tim Asisten'}</span>
+          </div>
+
+          <div class="form-field-group">
+            <label>Dosen Pengampu <span style="color:var(--rose)">*</span></label>
+            <select name="id_user_dosen" required>
+              <option value="">Pilih dosen…</option>
+              ${refs.dosen.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('DOSEN_PENGAMPU')) === Number(x.id_user) ? 'selected' : ''}>${esc(x.nama)}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="form-row-grid-2">
+            <div class="form-field-group">
+              <label>Asisten 1 (Wajib) <span style="color:var(--rose)">*</span></label>
+              <select name="id_user_asisten_utama" required>
+                <option value="">Pilih asisten…</option>
+                ${refs.asisten.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('ASISTEN_UTAMA')) === Number(x.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(x))}</option>`).join('')}
+              </select>
+              <div class="assistant-availability is-neutral" data-assistant-availability="ASISTEN_UTAMA" aria-live="polite">Pilih waktu untuk memeriksa jadwal kuliah pribadi.</div>
+            </div>
+
+            <div class="form-field-group">
+              <label>
+                <span>Asisten 2</span>
+                <span style="font-weight:normal;color:var(--text-muted);font-size:11px">Opsional</span>
+              </label>
+              <select name="id_user_asisten_pengajar_pendukung">
+                <option value="">Tidak ada</option>
+                ${refs.asisten.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('ASISTEN_PENGAJAR_PENDUKUNG') || selected('ASISTEN_PENDAMPING')) === Number(x.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(x))}</option>`).join('')}
+              </select>
+              <div class="assistant-availability is-neutral" data-assistant-availability="ASISTEN_PENGAJAR_PENDUKUNG" aria-live="polite">Opsional.</div>
+            </div>
+          </div>
+
+          <div class="form-field-group">
+            <label>
+              <span>Asisten Pendamping / Teknis</span>
+              <span style="font-weight:normal;color:var(--text-muted);font-size:11px">Opsional</span>
+            </label>
+            <select name="id_user_pendamping_teknis">
+              <option value="">Tidak ada</option>
+              ${refs.asisten.map(x => `<option value="${Number(x.id_user)}" ${Number(selected('PENDAMPING_TEKNIS')) === Number(x.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(x))}</option>`).join('')}
+            </select>
+            <div class="assistant-availability is-neutral" data-assistant-availability="PENDAMPING_TEKNIS" aria-live="polite">Opsional.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-schedule-footer">
+        <div class="modal-footer-note">
+          <span>💡</span>
+          <span>Bentrok kuliah pribadi adalah peringatan. Asisten tetap dapat dipilih.</span>
+        </div>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-modal-cancel" data-close>Batal</button>
+          <button type="submit" class="btn-modal-submit">
+            <span>${isExam ? `Simpan Jadwal ${effectiveExamType}` : 'Simpan Jadwal'}</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
     </form>`);
-    const form = modal.querySelector('form'), assistantPrimary = form.querySelector('[name="id_user_asisten_utama"]'), legacyAssistantSlot = form.querySelector('[name="id_user_asisten_pendamping"]');
-    const patternControl = form.querySelector('[name="pola_perulangan"]'), oneTimeInput = form.querySelector('[name="tanggal_sekali"]'), periodStart = activePeriod?.start_date || c.periode?.tanggal_mulai || dateStart, periodEnd = activePeriod?.end_date || c.periode?.tanggal_selesai || dateEnd;
-    const applyScheduleDates = values => { if (values.pola_perulangan === 'SEKALI') { values.tanggal_mulai = oneTimeInput?.value || ''; values.tanggal_selesai = oneTimeInput?.value || '' } else { values.tanggal_mulai = periodStart; values.tanggal_selesai = periodEnd } };
-    const syncScheduleDateInput = () => { const once = patternControl?.value === 'SEKALI'; if (oneTimeInput) { oneTimeInput.disabled = !once; oneTimeInput.required = once; if (!once) oneTimeInput.value = '' } };
-    patternControl?.addEventListener('change', () => { syncScheduleDateInput(); refreshAssistantAvailability() });
-    oneTimeInput?.addEventListener('change', () => { if (oneTimeInput.value) { const date = new Date(`${oneTimeInput.value}T00:00:00Z`), weekday = date.getUTCDay() || 7, day = form.querySelector('[name="hari_ke"]'); if (!Number.isNaN(date.getTime()) && day) day.value = String(weekday) } refreshAssistantAvailability() });
+
+    modal.classList.add('modal-schedule');
+    modal.addEventListener('close', () => modal.classList.remove('modal-schedule'), { once: true });
+
+    const form = modal.querySelector('form');
+    const patternControl = form.querySelector('[name="pola_perulangan"]');
+    const oneTimeInput = form.querySelector('[name="tanggal_sekali"]');
+    const periodStart = activePeriod?.start_date || c.periode?.tanggal_mulai || dateStart;
+    const periodEnd = activePeriod?.end_date || c.periode?.tanggal_selesai || dateEnd;
+
+    const applyScheduleDates = values => {
+      if (values.pola_perulangan === 'SEKALI') {
+        values.tanggal_mulai = oneTimeInput?.value || '';
+        values.tanggal_selesai = oneTimeInput?.value || '';
+      } else {
+        values.tanggal_mulai = periodStart;
+        values.tanggal_selesai = periodEnd;
+      }
+    };
+
+    const syncScheduleDateInput = () => {
+      const once = patternControl?.value === 'SEKALI';
+      if (oneTimeInput) {
+        oneTimeInput.disabled = !once;
+        oneTimeInput.required = once;
+        if (!once) oneTimeInput.value = '';
+      }
+    };
+
+    patternControl?.addEventListener('change', () => {
+      syncScheduleDateInput();
+      refreshAssistantAvailability();
+    });
+
+    oneTimeInput?.addEventListener('change', () => {
+      if (oneTimeInput.value) {
+        const date = new Date(`${oneTimeInput.value}T00:00:00Z`);
+        const weekday = date.getUTCDay() || 7;
+        const day = form.querySelector('[name="hari_ke"]');
+        if (!Number.isNaN(date.getTime()) && day) day.value = String(weekday);
+      }
+      refreshAssistantAvailability();
+    });
     syncScheduleDateInput();
 
-    if (form.querySelector('#api-exam-use-regular') && regularSchedule) {
-      form.querySelector('#api-exam-use-regular').onclick = () => {
-        form.querySelector('[name="pola_perulangan"]').value = 'SEKALI';
+    const btnRegular = form.querySelector('#api-exam-use-regular');
+    const btnCustom = form.querySelector('#api-exam-use-custom');
+
+    if (btnRegular && regularSchedule) {
+      btnRegular.onclick = () => {
+        btnRegular.classList.add('is-active');
+        btnRegular.setAttribute('aria-checked', 'true');
+        btnCustom?.classList.remove('is-active');
+        btnCustom?.setAttribute('aria-checked', 'false');
+
+        if (form.querySelector('[name="pola_perulangan"]')) {
+          form.querySelector('[name="pola_perulangan"]').value = 'SEKALI';
+        }
         syncScheduleDateInput();
+
         if (regularSchedule.id_laboratorium) form.querySelector('[name="id_laboratorium"]').value = String(regularSchedule.id_laboratorium);
         if (regularSchedule.hari_ke) form.querySelector('[name="hari_ke"]').value = String(regularSchedule.hari_ke);
         if (regularSchedule.jam_mulai) form.querySelector('[name="jam_mulai"]').value = String(regularSchedule.jam_mulai).slice(0, 5);
         if (regularSchedule.jam_selesai) form.querySelector('[name="jam_selesai"]').value = String(regularSchedule.jam_selesai).slice(0, 5);
+
         const regularDosen = (regularSchedule.pengajar || []).find(p => p.peran === 'DOSEN_PENGAMPU')?.id_user;
         const regularAsisten1 = (regularSchedule.pengajar || []).find(p => p.peran === 'ASISTEN_UTAMA')?.id_user;
         const regularAsisten2 = (regularSchedule.pengajar || []).find(p => p.peran === 'ASISTEN_PENGAJAR_PENDUKUNG')?.id_user;
         const regularAsisten3 = (regularSchedule.pengajar || []).find(p => p.peran === 'PENDAMPING_TEKNIS')?.id_user;
-        if (regularDosen) form.querySelector('[name="id_user_dosen"]').value = String(regularDosen);
-        if (regularAsisten1) form.querySelector('[name="id_user_asisten_utama"]').value = String(regularAsisten1);
+
+        if (regularDosen && form.querySelector('[name="id_user_dosen"]')) form.querySelector('[name="id_user_dosen"]').value = String(regularDosen);
+        if (regularAsisten1 && form.querySelector('[name="id_user_asisten_utama"]')) form.querySelector('[name="id_user_asisten_utama"]').value = String(regularAsisten1);
         if (regularAsisten2 && form.querySelector('[name="id_user_asisten_pengajar_pendukung"]')) form.querySelector('[name="id_user_asisten_pengajar_pendukung"]').value = String(regularAsisten2);
         if (regularAsisten3 && form.querySelector('[name="id_user_pendamping_teknis"]')) form.querySelector('[name="id_user_pendamping_teknis"]').value = String(regularAsisten3);
+
         toast(`Slot jam (${String(regularSchedule.jam_mulai).slice(0, 5)}–${String(regularSchedule.jam_selesai).slice(0, 5)}) dan lab disesuaikan dengan jadwal reguler. Silakan tentukan tanggal pelaksanaan.`);
         refreshAssistantAvailability();
       };
     }
-    if (form.querySelector('#api-exam-use-custom')) {
-      form.querySelector('#api-exam-use-custom').onclick = () => {
-        form.querySelector('[name="pola_perulangan"]').value = 'SEKALI';
+
+    if (btnCustom) {
+      btnCustom.onclick = () => {
+        btnCustom.classList.add('is-active');
+        btnCustom.setAttribute('aria-checked', 'true');
+        btnRegular?.classList.remove('is-active');
+        btnRegular?.setAttribute('aria-checked', 'false');
+
+        if (form.querySelector('[name="pola_perulangan"]')) {
+          form.querySelector('[name="pola_perulangan"]').value = 'SEKALI';
+        }
         syncScheduleDateInput();
-        toast('Pola perulangan SEKALI aktif. Silakan pilih tanggal, jam, dan lab ujian.');
+        toast('Mode jadwal khusus aktif. Silakan pilih tanggal, jam, dan lab ujian.');
       };
     }
 
-    assistantPrimary.closest('label').childNodes[0].textContent = 'Asisten 1 (wajib)';
-    const assistantLabel = (title, name, selectedId, optional) => { const label = document.createElement('label'); label.textContent = title; const select = document.createElement('select'); select.name = name; select.required = !optional; select.innerHTML = `<option value="">${optional ? 'Tidak ada' : 'Pilih asisten…'}</option>${refs.asisten.map(person => `<option value="${Number(person.id_user)}" ${Number(selectedId) === Number(person.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(person))}</option>`).join('')}`; label.append(select); return label };
-    const assistant2Label = assistantLabel('Asisten 2 (opsional)', 'id_user_asisten_pengajar_pendukung', selected('ASISTEN_PENGAJAR_PENDUKUNG') || selected('ASISTEN_PENDAMPING'), true), pendampingLabel = legacyAssistantSlot.closest('label');
-    if (pendampingLabel) { pendampingLabel.childNodes[0].textContent = 'Asisten pendamping (opsional)'; legacyAssistantSlot.name = 'id_user_pendamping_teknis'; legacyAssistantSlot.innerHTML = `<option value="">Tidak ada</option>${refs.asisten.map(person => `<option value="${Number(person.id_user)}" ${Number(selected('PENDAMPING_TEKNIS')) === Number(person.id_user) ? 'selected' : ''}>${esc(assistantOptionLabel(person))}</option>`).join('')}`; pendampingLabel.before(assistant2Label) }
-    const availabilitySlots = { ASISTEN_UTAMA: assistantPrimary, ASISTEN_PENGAJAR_PENDUKUNG: assistant2Label.querySelector('select'), PENDAMPING_TEKNIS: legacyAssistantSlot };
-    Object.entries(availabilitySlots).forEach(([role, select]) => { const hint = document.createElement('div'); hint.className = 'assistant-availability is-neutral'; hint.dataset.assistantAvailability = role; hint.setAttribute('aria-live', 'polite'); hint.textContent = 'Pilih waktu untuk memeriksa jadwal kuliah pribadi.'; select.insertAdjacentElement('afterend', hint) });
-    const scheduleHelp = form.querySelector('p.help'); if (scheduleHelp) scheduleHelp.textContent = 'Bentrok jadwal kuliah pribadi adalah peringatan (Asisten tetap dapat dipilih). Jika ruangan memiliki jadwal lain, keterangan akan muncul dan dapat diizinkan.';
     let availabilityRequest = 0, availabilityState = [], availabilityError = false;
     const refreshAssistantAvailability = async () => {
       const requestId = ++availabilityRequest, values = Object.fromEntries(new FormData(form)); applyScheduleDates(values);
@@ -2092,8 +2376,20 @@ async function apiScheduleForm(c, schedule, examType) {
               roomInfoBox.className = 'notice is-info';
               roomInfoBox.innerHTML = `<strong>ℹ️ Slot Jadwal Reguler Kelas</strong><p style="margin:4px 0 0">Waktu dan lab bertepatan dengan slot jadwal reguler kelas ini. Ujian dapat dilaksanakan pada jam tersebut tanpa bentrok.</p>`;
             } else {
-              roomInfoBox.className = 'notice is-warning';
-              roomInfoBox.innerHTML = `<strong>⚠️ Keterangan Penggunaan Ruangan</strong><p style="margin:4px 0 0">${roomConflicts.map(x => esc(x.pesan)).join('<br>')}</p><label style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;cursor:pointer"><input type="checkbox" name="izinkan_bentrok_ruang" value="1"> Tetap gunakan ruangan ini dengan catatan ruang bersama (kegiatan telah dikoordinasikan)</label>`;
+              roomInfoBox.className = 'exam-conflict-alert';
+              roomInfoBox.innerHTML = `
+                <div class="conflict-alert-content">
+                  <div class="conflict-alert-head">
+                    <span>⚠️</span>
+                    <span>Keterangan Penggunaan Ruangan</span>
+                  </div>
+                  <p class="conflict-alert-desc">${roomConflicts.map(x => esc(x.pesan)).join('<br>')}</p>
+                  <label class="conflict-confirm-check">
+                    <input type="checkbox" name="izinkan_bentrok_ruang" value="1">
+                    <span>Tetap gunakan ruangan ini dengan catatan ruang bersama (kegiatan telah dikoordinasikan)</span>
+                  </label>
+                </div>
+              `;
             }
           }
         }
@@ -2123,15 +2419,21 @@ async function apiScheduleForm(c, schedule, examType) {
         for (const field of ['id_user_asisten_pengajar_pendukung', 'id_user_pendamping_teknis']) values[field] = values[field] ? Number(values[field]) : null;
         values.versi = Number(c.kelompok.versi);
         if (!values.tanggal_selesai) values.tanggal_selesai = null;
+        if (values.nomor_pertemuan) {
+          values.nomor_pertemuan = Number(values.nomor_pertemuan);
+        } else {
+          delete values.nomor_pertemuan;
+        }
         if (isExam) {
           values.catatan = 'UJIAN_' + effectiveExamType;
+          values.materi_sesi = `Ujian ${effectiveExamType === 'MID' ? 'Tengah' : 'Akhir'} Semester (${effectiveExamType})`;
         }
         if (event.target.querySelector('[name="izinkan_bentrok_ruang"]')?.checked) {
           values.izinkan_bentrok_ruang = true;
         }
         const saved = await api(schedule ? `/classes/${c.id_kelas_kuliah}/schedules/${schedule.id}` : `/classes/${c.id_kelas_kuliah}/schedules`, values, schedule ? 'PATCH' : 'POST'), savedWarnings = saved.rekomendasi_ketersediaan_asisten || [], hasSavedWarning = savedWarnings.length > 0;
         modal.close();
-        toast(isExam ? `Jadwal ujian ${effectiveExamType} berhasil disimpan.` : (hasSavedWarning ? 'Jadwal tersimpan dengan peringatan ketersediaan Asisten.' : 'Jadwal tersimpan di API pusat.'));
+        toast(isExam ? `Jadwal ujian ${effectiveExamType}${values.nomor_pertemuan ? ` (Pertemuan ${values.nomor_pertemuan})` : ''} berhasil disimpan.` : (hasSavedWarning ? 'Jadwal tersimpan dengan peringatan ketersediaan Asisten.' : 'Jadwal tersimpan di API pusat.'));
         await apiClassDetailWithEntry(Number(c.id_kelas_kuliah));
       } catch (error) { toast(error.message); button.disabled = false }
     };
@@ -2176,7 +2478,14 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
   const lecturerResultsView = isLecturer && page === 'Hasil Penilaian';
   if (canEdit) { try { [assessmentScheme, meetingAssessment] = await Promise.all([api(`/classes/${classId}/assessment-scheme`), api(`/classes/${classId}/meetings/${meeting}/assessment`)]) } catch (error) { assessmentError = error.message } }
   if (lecturerResultsView && c.hasil_diajukan) { try { const lecturerScheme = await api(`/classes/${classId}/assessment-scheme`); if (lecturerScheme) lecturerAssessmentSheets = await Promise.all(Array.from({ length: meetings }, (_, index) => api(`/classes/${classId}/meetings/${index + 1}/assessment`))) } catch (error) { lecturerAssessmentError = error.message } }
-  const scheduleId = Number(selectedSchedule) || 0, scheduleUnselected = schedules.length > 1 && !scheduleId, draftKey = apiAttendanceDraftKey(classId, meeting, scheduleId), draft = apiReadAttendanceDraft(draftKey) || {};
+  const midSchedule = schedules.find(s => String(s.catatan_workflow || '').includes('MID'));
+  const uasSchedule = schedules.find(s => String(s.catatan_workflow || '').includes('UAS'));
+  const midMeetingNum = midSchedule?.nomor_pertemuan || (c.sesi || []).find(s => Number(s.id_jadwal_kelas_kuliah) === Number(midSchedule?.id))?.nomor_pertemuan || null;
+  const uasMeetingNum = uasSchedule?.nomor_pertemuan || (c.sesi || []).find(s => Number(s.id_jadwal_kelas_kuliah) === Number(uasSchedule?.id))?.nomor_pertemuan || null;
+  const autoScheduleId = (!selectedSchedule && Number(midMeetingNum) === meeting && midSchedule)
+    ? Number(midSchedule.id)
+    : ((!selectedSchedule && Number(uasMeetingNum) === meeting && uasSchedule) ? Number(uasSchedule.id) : (Number(selectedSchedule) || 0));
+  const scheduleId = autoScheduleId, scheduleUnselected = schedules.length > 1 && !scheduleId, draftKey = apiAttendanceDraftKey(classId, meeting, scheduleId), draft = apiReadAttendanceDraft(draftKey) || {};
   const session = (c.sesi || []).find(x => Number(x.nomor_pertemuan) === meeting && (!scheduleId || Number(x.id_jadwal_kelas_kuliah || 0) === scheduleId)) || (c.sesi || []).find(x => Number(x.nomor_pertemuan) === meeting) || {};
   const attendanceFor = s => { const saved = (s.kehadiran || []).find(a => Number(a.nomor_pertemuan) === meeting && (!scheduleId || Number(a.id_jadwal_kelas_kuliah || 0) === scheduleId)) || (s.kehadiran || []).find(a => Number(a.nomor_pertemuan) === meeting) || {}; return draft.attendance?.[String(s.id_mahasiswa)] ? { ...saved, ...draft.attendance[String(s.id_mahasiswa)] } : saved };
   const gradeFor = (s, code) => (s.nilai || []).find(g => g.kode_komponen === code);
@@ -2198,8 +2507,6 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
   const canDeleteDraftSchedule = user.role === 'admin' && Number(c.periode.id) === Number(activePeriod?.id) && c.status === 'DRAF';
   const countWorkflowEditable = schedules.every(schedule => ['DRAF', 'PERLU_REVISI'].includes(schedule.status_workflow || 'DRAF'));
   const canManageClassCounts = !isParticipant && !isAssistant3 && ['admin', 'asisten'].includes(user.role) && Number(c.periode.id) === Number(activePeriod?.id) && ['DRAF', 'AKTIF'].includes(c.status) && countWorkflowEditable;
-  const midSchedule = schedules.find(s => String(s.catatan_workflow || '').includes('MID'));
-  const uasSchedule = schedules.find(s => String(s.catatan_workflow || '').includes('UAS'));
   const scheduleRows = schedules.length ? schedules.map(s => {
     const isMid = String(s.catatan_workflow || '').includes('MID');
     const isUas = String(s.catatan_workflow || '').includes('UAS');
@@ -2258,6 +2565,7 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
           </div>
           <div class="exam-card-body">
             ${midSchedule ? `
+              ${midMeetingNum ? `<p class="exam-meeting" style="margin-bottom:6px;font-weight:600;color:var(--primary);font-size:13px">🎯 Terhubung ke Pertemuan ${midMeetingNum}</p>` : ''}
               <p class="exam-time">📅 ${esc(midSchedule.tanggal_mulai || '—')} (${esc(weekday[Number(midSchedule.hari_ke)] || '')})</p>
               <p class="exam-lab">🏛️ ${esc(midSchedule.nama_laboratorium || midSchedule.nama_ruang || 'Lab')} · ${esc(String(midSchedule.jam_mulai || '').slice(0, 5))}–${esc(String(midSchedule.jam_selesai || '').slice(0, 5))}</p>
               <small class="muted">${midSchedule.tanggal_mulai === midSchedule.tanggal_selesai ? 'Jadwal Khusus (Pola Sekali)' : esc(apiStatus(midSchedule.pola_perulangan))}</small>
@@ -2281,6 +2589,7 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
           </div>
           <div class="exam-card-body">
             ${uasSchedule ? `
+              ${uasMeetingNum ? `<p class="exam-meeting" style="margin-bottom:6px;font-weight:600;color:var(--primary);font-size:13px">🎯 Terhubung ke Pertemuan ${uasMeetingNum}</p>` : ''}
               <p class="exam-time">📅 ${esc(uasSchedule.tanggal_mulai || '—')} (${esc(weekday[Number(uasSchedule.hari_ke)] || '')})</p>
               <p class="exam-lab">🏛️ ${esc(uasSchedule.nama_laboratorium || uasSchedule.nama_ruang || 'Lab')} · ${esc(String(uasSchedule.jam_mulai || '').slice(0, 5))}–${esc(String(uasSchedule.jam_selesai || '').slice(0, 5))}</p>
               <small class="muted">${uasSchedule.tanggal_mulai === uasSchedule.tanggal_selesai ? 'Jadwal Khusus (Pola Sekali)' : esc(apiStatus(uasSchedule.pola_perulangan))}</small>
@@ -2299,8 +2608,8 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
       </div>
     </section>
     <div class="api-detail-tabs" role="tablist" aria-label="Bagian kelas praktikum">${tabs.map(([key, label]) => `<button type="button" role="tab" aria-selected="${key === activeTab}" data-api-detail-tab="${key}" class="${key === activeTab ? 'active' : ''}">${label}</button>`).join('')}</div>
-    ${canEdit ? `<section class="card api-detail-panel" data-api-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}><div class="card-head"><h2>Presensi mahasiswa</h2><p>Draft otomatis disimpan di browser ini dan baru dihapus setelah berhasil dikirim ke API.</p></div>${scheduleUnselected ? '<div class="warning">Pilih jadwal sesi terlebih dahulu sebelum mencatat presensi.</div>' : ''}<div class="card-body api-edit-controls"><label>Pertemuan<select id="api-meeting">${Array.from({ length: meetings }, (_, i) => `<option value="${i + 1}" ${i + 1 === meeting ? 'selected' : ''}>Pertemuan ${i + 1}</option>`).join('')}</select></label>${schedules.length > 1 ? `<label>Jadwal sesi<select id="api-schedule"><option value="">Pilih jadwal…</option>${schedules.map(s => `<option value="${Number(s.id)}" ${Number(s.id) === scheduleId ? 'selected' : ''}>${esc(weekday[Number(s.hari_ke)] || 'Hari')} · ${esc(String(s.jam_mulai || '').slice(0, 5))} · ${esc(s.nama_laboratorium || s.nama_ruang || 'Laboratorium')}</option>`).join('')}</select></label>` : ''}<label>Tanggal sesi<input id="api-session-date" type="date" value="${esc(draft.tanggal_sesi || session.tanggal_sesi || '')}" ${scheduleUnselected ? 'disabled' : ''}></label><label class="api-material">Materi sesi<input id="api-session-material" maxlength="1000" value="${esc(draft.materi ?? session.materi ?? '')}" placeholder="Materi praktikum" ${scheduleUnselected ? 'disabled' : ''}></label></div>${scheduleUnselected ? '<div class="table-wrap"><table><thead><tr><th>NO</th><th>NIM</th><th>NAMA</th><th>STATUS</th><th>CATATAN</th></tr></thead><tbody>' + students.map((s, index) => `<tr><td>${index + 1}</td><td>${esc(s.nim)}</td><td>${esc(s.nama)}</td><td><select disabled><option>Belum diisi</option></select></td><td><input disabled></td></tr>`).join('') + '</tbody></table></div>' : attendanceRows}<div class="card-body row between"><small id="api-draft-status">${Object.keys(draft.attendance || {}).length || draft.materi || draft.tanggal_sesi ? 'Draft tersimpan di perangkat ini.' : 'Belum ada draft lokal.'}</small><div class="row"><button type="button" class="small" id="api-clear-draft" ${Object.keys(draft.attendance || {}).length || draft.materi || draft.tanggal_sesi ? '' : 'hidden'}>Hapus draft</button><button class="primary" id="api-save-attendance" ${scheduleUnselected ? 'disabled' : ''}>Simpan presensi</button></div></div><p class="help">Draft hanya ada di browser/perangkat ini, bukan di server atau perangkat lain. Hindari perangkat bersama; setelah tersimpan ke API, draft lokal otomatis dihapus.</p></section>` : ''}
-    ${canEdit ? `<section class="card api-detail-panel" data-api-panel="grading" ${activeTab === 'grading' ? '' : 'hidden'}><div class="card-head row between"><div><h2>Penilaian pertemuan ${meeting}</h2><p>Nilai disimpan per kategori dan dihitung memakai bobot pada versi skema lembar ini.</p></div><div class="row"><label class="inline-field">Pertemuan<select id="api-grade-meeting">${Array.from({ length: meetings }, (_, index) => `<option value="${index + 1}" ${index + 1 === meeting ? 'selected' : ''}>${index + 1}</option>`).join('')}</select></label><button type="button" class="small" id="api-assessment-scheme">Atur skema</button>${!assessmentSheet && assessmentScheme && meetingAssessment?.siap_generate ? '<button type="button" class="primary small" id="api-generate-assessment">Buat lembar nilai</button>' : ''}</div></div>${gradeRows}${assessmentSheet ? `<div class="card-body row between"><small>Skema versi ${Number(assessmentSheet.skema.nomor_versi)} · versi lembar ${Number(assessmentSheet.versi_lembar)} · nilai 0 tetap dihitung.</small><button class="primary" id="api-save-meeting-grades">Simpan nilai pertemuan</button></div>` : ''}</section>` : ''}
+    ${canEdit ? `<section class="card api-detail-panel" data-api-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}><div class="card-head"><h2>Presensi mahasiswa</h2><p>Draft otomatis disimpan di browser ini dan baru dihapus setelah berhasil dikirim ke API.</p></div>${scheduleUnselected ? '<div class="warning">Pilih jadwal sesi terlebih dahulu sebelum mencatat presensi.</div>' : ''}<div class="card-body api-edit-controls"><label>Pertemuan<select id="api-meeting">${Array.from({ length: meetings }, (_, i) => { const num = i + 1, tag = (Number(midMeetingNum) === num) ? ' (MID)' : ((Number(uasMeetingNum) === num) ? ' (UAS)' : ''); return `<option value="${num}" ${num === meeting ? 'selected' : ''}>Pertemuan ${num}${tag}</option>` }).join('')}</select></label>${schedules.length > 1 ? `<label>Jadwal sesi<select id="api-schedule"><option value="">Pilih jadwal…</option>${schedules.map(s => `<option value="${Number(s.id)}" ${Number(s.id) === scheduleId ? 'selected' : ''}>${esc(weekday[Number(s.hari_ke)] || 'Hari')} · ${esc(String(s.jam_mulai || '').slice(0, 5))} · ${esc(s.nama_laboratorium || s.nama_ruang || 'Laboratorium')}</option>`).join('')}</select></label>` : ''}<label>Tanggal sesi<input id="api-session-date" type="date" value="${esc(draft.tanggal_sesi || session.tanggal_sesi || '')}" ${scheduleUnselected ? 'disabled' : ''}></label><label class="api-material">Materi sesi<input id="api-session-material" maxlength="1000" value="${esc(draft.materi ?? session.materi ?? '')}" placeholder="Materi praktikum" ${scheduleUnselected ? 'disabled' : ''}></label></div>${scheduleUnselected ? '<div class="table-wrap"><table><thead><tr><th>NO</th><th>NIM</th><th>NAMA</th><th>STATUS</th><th>CATATAN</th></tr></thead><tbody>' + students.map((s, index) => `<tr><td>${index + 1}</td><td>${esc(s.nim)}</td><td>${esc(s.nama)}</td><td><select disabled><option>Belum diisi</option></select></td><td><input disabled></td></tr>`).join('') + '</tbody></table></div>' : attendanceRows}<div class="card-body row between"><small id="api-draft-status">${Object.keys(draft.attendance || {}).length || draft.materi || draft.tanggal_sesi ? 'Draft tersimpan di perangkat ini.' : 'Belum ada draft lokal.'}</small><div class="row"><button type="button" class="small" id="api-clear-draft" ${Object.keys(draft.attendance || {}).length || draft.materi || draft.tanggal_sesi ? '' : 'hidden'}>Hapus draft</button><button class="primary" id="api-save-attendance" ${scheduleUnselected ? 'disabled' : ''}>Simpan presensi</button></div></div><p class="help">Draft hanya ada di browser/perangkat ini, bukan di server atau perangkat lain. Hindari perangkat bersama; setelah tersimpan ke API, draft lokal otomatis dihapus.</p></section>` : ''}
+    ${canEdit ? `<section class="card api-detail-panel" data-api-panel="grading" ${activeTab === 'grading' ? '' : 'hidden'}><div class="card-head row between"><div><h2>Penilaian pertemuan ${meeting}</h2><p>Nilai disimpan per kategori dan dihitung memakai bobot pada versi skema lembar ini.</p></div><div class="row"><label class="inline-field">Pertemuan<select id="api-grade-meeting">${Array.from({ length: meetings }, (_, index) => { const num = index + 1, tag = (Number(midMeetingNum) === num) ? ' (MID)' : ((Number(uasMeetingNum) === num) ? ' (UAS)' : ''); return `<option value="${num}" ${num === meeting ? 'selected' : ''}>${num}${tag}</option>` }).join('')}</select></label><button type="button" class="small" id="api-assessment-scheme">Atur skema</button>${!assessmentSheet && assessmentScheme && meetingAssessment?.siap_generate ? '<button type="button" class="primary small" id="api-generate-assessment">Buat lembar nilai</button>' : ''}</div></div>${gradeRows}${assessmentSheet ? `<div class="card-body row between"><small>Skema versi ${Number(assessmentSheet.skema.nomor_versi)} · versi lembar ${Number(assessmentSheet.versi_lembar)} · nilai 0 tetap dihitung.</small><button class="primary" id="api-save-meeting-grades">Simpan nilai pertemuan</button></div>` : ''}</section>` : ''}
     ${canEdit ? `<section class="card api-detail-panel" data-api-panel="semester" ${activeTab === 'semester' ? '' : 'hidden'}><div class="card-head"><h2>Nilai akhir semester</h2><p>Komponen ini tetap mengikuti konfigurasi nilai akhir kelas yang sudah ada.</p></div>${legacyGradeRows}<div class="card-body row between"><small>Nilai akhir disimpan terpisah dari nilai tiap pertemuan.</small><button class="primary" id="api-save-final-grades">Simpan nilai akhir</button></div></section>` : ''}
     <section class="card api-detail-panel" data-api-panel="sessions" ${activeTab === 'sessions' ? '' : 'hidden'}><div class="card-head"><h2>Sesi praktikum tercatat</h2></div>${sessionRows}</section>
     ${isLecturer && lecturerResultsView ? `<section class="card api-detail-panel" data-api-panel="grading" ${activeTab === 'grading' ? '' : 'hidden'}><div class="card-head"><h2>Hasil penilaian</h2><p>Nilai yang diajukan Asisten. Gunakan tindakan pada jadwal untuk meminta revisi, memverifikasi, atau mengunci hasil.</p></div>${c.hasil_diajukan ? `${gradeReadRows}<h3 class="card-body">Nilai kategori per pertemuan</h3>${meetingGradeReadRows}` : '<div class="warning">Hasil penilaian belum diajukan kepada Dosen.</div>'}<div class="card-body"><p class="help">Mode baca saja. Perubahan nilai hanya dapat dilakukan oleh Asisten yang ditugaskan.</p></div></section>` : ''}
