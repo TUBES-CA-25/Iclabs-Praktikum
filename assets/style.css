@@ -3539,8 +3539,13 @@ dialog select.assistant-select-error {
     font-size: 0.875rem;
 }
 
-.auth-toggle-pwd:hover {
+.auth-toggle-pwd:hover,
+.auth-toggle-pwd:hover:not(:disabled) {
     color: var(--auth-text-main);
+    background: none;
+    border-color: transparent;
+    box-shadow: none;
+    transform: translateY(-50%);
 }
 
 /* Remember Option */
@@ -3593,10 +3598,19 @@ dialog select.assistant-select-error {
     font-family: inherit;
 }
 
-.auth-btn-primary:hover {
-    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+.auth-btn-primary:hover,
+.auth-btn-primary:hover:not(:disabled) {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
     transform: translateY(-2px);
-    box-shadow: 0 14px 24px -3px rgba(37, 99, 235, 0.5);
+    box-shadow: 0 14px 24px -3px rgba(15, 23, 42, 0.25);
+}
+
+.auth-btn-primary:hover .btn-text-content,
+.auth-btn-primary:hover .auth-submit-text,
+.auth-btn-primary:hover .btn-text-content i {
+    color: #0f172a;
 }
 
 .auth-btn-primary:active {
@@ -3744,8 +3758,11 @@ dialog select.assistant-select-error {
     color: #ffffff;
 }
 
-.auth-details-submit-primary:hover {
-    background-color: #1d4ed8;
+.auth-details-submit-primary:hover,
+.auth-details-submit-primary:hover:not(:disabled) {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
 }
 
 .auth-details-submit-secondary {
@@ -3754,9 +3771,11 @@ dialog select.assistant-select-error {
     color: var(--auth-details-sec-text);
 }
 
-.auth-details-submit-secondary:hover {
-    background-color: rgba(37, 99, 235, 0.5);
-    color: #ffffff;
+.auth-details-submit-secondary:hover,
+.auth-details-submit-secondary:hover:not(:disabled) {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: #cbd5e1;
 }
 
 /* Status Messages for activation and reset */
@@ -3799,23 +3818,6 @@ dialog select.assistant-select-error {
     transition: border-color 0.3s ease;
 }
 
-.auth-link-token {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--auth-footer-link);
-    text-decoration: none;
-    transition: color 0.2s ease;
-    margin-bottom: 0.5rem;
-}
-
-.auth-link-token:hover {
-    color: #93c5fd;
-    text-decoration: underline;
-}
-
 .auth-link-home {
     display: inline-flex;
     align-items: center;
@@ -3837,6 +3839,21 @@ dialog select.assistant-select-error {
     color: var(--auth-text-sub);
     letter-spacing: 0.01em;
     transition: color 0.3s ease;
+}
+
+.auth-copyright-link,
+.auth-copyright-text a,
+.login-copyright a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.auth-copyright-link:hover,
+.auth-copyright-text a:hover,
+.login-copyright a:hover {
+    color: #60a5fa;
+    text-decoration: underline;
 }
 
 /* Exam Schedule Section & Cards */
