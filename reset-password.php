@@ -65,7 +65,7 @@ $resetAvailable = !empty($runtimeConfig['iclabs_api_mode'])
 
 			<a class="activation-back-link" href="index.php">Kembali ke ICLabs Praktikum</a>
 			<noscript><p class="error" role="alert">Reset kata sandi memerlukan JavaScript. Aktifkan JavaScript lalu muat ulang halaman ini.</p></noscript>
-			<p class="login-copyright">© <?= date('Y') ?> ICLabs — Hak cipta dilindungi</p>
+			<p class="login-copyright"><a href="https://iclabs.fikom.umi.ac.id/dev/" target="_blank" rel="noopener noreferrer" class="auth-copyright-link">© <?= date('Y') ?> ICLabs — Hak cipta dilindungi</a></p>
 			</section>
 		</div>
 	</main>

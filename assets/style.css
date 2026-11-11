@@ -3998,21 +3998,21 @@ dialog.modal-schedule form.modal-schedule-form,
 }
 
 .modal-icon-badge.is-amber {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    color: #b45309;
-    border: 1px solid #fcd34d;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
 }
 
 .modal-icon-badge.is-purple {
-    background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
-    color: #7e22ce;
-    border: 1px solid #d8b4fe;
+    background: #e3eff2;
+    color: #155263;
+    border: 1px solid #c5dde3;
 }
 
 .modal-icon-badge.is-blue {
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
+    background: #e3eff2;
+    color: #155263;
+    border: 1px solid #c5dde3;
 }
 
 .modal-title-wrap h2 {
@@ -4306,25 +4306,26 @@ dialog.modal-schedule form.modal-schedule-form,
 }
 
 .btn-modal-submit {
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    border: 1px solid var(--primary-active);
+    background: #181a1c;
+    border: 1px solid #181a1c;
     color: #ffffff;
-    padding: 9px 22px;
+    padding: 8px 18px;
     font-size: 13px;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
-    transition: all 0.15s ease;
+    box-shadow: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
 .btn-modal-submit:hover:not(:disabled) {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35);
+    background: #2b2f33;
+    border-color: #2b2f33;
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-modal-submit:disabled {
@@ -4365,3 +4366,1682 @@ dialog form > .row:last-child, dialog .modal-actions {
 /* Rekap absensi: penanda alpa */
 .name-alpa-yellow { background: #fef9c3; color: #854d0e; box-shadow: inset 3px 0 0 #eab308; }
 .name-alpa-red { background: #fee2e2; color: #991b1b; box-shadow: inset 3px 0 0 #dc2626; }
+
+
+/* ==========================================================================
+   tasteskill v2 (framed-sheet) + ui-ux-pro-max — Dashboard & Workspace UI
+   Scoped strictly to .app, dialog#modal, and #toast (Login untouched)
+   ========================================================================== */
+
+body:has(.app) {
+    background: #f3f5f7;
+    color: #111315;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+}
+
+.app,
+dialog#modal {
+    --ground: #f3f5f7;
+    --surface: #ffffff;
+    --raised: #f8fafb;
+    --active: #e6eaee;
+    --border: #e6e9ec;
+    --rule: #eff1f4;
+    --control: #cfd5dd;
+    --text: #111315;
+    --text-main: #111315;
+    --text-body: #2c3137;
+    --muted: #5b6168;
+    --text-muted: #5b6168;
+    --faint: #687076;
+    --accent: #1b6c80;
+    --primary: #181a1c;
+    --primary-hover: #2b2f33;
+    --primary-active: #111315;
+    --primary-soft: #e3eff2;
+    --r-panel: 10px;
+    --r-control: 6px;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --radius-lg: 10px;
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+
+/* 1. Framed-Sheet Shell (.app, .sidebar, .content, .topbar, .workspace) */
+.app {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    min-height: 100dvh;
+    background: var(--ground);
+}
+
+.app .sidebar {
+    background: var(--ground);
+    color: var(--text);
+    padding: 14px 12px 14px 14px;
+    border-right: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    z-index: 30;
+}
+
+.app .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px 12px;
+    margin-bottom: 4px;
+    border-bottom: 0;
+}
+
+.app .brand-logo {
+    width: 34px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    padding: 1px;
+    box-shadow: none;
+}
+
+.app .brand strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+}
+
+.app .brand small {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0;
+    margin-top: 1px;
+}
+
+.app .navlabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--faint);
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 6px 0 4px;
+    padding: 0 10px;
+}
+
+.app .nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.app .nav button {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--r-control);
+    background: transparent;
+    color: #4b525a;
+    font-size: 13px;
+    font-weight: 500;
+    justify-content: flex-start;
+    gap: 10px;
+    box-shadow: none;
+    transform: none;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.app .nav button::before {
+    display: none;
+}
+
+.app .nav button .icon {
+    width: 16px;
+    height: 16px;
+    color: var(--faint);
+    opacity: 1;
+}
+
+.app .nav button .icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.app .nav button:hover:not(:disabled) {
+    background: rgba(17, 19, 21, 0.045);
+    color: var(--text);
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+}
+
+.app .nav button:hover .icon {
+    color: var(--text);
+}
+
+.app .nav button.active {
+    background: var(--active);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.app .nav button.active .icon {
+    color: var(--accent);
+}
+
+.app .sidebar-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid #e2e6ea;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app .sidebar-status-card {
+    background: transparent;
+    border: 0;
+    padding: 4px 10px;
+    border-radius: var(--r-control);
+}
+
+.app .system-status-indicator {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    gap: 8px;
+}
+
+.app .status-dot-pulse {
+    width: 7px;
+    height: 7px;
+    background: #15803d;
+    box-shadow: none;
+    animation: none;
+}
+
+.app .sidebar-logout-btn {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--r-control);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    justify-content: flex-start;
+    gap: 10px;
+    box-shadow: none;
+}
+
+.app .sidebar-logout-btn:hover:not(:disabled) {
+    background: #ffedea;
+    border-color: #f9d2cc;
+    color: #831c1e;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Content Frame & Topbar */
+.app .content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--ground);
+    padding: 0 10px 10px 0;
+}
+
+.app .topbar {
+    height: 50px;
+    padding: 0 16px;
+    background: var(--ground);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.app .topbar-breadcrumbs {
+    font-size: 13px;
+    gap: 8px;
+}
+
+.app .topbar-crumb-app {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.app .topbar-crumb-sep {
+    color: #b0b7bf;
+}
+
+.app .topbar-crumb-page {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.app .badge-api-indicator {
+    background: #e3eff2;
+    color: #155263;
+    border: 0;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 8px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.app .profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    background: var(--active);
+    color: var(--text);
+    border: 1px solid #d5dbe1;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.app .avatar:hover {
+    transform: none;
+    background: #dce1e7;
+}
+
+.app .profile > button#account,
+.app .profile > button#api-account {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: var(--r-control);
+    background: transparent;
+    box-shadow: none;
+}
+
+.app .profile > button#account:hover,
+.app .profile > button#api-account:hover {
+    background: rgba(17, 19, 21, 0.045);
+    border-color: transparent;
+    transform: none;
+}
+
+.app .profile-name strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.app .profile-name small {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.app .logout-button {
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--r-control);
+    border: 1px solid var(--control);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+.app .logout-button:hover:not(:disabled) {
+    background: #ffedea;
+    border-color: #f5c2ba;
+    color: #831c1e;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Inset White Framed Sheet (.workspace) */
+.app .workspace {
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 20px 24px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+}
+
+/* 2. Compact Active Period Context Bar (.period-summary) */
+.app .period-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+    padding: 0;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+}
+
+.app .period-summary > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 0;
+    border-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.app .period-summary > div + div {
+    border-left: 1px solid var(--border);
+}
+
+.app .period-summary small {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+}
+
+.app .period-summary strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.app .period-summary .row {
+    margin-top: 0;
+    margin-left: auto;
+}
+
+/* 3. Page Header / Title Row (.intro) */
+.app .intro {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app .intro.row.between {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.app .intro-head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.app .intro .eyebrow {
+    display: none !important;
+}
+
+.app h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--text);
+    margin: 0;
+}
+
+.app h2 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    color: var(--text);
+    margin: 0;
+}
+
+.app h3 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin: 0;
+}
+
+.app .intro p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.45;
+    margin: 0;
+    max-width: 74ch;
+}
+
+/* 4. Divided KPI Strip (.stats & .stat) — Zero Icon Slop */
+.app .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0;
+    margin-bottom: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.app .stat {
+    padding: 14px 18px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    transition: none;
+}
+
+.app .stat + .stat {
+    border-left: 1px solid var(--border);
+}
+
+.app .stat:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border);
+}
+
+.app .stat-icon {
+    display: none !important;
+}
+
+.app .stat .label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.app .stat b {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    margin: 2px 0 0;
+}
+
+.app .stat small {
+    font-size: 12px;
+    color: var(--faint);
+    margin: 0;
+}
+
+/* 5. Cards, Panels & Overview Progress Bars */
+.app .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.app .card-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+    gap: 12px;
+}
+
+.app .card-head p {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin: 2px 0 0;
+}
+
+.app .card-head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.app .card-body {
+    padding: 14px 18px;
+}
+
+.app .api-progress-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    padding: 16px 18px;
+}
+
+.app .api-progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+}
+
+.app .api-progress-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    font-size: 13px;
+    color: var(--text);
+}
+
+.app .api-progress-row strong {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+
+.app .api-progress-pct {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    min-width: 44px;
+    text-align: right;
+}
+
+.app .api-progress-track {
+    height: 6px;
+    width: 100%;
+    background: #e3e7ec;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.app .api-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 9999px;
+}
+
+/* 6. Buttons, Inputs, Selects & Unified Toolbars */
+.app button,
+.app a.small,
+dialog#modal button {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: var(--r-control);
+    border: 1px solid var(--control);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: none;
+    transform: none;
+    transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.app button:hover:not(:disabled),
+.app a.small:hover,
+dialog#modal button:hover:not(:disabled) {
+    background: var(--raised);
+    border-color: #b8c0cc;
+    box-shadow: none;
+    transform: none;
+}
+
+.app button.small,
+.app a.small,
+dialog#modal button.small {
+    height: 32px;
+    padding: 0 11px;
+    border-radius: var(--r-control);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+.app button.primary,
+dialog#modal button.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.app button.primary:hover:not(:disabled),
+dialog#modal button.primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #ffffff;
+    box-shadow: none;
+    transform: none;
+}
+
+.app button.danger,
+dialog#modal button.danger {
+    background: #ffedea;
+    border-color: #f5c2ba;
+    color: #831c1e;
+}
+
+.app button.danger:hover:not(:disabled),
+dialog#modal button.danger:hover:not(:disabled) {
+    background: #fadbd6;
+    border-color: #ebaba0;
+    color: #691416;
+}
+
+.app input:not([type="checkbox"]):not([type="radio"]),
+.app select,
+.app textarea,
+dialog#modal input:not([type="checkbox"]):not([type="radio"]),
+dialog#modal select,
+dialog#modal textarea {
+    border: 1px solid var(--control);
+    background: var(--surface);
+    border-radius: var(--r-control);
+    color: var(--text);
+    font-size: 13.5px;
+    box-shadow: none;
+    transition: border-color 0.12s ease;
+}
+
+.app input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.app select,
+dialog#modal input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+dialog#modal select {
+    height: 36px;
+    padding: 0 11px;
+}
+
+.app textarea,
+dialog#modal textarea {
+    padding: 8px 11px;
+}
+
+.app input:focus,
+.app select:focus,
+.app textarea:focus,
+dialog#modal input:focus,
+dialog#modal select:focus,
+dialog#modal textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+    box-shadow: none;
+}
+
+.app label,
+dialog#modal label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #374151;
+    gap: 5px;
+}
+
+.app label.inline-field {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.app label.inline-field select {
+    height: 32px;
+    width: auto;
+    min-width: 190px;
+    font-size: 12.5px;
+}
+
+/* Filter & Bulk Status Toolbars */
+.app .api-class-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 12px 18px;
+    background: var(--raised);
+    border-bottom: 1px solid var(--rule);
+}
+
+.app .api-class-filters label {
+    margin: 0;
+    min-width: 170px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.app .api-class-filters .api-class-search {
+    flex: 1 1 260px;
+}
+
+.app #api-class-filter-count {
+    margin-left: auto;
+    align-self: center;
+    padding: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.app .api-class-status-toolbar {
+    padding: 12px 18px;
+    background: var(--raised);
+    border-bottom: 1px solid var(--rule);
+    gap: 6px;
+}
+
+.app .api-class-status-toolbar .help {
+    padding: 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.app .filters {
+    display: grid;
+    grid-template-columns: 2fr repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+}
+
+.app .api-edit-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    align-items: end;
+    padding: 14px 18px;
+    background: var(--raised);
+    border-bottom: 1px solid var(--rule);
+}
+
+.app .api-edit-controls label {
+    margin: 0;
+}
+
+.app .api-edit-controls button {
+    height: 36px;
+    align-self: end;
+}
+
+/* 7. Tables & Numeric Alignment */
+.app table,
+dialog#modal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.app th,
+dialog#modal th {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--raised);
+    border-bottom: 1px solid var(--border);
+    text-transform: none;
+    letter-spacing: 0;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.app td,
+dialog#modal td {
+    padding: 10px 16px;
+    font-size: 13.5px;
+    color: var(--text);
+    border-bottom: 1px solid var(--rule);
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+
+.app tbody tr:last-child td,
+dialog#modal tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.app tbody tr:hover td {
+    background: var(--raised);
+}
+
+.app th:first-child,
+.app td:first-child,
+dialog#modal th:first-child,
+dialog#modal td:first-child {
+    text-align: left;
+    width: auto;
+}
+
+.app th.num,
+.app td.num,
+dialog#modal th.num,
+dialog#modal td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.app th.col-actions,
+.app td.col-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.app th.col-check,
+.app td.col-check {
+    width: 44px;
+    text-align: center;
+}
+
+.app td input.api-grade-score {
+    width: 88px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 8. Tabs (.tabs, .master-tabs, .api-detail-tabs) */
+.app .tabs,
+.app .master-tabs {
+    padding: 0 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    gap: 4px;
+}
+
+.app .tabs button,
+.app .master-tabs button {
+    height: 38px;
+    padding: 0 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.app .tabs button.active,
+.app .master-tabs button.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+    font-weight: 600;
+    background: transparent;
+}
+
+.app .api-detail-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 16px 0 14px;
+    padding: 0 4px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+}
+
+.app .api-detail-tabs button {
+    height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+.app .api-detail-tabs button:hover:not(:disabled) {
+    color: var(--text);
+    background: transparent;
+}
+
+.app .api-detail-tabs button.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+    background: transparent;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+/* 9. Status Pills & Semantic Notices */
+.app .badge,
+dialog#modal .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #eff1f4;
+    color: #374151;
+    border: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.app .badge.green,
+dialog#modal .badge.green {
+    background: #dcfae5;
+    color: #04250e;
+}
+
+.app .badge.yellow,
+dialog#modal .badge.yellow {
+    background: #fef3c7;
+    color: #78350f;
+}
+
+.app .badge.red,
+dialog#modal .badge.red {
+    background: #ffedea;
+    color: #831c1e;
+}
+
+.app .badge.blue,
+.app .badge.purple,
+dialog#modal .badge.blue,
+dialog#modal .badge.purple {
+    background: #e3eff2;
+    color: #155263;
+}
+
+.app .attendance-pill {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    border: 0;
+}
+
+.app .warning,
+.app .error,
+.app .success,
+dialog#modal .warning,
+dialog#modal .error,
+dialog#modal .success {
+    border-radius: var(--r-panel);
+    font-size: 13px;
+    padding: 12px 16px;
+    margin: 12px 18px;
+    box-shadow: none;
+}
+
+.app .intro > .warning,
+.app .workspace > #api-view > .error {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.app .help,
+dialog#modal .help {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 18px;
+}
+
+/* 10. Detail Rows, Exam Cards & Google Sheet Sync Clean Layout */
+.app .api-detail-row,
+.app .api-class-row {
+    padding: 14px 18px;
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+}
+
+.app .exam-schedule-section {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.app .exam-schedule-grid {
+    padding: 14px 18px;
+    margin-top: 0;
+    gap: 14px;
+}
+
+.app .exam-card {
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    background: var(--raised);
+    padding: 14px 16px;
+    box-shadow: none;
+}
+
+.app .exam-card:hover {
+    border-color: #cfd5dd;
+    box-shadow: none;
+}
+
+.app .gs-ai-toolbar,
+.app .gs-bulk-confirm,
+.app .gs-summary {
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: none;
+}
+
+/* 11. Dialog / Modal Overlay Refinement */
+dialog#modal {
+    border: 1px solid var(--border);
+    border-radius: var(--r-panel);
+    box-shadow: 0 16px 36px rgba(17, 19, 21, 0.14);
+}
+
+#toast {
+    background: #181a1c;
+    color: #ffffff;
+    border-radius: var(--r-panel);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* 12. Responsive Breakpoints (Tablet & Phone) */
+@media (max-width: 960px) {
+    .app {
+        grid-template-columns: 1fr;
+    }
+
+    .app .content {
+        padding: 0 8px 8px;
+    }
+
+    .app .topbar {
+        padding: 0 8px;
+    }
+
+    .app .mobile {
+        display: inline-flex;
+        height: 32px;
+        width: 32px;
+        padding: 0;
+    }
+
+    .app .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 248px;
+        background: var(--ground);
+        border-right: 1px solid var(--border);
+        transform: translateX(-100%);
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.2s;
+        z-index: 60;
+    }
+
+    .app .sidebar.open {
+        transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
+        box-shadow: 0 16px 36px rgba(17, 19, 21, 0.16);
+    }
+
+    .app .workspace {
+        padding: 16px;
+    }
+
+    .app .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .app .stat:nth-child(3) {
+        border-left: 0;
+    }
+
+    .app .stat:nth-child(n+3) {
+        border-top: 1px solid var(--border);
+    }
+
+    .app .filters {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .app .content {
+        padding: 0 10px 10px;
+    }
+
+    .app .topbar {
+        padding: 0 8px;
+    }
+
+    .app .topbar-crumb-app,
+    .app .topbar-crumb-sep,
+    .app .badge-api-indicator {
+        display: none;
+    }
+
+    .app .topbar-crumb-page {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .app .logout-button {
+        width: 32px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .app .logout-button span {
+        display: none;
+    }
+
+    .app .workspace {
+        padding: 16px 16px 24px;
+    }
+
+    .app .period-summary {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .app .period-summary > div + div {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .app .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .app .stat + .stat {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .app .card-head.row.between,
+    .app .intro.row.between {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .app .filters {
+        grid-template-columns: 1fr;
+    }
+}
+
+.app small,
+dialog#modal small {
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.app th small,
+.app td small,
+.app .attendance-recap th small,
+.app .attendance-recap td small {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+/* ==========================================================================
+   SPECIFIC INTERACTIVE BUTTONS & STRUCTURED FREQUENCY DETAIL WORKSPACE
+   ========================================================================== */
+
+.app button .svg-icon,
+.app button .ui-icon,
+dialog#modal button .svg-icon,
+dialog#modal button .ui-icon,
+.app a.small .svg-icon,
+.app a.small .ui-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    stroke-width: 2;
+}
+
+/* Specific button variants for clear visual hierarchy */
+.app button.btn-back {
+    background: var(--surface-subtle, #f8fafc);
+    border-color: var(--border-strong, #cbd5e1);
+    color: var(--text, #0f172a);
+    font-weight: 600;
+    padding-left: 10px;
+    padding-right: 12px;
+    box-shadow: none;
+}
+
+.app button.btn-back:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    transform: none;
+    box-shadow: none;
+}
+
+.app button.btn-table-action {
+    background: #f0fdfa;
+    border-color: rgba(15, 118, 110, 0.28);
+    color: var(--primary, #0f766e);
+    font-weight: 600;
+    padding: 0 11px;
+    min-height: 30px;
+    box-shadow: none;
+}
+
+.app button.btn-table-action:hover:not(:disabled) {
+    background: var(--primary, #0f766e);
+    border-color: var(--primary, #0f766e);
+    color: #ffffff;
+    transform: none;
+    box-shadow: none;
+}
+
+.app button.btn-subtle-teal,
+.app a.small.btn-subtle-teal {
+    background: #f0fdfa;
+    border-color: rgba(15, 118, 110, 0.3);
+    color: var(--primary, #0f766e);
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.app button.btn-subtle-teal:hover:not(:disabled),
+.app a.small.btn-subtle-teal:hover {
+    background: #ccfbf1;
+    border-color: rgba(15, 118, 110, 0.48);
+    color: #115e59;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Structured Frequency Detail Header Card */
+.app .freq-header-card {
+    background: #ffffff;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: none;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.app .freq-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.app .freq-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.app .freq-hero-body {
+    padding: 20px;
+}
+
+.app .freq-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.app .freq-title-row h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text, #0f172a);
+    line-height: 1.25;
+}
+
+.app .freq-meta-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+}
+
+.app .freq-meta-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    padding-right: 8px;
+}
+
+.app .freq-meta-item + .freq-meta-item {
+    border-left: 1px solid var(--border, #e2e8f0);
+    padding-left: 12px;
+}
+
+.app .freq-meta-item > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.app .meta-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    line-height: 1.3;
+}
+
+.app .meta-label .svg-icon,
+.app .meta-label .ui-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--primary, #0f766e);
+    flex-shrink: 0;
+}
+
+.app .freq-meta-item strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #0f172a);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app .freq-meta-item small {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app .freq-quick-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border, #e2e8f0);
+}
+
+/* Enhanced Workspace Detail Tabs with Icons & Count Pills */
+.app .api-detail-tabs {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 5px;
+    background: #f1f5f9;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
+.app .api-detail-tabs button[role="tab"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary, #475569);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: none;
+    transition: background-color 140ms ease, color 140ms ease;
+}
+
+.app .api-detail-tabs button[role="tab"]:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.65);
+    color: var(--text, #0f172a);
+    box-shadow: none;
+}
+
+.app .api-detail-tabs button[role="tab"].active {
+    background: #ffffff;
+    border-color: var(--border, #e2e8f0);
+    color: var(--primary, #0f766e);
+    box-shadow: none;
+}
+
+.app .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.app .api-detail-tabs button[role="tab"].active .tab-count {
+    background: #ccfbf1;
+    color: #0f766e;
+}
+
+/* Structured Schedule Cards inside Jadwal & Ujian Tab */
+.app .schedule-cards-list {
+    display: grid;
+    gap: 14px;
+    padding: 16px 20px 20px;
+}
+
+.app .schedule-card.api-detail-row {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    background: #ffffff;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+.app .schedule-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.app .schedule-time-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 11px;
+    border-radius: 7px;
+    background: #f0fdfa;
+    border: 1px solid rgba(15, 118, 110, 0.22);
+    color: #0f766e;
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.app .schedule-time-pill .svg-icon,
+.app .schedule-time-pill .ui-icon {
+    width: 15px;
+    height: 15px;
+}
+
+.app .schedule-card-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.6fr);
+    gap: 16px;
+}
+
+.app .schedule-meta-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.app .schedule-meta-box strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text, #0f172a);
+}
+
+.app .schedule-staff-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.app .staff-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.app .staff-chip .staff-role {
+    color: var(--text-muted, #64748b);
+    font-weight: 600;
+}
+
+.app .staff-chip strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text, #0f172a);
+}
+
+.app .schedule-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+}
+
+@media (max-width: 960px) {
+    .app .freq-meta-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .app .freq-meta-item:nth-child(3) {
+        border-left: 0;
+        padding-left: 0;
+    }
+
+    .app .freq-meta-item:nth-child(n+3) {
+        border-top: 1px solid var(--border, #e2e8f0);
+        padding-top: 10px;
+    }
+
+    .app .schedule-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .app .freq-meta-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .app .freq-meta-item + .freq-meta-item {
+        border-left: 0;
+        padding-left: 0;
+        border-top: 1px solid var(--border, #e2e8f0);
+        padding-top: 10px;
+    }
+
+    .app .freq-topbar,
+    .app .freq-quick-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
