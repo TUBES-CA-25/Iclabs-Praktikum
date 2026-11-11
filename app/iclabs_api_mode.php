@@ -1130,6 +1130,96 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if (preg_match('#\\A/admin/periods/(\\d+)/export\\z#', $route, $match) && $method === 'GET') {
+        if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
+            api_mode_json(array('error' => 'Ekspor rekap periode hanya dapat diakses administrator.'), 403);
+        }
+        $periodId = (int) $match[1];
+        $verifiedOnly = isset($_GET['verified_only']) && (string) $_GET['verified_only'] === '1';
+
+        @session_write_close();
+        @set_time_limit(300);
+
+        // Fetch period metadata
+        $pResponse = api_mode_request('GET', 'praktikum/admin/periode-akademik');
+        $periodMeta = array('id' => $periodId, 'tahun_akademik' => 'Periode ' . $periodId, 'semester' => '');
+        if ($pResponse['status'] >= 200 && $pResponse['status'] < 300) {
+            $periodsList = $pResponse['data']['data']['periode'] ?? array();
+            foreach ($periodsList as $pItem) {
+                if ((int) ($pItem['id_periode_akademik'] ?? 0) === $periodId) {
+                    $periodMeta = $pItem;
+                    break;
+                }
+            }
+        }
+
+        // Fetch all classes (frequencies) in this period across all pages
+        $rawClasses = array();
+        $page = 1;
+        $lastPage = 1;
+        do {
+            $cResponse = api_mode_request('GET', 'praktikum/kelas?per_page=100&page=' . $page . '&id_periode_akademik=' . $periodId);
+            if ($cResponse['status'] < 200 || $cResponse['status'] >= 300) {
+                break;
+            }
+            $body = $cResponse['data'] ?? array();
+            if (!isset($body['data']) || !is_array($body['data'])) {
+                break;
+            }
+            $rawClasses = array_merge($rawClasses, $body['data']);
+            $lastPage = max(1, (int) ($body['meta']['last_page'] ?? 1));
+            $page++;
+        } while ($page <= $lastPage && $page <= 100);
+
+        // Load full detail for every frequency in this period (1 sheet per frequency)
+        $periodClasses = array();
+        foreach ($rawClasses as $cSummary) {
+            $cId = (int) ($cSummary['id_kelas_kuliah'] ?? 0);
+            if ($cId <= 0) {
+                continue;
+            }
+
+            // Check if class belongs to this period
+            $cPeriodId = (int) ($cSummary['periode']['id'] ?? ($cSummary['id_periode_akademik'] ?? 0));
+            if ($cPeriodId > 0 && $cPeriodId !== $periodId) {
+                continue;
+            }
+
+            // Fetch class detail; fallback to summary if detail endpoint is unavailable
+            $detailResponse = api_mode_request('GET', 'praktikum/kelas/' . $cId);
+            $classData = ($detailResponse['status'] >= 200 && $detailResponse['status'] < 300 && is_array($detailResponse['data']['data'] ?? null))
+                ? $detailResponse['data']['data']
+                : $cSummary;
+
+            $classStatus = strtoupper((string) ($classData['status'] ?? ''));
+            if ($classStatus === 'DIBATALKAN') {
+                continue;
+            }
+
+            if ($verifiedOnly) {
+                $isVerified = in_array($classStatus, array('TERVERIFIKASI', 'DIKUNCI', 'SELESAI'), true);
+                if (!$isVerified) {
+                    foreach (($classData['jadwal'] ?? array()) as $sch) {
+                        $wf = strtoupper((string) ($sch['status_workflow'] ?? ''));
+                        if (in_array($wf, array('TERVERIFIKASI', 'DIKUNCI', 'SELESAI'), true)) {
+                            $isVerified = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$isVerified) {
+                    continue;
+                }
+            }
+
+            $periodClasses[] = $classData;
+        }
+
+        require_once __DIR__ . '/period_report.php';
+        download_academic_period_recap_xlsx($periodMeta, $periodClasses);
+        exit;
+    }
+
     if ($route === '/admin/schedule-template' && $method === 'GET') {
         if (($_SESSION['iclabs_user']['role'] ?? '') !== 'admin') {
             api_mode_json(array('error' => 'Template jadwal hanya dapat diakses administrator.'), 403);

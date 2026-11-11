@@ -4352,3 +4352,16 @@ dialog.modal-schedule form.modal-schedule-form,
 
 
 
+
+/* Layout tombol: footer modal kanan-bawah, savebar, footer kartu ujian */
+dialog form > .row:last-child, dialog .modal-actions {
+    display: flex; justify-content: flex-end; align-items: center; gap: 10px;
+    margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.savebar { position: sticky; bottom: 0; z-index: 20; }
+.savebar #class-actions { justify-content: flex-end; }
+.exam-card-footer { display: flex; justify-content: flex-end; }
+
+/* Rekap absensi: penanda alpa */
+.name-alpa-yellow { background: #fef9c3; color: #854d0e; box-shadow: inset 3px 0 0 #eab308; }
+.name-alpa-red { background: #fee2e2; color: #991b1b; box-shadow: inset 3px 0 0 #dc2626; }

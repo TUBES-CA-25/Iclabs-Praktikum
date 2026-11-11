@@ -121,6 +121,9 @@ xlsx_status="$(curl -sS -o "$test_dir/report.xlsx" -w '%{http_code}' -b "$cookie
 [[ "$xlsx_status" == 200 ]] || { echo "FAIL: ekspor Excel status $xlsx_status"; exit 1; }
 php -r '$f=fopen($argv[1],"rb"); exit(fread($f,2)==="PK"?0:1);' "$test_dir/report.xlsx" || { echo "FAIL: berkas Excel tidak valid"; exit 1; }
 php -r '$z=new ZipArchive(); exit($z->open($argv[1])===true && $z->locateName("xl/worksheets/sheet1.xml")!==false && $z->locateName("[Content_Types].xml")!==false?0:1);' "$test_dir/report.xlsx" || { echo "FAIL: struktur XLSX tidak valid"; exit 1; }
+period_export_status="$(curl -sS -o "$test_dir/period_recap.xlsx" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods%2F1%2Fexport")"
+[[ "$period_export_status" == 200 ]] || { echo "FAIL: ekspor rekap periode Excel status $period_export_status"; exit 1; }
+php -r '$z=new ZipArchive(); exit($z->open($argv[1])===true && $z->locateName("xl/worksheets/sheet1.xml")!==false && $z->locateName("xl/workbook.xml")!==false?0:1);' "$test_dir/period_recap.xlsx" || { echo "FAIL: struktur XLSX rekap periode tidak valid"; exit 1; }
 pdf_status="$(curl -sS -o "$test_dir/report.pdf" -w '%{http_code}' -b "$cookie_jar" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=pdf&schedule_id=99")"
 [[ "$pdf_status" == 200 ]] || { echo "FAIL: ekspor PDF status $pdf_status"; exit 1; }
 php -r '$f=fopen($argv[1],"rb"); exit(fread($f,5)==="%PDF-"?0:1);' "$test_dir/report.pdf" || { echo "FAIL: berkas PDF tidak valid"; exit 1; }
@@ -235,6 +238,8 @@ student_audit_status="$(curl -sS -o "$test_dir/student-audit.json" -w '%{http_co
 [[ "$student_audit_status" == 403 ]] || { echo "FAIL: audit harus ditolak untuk Mahasiswa"; exit 1; }
 student_export_status="$(curl -sS -o "$test_dir/student-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fclasses%2F10%2Fexport&format=xlsx&schedule_id=99")"
 [[ "$student_export_status" == 403 ]] || { echo "FAIL: ekspor laporan harus ditolak untuk Mahasiswa"; exit 1; }
+student_period_export_status="$(curl -sS -o "$test_dir/student-period-export.json" -w '%{http_code}' -b "$student_cookies" "http://127.0.0.1:$app_port/api.php?route=%2Fadmin%2Fperiods%2F1%2Fexport")"
+[[ "$student_period_export_status" == 403 ]] || { echo "FAIL: ekspor rekap periode harus ditolak untuk Mahasiswa"; exit 1; }
 
 # --- Pengujian Asisten 3 (PENDAMPING_TEKNIS) & Praktikan Enrolled ---
 asisten3_cookies="$test_dir/asisten3-cookies.txt"
