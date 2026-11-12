@@ -52,6 +52,10 @@ invalid_activation_status="$(curl -sS -o "$test_dir/activation-invalid.json" -w 
 activation_request_status="$(curl -sS -o "$test_dir/activation-request.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"uji@student.umi.ac.id"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Factivation-request")"
 [[ "$activation_request_status" == 202 ]] || { echo "FAIL: permintaan email aktivasi"; exit 1; }
 grep -q 'Jika email terdaftar dan akun memenuhi syarat' "$test_dir/activation-request.json" || { echo "FAIL: pesan generik aktivasi"; exit 1; }
+activation_page_status="$(curl -sS -o "$test_dir/aktivasi.html" -w '%{http_code}' "http://127.0.0.1:$app_port/aktivasi.php")"
+[[ "$activation_page_status" == 200 ]] || { echo "FAIL: halaman aktivasi.php harus dapat diakses"; exit 1; }
+grep -q 'Aktifkan akun' "$test_dir/aktivasi.html" || { echo "FAIL: konten halaman aktivasi"; exit 1; }
+grep -q 'assets/activation.js' "$test_dir/aktivasi.html" || { echo "FAIL: aset activation.js tidak dimuat di aktivasi.php"; exit 1; }
 reset_request_status="$(curl -sS -o "$test_dir/reset-request.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"uji@student.umi.ac.id"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Fpassword-reset-request")"
 [[ "$reset_request_status" == 202 ]] || { echo "FAIL: permintaan reset kata sandi"; exit 1; }
 rate_limit_status="$(curl -sS -o "$test_dir/rate-limit.json" -w '%{http_code}' -b "$cookie_jar" -H "X-CSRF-Token: $prelogin_csrf" -H 'Content-Type: application/json' -d '{"email":"rate-limit@iclabs.test"}' "http://127.0.0.1:$app_port/api.php?route=%2Fauth%2Fpassword-reset-request")"

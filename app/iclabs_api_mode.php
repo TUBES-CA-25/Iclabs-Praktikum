@@ -569,7 +569,11 @@ try {
             ), 202);
         }
         if ($response['status'] === 429) {
-            api_mode_json(array('error' => 'Terlalu banyak permintaan. Coba kembali beberapa saat lagi.'), 429);
+            $actionLabel = $route === '/auth/activation-request' ? 'aktivasi' : 'reset kata sandi';
+            api_mode_json(array(
+                'error' => 'Terlalu banyak permintaan (maksimal 3 kali per jam untuk satu email). Silakan tunggu beberapa saat atau hubungi administrator untuk token ' . $actionLabel . ' langsung.',
+                'code' => 'RATE_LIMIT_EXCEEDED'
+            ), 429);
         }
         if ($response['status'] >= 500) {
             api_mode_json(array('error' => 'Layanan akun pusat sedang mengalami gangguan. Coba kembali nanti.'), 503);
@@ -934,7 +938,11 @@ try {
         if ($response['status'] < 200 || $response['status'] >= 300) {
             api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Pengiriman email aktivasi ditolak API pusat.')), $response['status']);
         }
-        api_mode_json($response['data'] ?? array('message' => 'Email aktivasi berhasil dikirim.'));
+        $responseData = $response['data'] ?? array();
+        if (is_array($responseData) && !isset($responseData['message'])) {
+            $responseData['message'] = 'Email aktivasi berhasil dikirim.';
+        }
+        api_mode_json($responseData ?: array('message' => 'Email aktivasi berhasil dikirim.'));
     }
 
     if (preg_match('#\A/admin/access-management/users/(\d+)/roles/(\d+)/lab-scopes\z#', $route, $match) && in_array($method, array('GET', 'POST'), true)) {

@@ -267,13 +267,14 @@ function login() {
                 <span>Minta email aktivasi akun</span>
               </summary>
               <div class="auth-details-content">
-                <p>Masukkan email akun pusat. Jika akun memenuhi syarat, instruksi aktivasi akan dikirim ke email.</p>
+                <p>Khusus akun baru berstatus <em>Menunggu Aktivasi</em>. Masukkan email resmi kampus (<strong>@student.umi.ac.id</strong> atau <strong>@umi.ac.id</strong>).</p>
                 <form id="activation-request">
                   <label class="sr-only" for="activation-email">Email akun untuk aktivasi</label>
                   <input id="activation-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
                   <button type="submit" class="auth-details-submit auth-details-submit-primary">Kirim instruksi aktivasi</button>
                   <div class="account-action-status" id="activation-status" role="status" aria-live="polite"></div>
                 </form>
+                <p style="margin-top:10px;font-size:11px;color:var(--text-muted,#64748b);line-height:1.5"><i class="fas fa-circle-info"></i> Jika akun sudah pernah aktif atau Anda lupa kata sandi, gunakan menu <strong>Lupa kata sandi?</strong> di bawah.</p>
               </div>
             </details>
 
@@ -283,7 +284,7 @@ function login() {
                 <span>Lupa kata sandi?</span>
               </summary>
               <div class="auth-details-content">
-                <p>Masukkan email akun pusat. Jika akun aktif, tautan untuk mengatur ulang kata sandi akan dikirim.</p>
+                <p>Masukkan email akun pusat. Jika akun aktif, tautan untuk mengatur ulang kata sandi akan dikirim ke email.</p>
                 <form id="password-reset-request">
                   <label class="sr-only" for="reset-email">Email akun untuk reset kata sandi</label>
                   <input id="reset-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
@@ -295,6 +296,11 @@ function login() {
           </div>
 
           <div class="auth-bottom-links">
+            <div>
+              <a href="aktivasi-akun" class="auth-link-token">
+                <i class="fas fa-key"></i> <span>Sudah punya token aktivasi? Aktifkan di sini</span>
+              </a>
+            </div>
             <div>
               <a href="/sumber-daya/" class="auth-link-home">
                 <i class="fas fa-arrow-left"></i> Kembali ke Halaman Utama
@@ -387,7 +393,15 @@ function login() {
         form.reset();
       } catch (error) {
         status.className = 'account-action-status is-error';
-        status.textContent = error.message || 'Permintaan belum dapat diproses. Coba kembali nanti.';
+        const msg = error.message || 'Permintaan belum dapat diproses. Coba kembali nanti.';
+        if (msg.includes('Terlalu banyak') || msg.includes('3 kali per jam')) {
+          const directLink = route === '/auth/activation-request'
+            ? '<a href="aktivasi-akun" style="color:#0f766e;font-weight:600;text-decoration:underline">Sudah punya token aktivasi? Masukkan token di sini &rarr;</a>'
+            : '<a href="reset-password" style="color:#0f766e;font-weight:600;text-decoration:underline">Sudah punya token reset? Atur sandi di sini &rarr;</a>';
+          status.innerHTML = `<div style="margin-bottom:6px"><i class="fas fa-triangle-exclamation"></i> ${esc(msg)}</div><div style="margin-top:6px;font-size:11px">${directLink}</div>`;
+        } else {
+          status.textContent = msg;
+        }
       } finally {
         button.disabled = false;
         button.classList.remove('is-loading');

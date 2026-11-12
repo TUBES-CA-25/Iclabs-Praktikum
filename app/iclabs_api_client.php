@@ -54,6 +54,25 @@ class IclabsApiClient
             $headers[] = 'Authorization: Bearer ' . $bearerToken;
         }
 
+        $clientIp = null;
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $rawIps = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $firstIp = trim($rawIps[0] ?? '');
+            if (filter_var($firstIp, FILTER_VALIDATE_IP)) {
+                $clientIp = $firstIp;
+            }
+        }
+        if ($clientIp === null && !empty($_SERVER['REMOTE_ADDR'])) {
+            $remoteIp = trim((string) $_SERVER['REMOTE_ADDR']);
+            if (filter_var($remoteIp, FILTER_VALIDATE_IP)) {
+                $clientIp = $remoteIp;
+            }
+        }
+        if ($clientIp !== null) {
+            $headers[] = 'X-Forwarded-For: ' . $clientIp;
+            $headers[] = 'X-Real-IP: ' . $clientIp;
+        }
+
         $requestTimeoutSeconds = $timeoutSeconds === null
             ? $this->timeoutSeconds
             : max($this->connectTimeoutSeconds, (int) $timeoutSeconds);
