@@ -5758,10 +5758,11 @@ dialog#modal button .ui-icon,
 
 .app .freq-title-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
 }
 
 .app .freq-title-row h1 {
@@ -6571,6 +6572,13 @@ dialog#modal button .ui-icon,
     color: #0f172a;
 }
 
+.app .gs-compact-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    line-height: 1.4;
+}
+
 .app .gs-loaded,
 .app .gs-inline-banner {
     display: flex;
@@ -6808,5 +6816,97 @@ dialog#modal button .ui-icon,
     .app .gs-meta-strip,
     .app .gs-rules-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   SCHEDULE EXCEL IMPORT MODAL & INTERACTIVE TEMPLATE CARD
+   ========================================================================== */
+dialog#modal .schedule-template-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    background: #ffffff;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+}
+
+dialog#modal .schedule-template-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+dialog#modal .schedule-template-info strong {
+    font-size: 13.5px;
+    color: var(--text, #0f172a);
+}
+
+dialog#modal .schedule-template-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted, #475569);
+    line-height: 1.45;
+}
+
+dialog#modal .schedule-template-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+dialog#modal a.schedule-template-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: #f0f7f9;
+    border: 1px solid #b8d4dc;
+    color: #155263;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+dialog#modal a.schedule-template-download:hover {
+    background: #e1eff3;
+    border-color: #1b6b7d;
+    color: #0f3d4a;
+}
+
+dialog#modal .schedule-file-drop {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    background: #ffffff;
+    border: 1px dashed #94a3b8;
+    border-radius: 10px;
+}
+
+dialog#modal .schedule-preview-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+    dialog#modal .schedule-template-box {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    dialog#modal a.schedule-template-download {
+        justify-content: center;
     }
 }

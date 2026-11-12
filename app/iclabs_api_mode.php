@@ -193,12 +193,26 @@ function api_mode_export_report(array $class, array $schedule, $format)
 
 function api_mode_find_reference(array $items, $value, $field, $label)
 {
-    $needle = mb_strtolower(trim((string) $value), 'UTF-8');
+    $raw = trim((string) $value);
+    $needle = mb_strtolower($raw, 'UTF-8');
     $matches = array_values(array_filter($items, static function (array $item) use ($field, $needle): bool {
         return mb_strtolower(trim((string) ($item[$field] ?? '')), 'UTF-8') === $needle;
     }));
+    if (count($matches) !== 1 && $needle !== '') {
+        foreach (array('kode', 'nama', 'email') as $altField) {
+            if ($altField === $field) {
+                continue;
+            }
+            $altMatches = array_values(array_filter($items, static function (array $item) use ($altField, $needle): bool {
+                return mb_strtolower(trim((string) ($item[$altField] ?? '')), 'UTF-8') === $needle;
+            }));
+            if (count($altMatches) === 1) {
+                return $altMatches[0];
+            }
+        }
+    }
     if (count($matches) !== 1) {
-        throw new RuntimeException($label . ' tidak ditemukan atau tidak unik: ' . trim((string) $value));
+        throw new RuntimeException($label . ' tidak ditemukan atau tidak unik: ' . $raw);
     }
     return $matches[0];
 }
@@ -1225,10 +1239,21 @@ try {
             api_mode_json(array('error' => 'Template jadwal hanya dapat diakses administrator.'), 403);
         }
         require_once __DIR__ . '/exchange.php';
-        xlsx_download(array(
-            array('tahun akademik', 'semester', 'prodi', 'kode mk', 'laboratorium', 'email dosen', 'email asisten 1', 'email asisten 2', 'email pendamping', 'hari', 'jam', 'aktif', 'frekuensi'),
-            array('2026/2027', 'Ganjil', 'Teknik Informatika', '130106RP4', 'Lab Startup', 'dosen@fikom.umi.ac.id', 'asisten1@fikom.umi.ac.id', '', '', 'Selasa', '07.00-10.20', 'Aktif', 'TI_ALPRO-1'),
-        ), 'template-jadwal.xlsx', 1);
+        $references = array();
+        $classes = array();
+        try {
+            $refResponse = api_mode_request('GET', 'praktikum/referensi');
+            if ($refResponse['status'] >= 200 && $refResponse['status'] < 300) {
+                $references = (array) ($refResponse['data']['data'] ?? array());
+            }
+            $classResponse = api_mode_request('GET', 'praktikum/kelas?per_page=100&page=1');
+            if ($classResponse['status'] >= 200 && $classResponse['status'] < 300 && is_array($classResponse['data']['data'] ?? null)) {
+                $classes = $classResponse['data']['data'];
+            }
+        } catch (Throwable $ignored) {
+            // Fall back to default reference rows when upstream API is unreachable.
+        }
+        xlsx_schedule_template_download($references, $classes, 'template-jadwal.xlsx');
         exit;
     }
 

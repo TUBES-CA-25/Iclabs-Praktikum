@@ -103,7 +103,11 @@ if ($path === '/api/v1/praktikum/referensi') {
         'laboratorium' => array(array('id' => 2, 'kode' => 'LAB-UJI', 'nama' => 'Laboratorium Uji'), array('id' => 3, 'kode' => 'LAB-STARTUP', 'nama' => 'Lab Startup')),
         'pola_perulangan' => array(array('kode' => 'MINGGUAN', 'nama' => 'Mingguan')),
         'dosen' => array(array('id_user' => 300, 'nama' => 'Dosen Uji', 'email' => 'dosen@fikom.umi.ac.id')),
-        'asisten' => array(array('id_user' => 400, 'nama' => 'Asisten Uji', 'email' => 'asisten1@fikom.umi.ac.id')),
+        'asisten' => array(
+            array('id_user' => 400, 'nama' => 'Asisten Uji', 'email' => '13020230049@student.umi.ac.id'),
+            array('id_user' => 401, 'nama' => 'Asisten Dua Uji', 'email' => '13020230100@student.umi.ac.id'),
+            array('id_user' => 403, 'nama' => 'Asisten Lama Uji', 'email' => 'asisten1@fikom.umi.ac.id'),
+        ),
     )));
     return;
 }

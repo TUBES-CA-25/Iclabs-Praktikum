@@ -461,7 +461,7 @@ function renderApiMode() {
   if (canManageAccess && !nav.includes('Manajemen Akses')) nav.push('Manajemen Akses');
   if (!student && hasStudentRole) nav.push('Nilai Saya');
   const initials = (user.name || user.email || 'IC').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">Navigasi</div><nav class="nav">${nav.map(x => `<button data-api-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Mode API Terhubung</span></span></div><button id="api-logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="api-menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span><span class="badge badge-api-indicator">API Pusat</span></div></div><div class="profile"><div class="avatar">${esc(initials)}</div><button id="api-account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="api-header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="api-period-summary">${apiPeriodSummary()}</div><div id="api-view"></div></main></div></div>`;
+  app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">Navigasi</div><nav class="nav">${nav.map(x => `<button data-api-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Mode API Terhubung</span></span></div><button id="api-logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="api-menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span></div></div><div class="profile"><div class="avatar">${esc(initials)}</div><button id="api-account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="api-header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="api-period-summary">${apiPeriodSummary()}</div><div id="api-view"></div></main></div></div>`;
   document.querySelectorAll('[data-api-nav]').forEach(b => b.onclick = () => { if (window.apiDraftStorageFailed && !confirm('Draft presensi gagal disimpan pada perangkat ini. Tetap tinggalkan halaman?')) return; window.apiDraftStorageFailed = false; page = b.dataset.apiNav; apiCurrent = null; window.selectedStudentClassId = null; renderApiMode() }); $('#api-logout').onclick = logout; $('#api-header-logout').onclick = logout; $('#api-account').onclick = account; $('#api-menu').onclick = () => $('.sidebar').classList.toggle('open');
   if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else if (page === 'Manajemen Akses') accessManagementPage(); else apiDashboard();
 }
@@ -686,16 +686,14 @@ function renderGoogleSheetReview(preserve) {
     <div class="card-head gs-workspace-head">
       <div class="gs-workspace-title">
         <div class="row" style="gap:8px;flex-wrap:wrap">
-          <h2>Meja Kerja Pencocokan &amp; Validasi Jadwal</h2>
+          <h2>Pratinjau &amp; Pemetaan Jadwal</h2>
           <span class="badge teal">${summary.valid}/${summary.total} Siap (${readyPct}%)</span>
-          <span class="badge" title="Checksum SHA-256 sumber CSV">SHA-256 ${esc((state.checksum || '—').slice(0, 12))}</span>
         </div>
-        <p>Periksa pemetaan kolom ke data master pusat. Baris berstatus oranye perlu dikonfirmasi sebelum jadwal dapat disimpan.</p>
       </div>
       <div class="gs-workspace-actions">
-        <button type="button" class="small btn-subtle-teal" id="google-sheet-ai-match" ${state.aiMatching ? 'disabled' : ''}>${iconSvg('sparkles')} <span>${state.aiMatching ? 'Mencocokkan AI…' : state.aiUsed ? 'Cocokkan Ulang AI' : 'Cocokkan dengan AI'}</span></button>
-        <button type="button" class="small gs-confirm-all" id="google-sheet-confirm-all" ${pendingSuggestions.length ? '' : 'disabled'}>${iconSvg('check-circle')} <span>Konfirmasi Semua Saran (${pendingSuggestions.length})</span></button>
-        <button type="button" class="primary small" id="google-sheet-commit-top" ${summary.ready ? '' : 'disabled'}>${iconSvg('save')} <span>Simpan ${summary.total} Baris</span></button>
+        <button type="button" class="small btn-subtle-teal" id="google-sheet-ai-match" ${state.aiMatching ? 'disabled' : ''}>${iconSvg('sparkles')} <span>${state.aiMatching ? 'Mencocokkan…' : state.aiUsed ? 'Cocokkan Ulang AI' : 'Bantuan AI'}</span></button>
+        <button type="button" class="small gs-confirm-all" id="google-sheet-confirm-all" ${pendingSuggestions.length ? '' : 'disabled'}>${iconSvg('check-circle')} <span>Konfirmasi Saran (${pendingSuggestions.length})</span></button>
+        <button type="button" class="primary small" id="google-sheet-commit-top" ${summary.ready ? '' : 'disabled'}>${iconSvg('save')} <span>Simpan (${summary.total})</span></button>
       </div>
     </div>
 
@@ -703,23 +701,18 @@ function renderGoogleSheetReview(preserve) {
       <div class="row dash-filter-pills gs-filter-pills" role="group" aria-label="Filter status baris jadwal">
         <button type="button" class="small ${googleSheetRowFilter === 'ALL' ? 'active' : ''}" data-gs-filter="ALL">Semua (${summary.total})</button>
         <button type="button" class="small ${googleSheetRowFilter === 'VALID' ? 'active' : ''}" data-gs-filter="VALID"><span class="gs-dot gs-dot-good"></span> Siap (${summary.valid})</button>
-        <button type="button" class="small ${googleSheetRowFilter === 'REVIEW' ? 'active' : ''}" data-gs-filter="REVIEW"><span class="gs-dot gs-dot-review"></span> Perlu Verifikasi (${summary.review})</button>
+        <button type="button" class="small ${googleSheetRowFilter === 'REVIEW' ? 'active' : ''}" data-gs-filter="REVIEW"><span class="gs-dot gs-dot-review"></span> Perlu Konfirmasi (${summary.review})</button>
         <button type="button" class="small ${googleSheetRowFilter === 'MISSING' ? 'active' : ''}" data-gs-filter="MISSING"><span class="gs-dot gs-dot-bad"></span> Belum Cocok (${summary.invalid})</button>
         ${summary.conflict ? `<button type="button" class="small ${googleSheetRowFilter === 'CONFLICT' ? 'active' : ''}" data-gs-filter="CONFLICT">Konflik (${summary.conflict})</button>` : ''}
-        ${summary.warning ? `<button type="button" class="small ${googleSheetRowFilter === 'WARNING' ? 'active' : ''}" data-gs-filter="WARNING">Peringatan Asisten (${summary.warning})</button>` : ''}
-      </div>
-      <div class="gs-legend-inline">
-        <span><i class="gs-dot gs-dot-good"></i> Cocok tepat</span>
-        <span><i class="gs-dot gs-dot-review"></i> Kandidat kemiripan (konfirmasi)</span>
-        <span><i class="gs-dot gs-dot-bad"></i> Belum cocok / wajib diperbaiki</span>
+        ${summary.warning ? `<button type="button" class="small ${googleSheetRowFilter === 'WARNING' ? 'active' : ''}" data-gs-filter="WARNING">Peringatan (${summary.warning})</button>` : ''}
       </div>
     </div>
 
     ${(state.aiMessage || state.assistantMessage || summary.conflict || summary.warning) ? `<div class="gs-notices-stack">
       ${state.aiMessage ? `<div class="gs-notice-bar gs-notice-teal" role="status">${iconSvg('sparkles')} <span>${esc(state.aiMessage)}</span></div>` : ''}
       ${state.assistantMessage ? `<div class="gs-notice-bar gs-notice-slate" role="status">${iconSvg('users')} <span>${esc(state.assistantMessage)}</span></div>` : ''}
-      ${summary.conflict ? `<div class="error gs-conflict-alert" role="alert"><strong>Konflik penghalang pada ${summary.conflict} baris:</strong> Akun yang mengisi beberapa slot pada satu jadwal atau ruangan yang dipakai bersamaan wajib diperbaiki sebelum menyimpan.</div>` : ''}
-      ${summary.warning ? `<div class="error gs-assistant-warning" role="status"><strong>Peringatan ketersediaan Asisten pada ${summary.warning} baris:</strong> Bentrok jadwal kuliah pribadi atau penugasan paralel tidak menghalangi simpan; admin tetap menentukan penugasan.</div>` : ''}
+      ${summary.conflict ? `<div class="error gs-conflict-alert" role="alert"><strong>Konflik pada ${summary.conflict} baris:</strong> Akun atau ruangan dipakai bersamaan pada slot yang sama.</div>` : ''}
+      ${summary.warning ? `<div class="error gs-assistant-warning" role="status"><strong>Peringatan Asisten (${summary.warning} baris):</strong> Bentrok jadwal kuliah pribadi tidak memblokir simpan.</div>` : ''}
     </div>` : ''}
 
     <div class="table-wrap gs-table-wrap">
@@ -728,12 +721,12 @@ function renderGoogleSheetReview(preserve) {
           <tr>
             <th>Baris</th>
             ${googleSheetReviewFields.map(([, label]) => `<th>${esc(label)}</th>`).join('')}
-            <th>Status Baris</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
           ${filteredEntries.length ? filteredEntries.map(({ row, index, issues, rowState }) => {
-            const statusText = rowState === 'valid' ? 'Siap disimpan' : rowState === 'warning' ? 'Peringatan Asisten · siap' : rowState === 'review' ? 'Perlu verifikasi' : rowState === 'conflict' ? 'Konflik penghalang' : 'Belum lengkap';
+            const statusText = rowState === 'valid' ? 'Siap' : rowState === 'warning' ? 'Peringatan · siap' : rowState === 'review' ? 'Perlu konfirmasi' : rowState === 'conflict' ? 'Konflik' : 'Belum lengkap';
             return `<tr class="gs-row-${rowState}">
               <td class="gs-line">#${Number(row.baris_sumber)}</td>
               ${googleSheetReviewFields.map(([field, label]) => {
@@ -755,10 +748,7 @@ function renderGoogleSheetReview(preserve) {
     </div>
 
     <div class="card-body row between gs-review-footer">
-      <div class="gs-footer-meta">
-        <strong>Kesiapan Simpan: ${summary.valid} dari ${summary.total} baris valid</strong>
-        <span class="help" style="margin:0">Jumlah Peserta hanya informasi (contoh 17+5 → 17); roster mahasiswa tidak diubah. Frekuensi yang sama pada periode ini akan diperbarui.</span>
-      </div>
+      <span class="help" style="margin:0"><strong>${summary.valid} dari ${summary.total} baris siap disimpan</strong> · Roster mahasiswa tidak diubah.</span>
       <button class="primary" id="google-sheet-commit" ${summary.ready ? '' : 'disabled'}>${iconSvg('save')} <span>Simpan ${summary.total} baris ke API pusat</span></button>
     </div>
   </section>`;
@@ -810,21 +800,13 @@ async function googleSheetScheduleSyncPage() {
   const view = $('#api-view'), storageKey = 'iclabs-praktikum-google-sheet-schedule-url', defaultUrl = 'https://docs.google.com/spreadsheets/d/1YtQ_cXtmvAZYeLkrbiSVtLq3wE9ZVvYEfNv3fIQrsiM/edit?gid=290740537'; let savedUrl = defaultUrl; try { savedUrl = localStorage.getItem(storageKey) || defaultUrl } catch { } const period = activePeriod;
   view.innerHTML = `<div class="intro row between">
       <div class="intro-head">
-        <h1>Sinkron Jadwal dari Google Sheets</h1>
-        <p>Impor, validasi kandidat master, dan selaraskan jadwal praktikum dari Google Spreadsheet ke periode aktif.</p>
+        <h1>Sinkron Jadwal</h1>
       </div>
-      <div class="row" style="gap:8px">
-        <span class="badge teal">${period ? `Periode ${esc(period.academic_year)} · ${esc(period.semester)}` : 'Belum ada periode aktif'}</span>
+      <div class="row">
+        <button type="button" class="small btn-subtle-teal" id="google-sheet-import-excel">${iconSvg('upload')} <span>Import Jadwal Excel</span></button>
       </div>
     </div>
     <section class="card gs-source-card">
-      <div class="card-head row between">
-        <div>
-          <h2>Sumber Jadwal &amp; Pengaturan Sinkronisasi</h2>
-          <p>Pratinjau hanya membaca Sheet publik tanpa mengubah database sampai tombol Simpan ditekan.</p>
-        </div>
-        <span class="badge blue">Mode Upsert (Aman)</span>
-      </div>
       <form id="google-sheet-sync-form" class="card-body">
         <label class="gs-url-label" for="google-sheet-url">URL Google Spreadsheet</label>
         <div class="gs-url-bar">
@@ -832,47 +814,15 @@ async function googleSheetScheduleSyncPage() {
           <a class="small btn-table-action gs-open-sheet-btn" href="#" target="_blank" rel="noopener noreferrer">${iconSvg('external-link')} <span>Buka Sheet</span></a>
           <button class="primary small" id="google-sheet-preview-button" type="submit" ${period ? '' : 'disabled'}>${iconSvg('download')} <span>Ambil &amp; Pratinjau Sheet</span></button>
         </div>
-
-        <div class="freq-meta-strip gs-meta-strip">
-          <div class="freq-meta-item">
-            <span class="meta-label">${iconSvg('calendar')} PERIODE TUJUAN (AKTIF)</span>
-            <strong>${period ? `${esc(period.academic_year)} · ${esc(period.semester)}` : 'Belum ada periode aktif'}</strong>
-            <small>${period ? `${esc(period.start_date || '—')} – ${esc(period.end_date || '—')}` : 'Aktifkan periode terlebih dahulu.'}</small>
-          </div>
-          <div class="freq-meta-item">
-            <span class="meta-label">${iconSvg('repeat')} METODE SINKRONISASI</span>
-            <strong>Perbarui &amp; Tambahkan (Upsert)</strong>
-            <small>Baris yang tidak ada tidak menghapus jadwal lama · Roster aman.</small>
-          </div>
-          <div class="freq-meta-item">
-            <span class="meta-label">${iconSvg('shield-check')} VALIDASI DUA TAHAP</span>
-            <strong>Konfirmasi Kandidat Master</strong>
-            <small>Kandidat kemiripan (oranye) wajib diperiksa &amp; dikonfirmasi.</small>
-          </div>
-        </div>
-
-        <div class="gs-rules-grid">
-          <div class="gs-rule-box">
-            <strong>${iconSvg('user-check')} Ketentuan Pengampu &amp; Asisten</strong>
-            <p>Dosen &amp; Asisten 1 wajib diisi; Asisten 2 &amp; Asisten 3 (khusus jenjang <code>ASISTEN_3</code>) bersifat opsional. Nama dosen setelah tanda “/” otomatis diabaikan.</p>
-          </div>
-          <div class="gs-rule-box">
-            <strong>${iconSvg('layers')} Format Label Kelas &amp; Peserta</strong>
-            <p>Kolom <em>Kelas</em> (opsional) menjadi label tampilan kelompok seperti <code>TI_JARKOM-5 (B1)</code>. Kolom <em>Peserta</em> hanya informasi dan tidak mengubah roster mahasiswa.</p>
-          </div>
-          <div class="gs-rule-box">
-            <strong>${iconSvg('clock')} Deteksi Bentrok Jadwal</strong>
-            <p>Rekomendasi Asisten memeriksa jadwal kuliah pribadi &amp; penugasan aktif. Bentrok ruangan memblokir simpan, sedangkan bentrok Asisten tampil sebagai peringatan.</p>
-          </div>
-        </div>
-
+        <div class="gs-compact-hint">Dosen &amp; Asisten 1 wajib · Kandidat oranye perlu dikonfirmasi · Data belum disimpan ke database sebelum klik Simpan.</div>
         <div id="google-sheet-sync-result" aria-live="polite"></div>
       </form>
     </section>
     <div id="google-sheet-review"></div>`;
-  const input = $('#google-sheet-url'), link = view.querySelector('.gs-open-sheet-btn'), updateSheetLink = () => { try { const url = new URL(input.value); link.href = url.protocol === 'https:' && url.hostname === 'docs.google.com' && url.pathname.startsWith('/spreadsheets/d/') ? url.href : '#' } catch { link.href = '#' } }; updateSheetLink(); input.oninput = updateSheetLink; input.addEventListener('input', () => { if (googleSheetReview && googleSheetReview.url !== input.value.trim()) { googleSheetReview = null; $('#google-sheet-review').innerHTML = ''; $('#google-sheet-sync-result').innerHTML = '<div class="warning gs-inline-banner">URL berubah. Ambil pratinjau baru agar tabel dan sumber Sheet tetap cocok.</div>' } });
-  $('#google-sheet-sync-form').onsubmit = async event => { event.preventDefault(); if (!period) { toast('Belum ada periode akademik aktif.'); return } const button = $('#google-sheet-preview-button'), result = $('#google-sheet-sync-result'), review = $('#google-sheet-review'); button.disabled = true; button.innerHTML = `${iconSvg('refresh', 'spin')} <span>Mengambil Sheet…</span>`; result.innerHTML = '<div class="empty gs-inline-banner">Mengambil CSV publik dari Google Sheets. Database pusat belum diubah…</div>'; review.innerHTML = ''; googleSheetReview = null; googleSheetRowFilter = 'ALL'; try { const url = input.value.trim(), preview = await api('/admin/preview-google-sheet', { url }, 'POST'), references = await api('/references'); for (const key of ['program_studi', 'mata_kuliah', 'laboratorium', 'dosen', 'asisten']) if (!Array.isArray(references[key])) throw Error('Referensi master untuk pemetaan belum lengkap dari API pusat.'); for (const row of preview.jadwal || []) { row.dosen = String(row.dosen || '').split('/')[0].trim(); for (const field of ['asisten_1', 'asisten_2', 'asisten_3']) if (sheetEmptyOptional(row[field])) row[field] = '' } sheetInitializeMappings(preview.jadwal || [], references); googleSheetReview.url = url; googleSheetReview.checksum = preview.checksum_sha256; try { localStorage.setItem(storageKey, url) } catch { } result.innerHTML = `<div class="success gs-loaded" role="status">${iconSvg('check-circle')} <span><strong>${Number(preview.jumlah_baris)} baris jadwal berhasil dibaca.</strong> Belum ada perubahan database — periksa dan konfirmasi kandidat di bawah sebelum menyimpan.</span></div>`; renderGoogleSheetReview(false); requestGoogleSheetAssistantRecommendations() } catch (error) { googleSheetReview = null; result.innerHTML = `<div class="error gs-inline-banner" role="alert">${esc(error.message)}</div>` } finally { button.disabled = false; button.innerHTML = `${iconSvg('download')} <span>Ambil &amp; Pratinjau Sheet</span>` } };
-  if (googleSheetReview && googleSheetReview.url === savedUrl) { $('#google-sheet-sync-result').innerHTML = `<div class="success gs-loaded" role="status">${iconSvg('check-circle')} <span>Pratinjau tersimpan sementara di halaman ini; belum ada perubahan database.</span></div>`; renderGoogleSheetReview(false) }
+  if ($('#google-sheet-import-excel')) $('#google-sheet-import-excel').onclick = importSchedule;
+  const input = $('#google-sheet-url'), link = view.querySelector('.gs-open-sheet-btn'), updateSheetLink = () => { try { const url = new URL(input.value); link.href = url.protocol === 'https:' && url.hostname === 'docs.google.com' && url.pathname.startsWith('/spreadsheets/d/') ? url.href : '#' } catch { link.href = '#' } }; updateSheetLink(); input.oninput = updateSheetLink; input.addEventListener('input', () => { if (googleSheetReview && googleSheetReview.url !== input.value.trim()) { googleSheetReview = null; $('#google-sheet-review').innerHTML = ''; $('#google-sheet-sync-result').innerHTML = '<div class="warning gs-inline-banner">URL berubah. Ambil pratinjau baru agar tabel tetap sinkron.</div>' } });
+  $('#google-sheet-sync-form').onsubmit = async event => { event.preventDefault(); if (!period) { toast('Belum ada periode akademik aktif.'); return } const button = $('#google-sheet-preview-button'), result = $('#google-sheet-sync-result'), review = $('#google-sheet-review'); button.disabled = true; button.innerHTML = `${iconSvg('refresh', 'spin')} <span>Mengambil Sheet…</span>`; result.innerHTML = '<div class="empty gs-inline-banner">Mengambil CSV publik dari Google Sheets…</div>'; review.innerHTML = ''; googleSheetReview = null; googleSheetRowFilter = 'ALL'; try { const url = input.value.trim(), preview = await api('/admin/preview-google-sheet', { url }, 'POST'), references = await api('/references'); for (const key of ['program_studi', 'mata_kuliah', 'laboratorium', 'dosen', 'asisten']) if (!Array.isArray(references[key])) throw Error('Referensi master untuk pemetaan belum lengkap dari API pusat.'); for (const row of preview.jadwal || []) { row.dosen = String(row.dosen || '').split('/')[0].trim(); for (const field of ['asisten_1', 'asisten_2', 'asisten_3']) if (sheetEmptyOptional(row[field])) row[field] = '' } sheetInitializeMappings(preview.jadwal || [], references); googleSheetReview.url = url; googleSheetReview.checksum = preview.checksum_sha256; try { localStorage.setItem(storageKey, url) } catch { } result.innerHTML = ''; toast(`${Number(preview.jumlah_baris)} baris jadwal berhasil dibaca.`); renderGoogleSheetReview(false); requestGoogleSheetAssistantRecommendations() } catch (error) { googleSheetReview = null; result.innerHTML = `<div class="error gs-inline-banner" role="alert">${esc(error.message)}</div>` } finally { button.disabled = false; button.innerHTML = `${iconSvg('download')} <span>Ambil &amp; Pratinjau Sheet</span>` } };
+  if (googleSheetReview && googleSheetReview.url === savedUrl) { $('#google-sheet-sync-result').innerHTML = ''; renderGoogleSheetReview(false) }
 }
 function apiPeriodSummary() { const p = activePeriod; return `<section class="period-summary" aria-label="Periode akademik pusat"><div><small>Periode aktif pusat</small><strong>${p ? esc(p.academic_year) + ' · ' + esc(p.semester) : 'Belum ada periode aktif'}</strong></div><div><small>Tanggal pelaksanaan</small><strong>${p ? esc(p.start_date || '—') + ' – ' + esc(p.end_date || '—') : '—'}</strong></div></section>` }
 async function apiSyncProduction(button, payload, onSuccess) {
@@ -1103,10 +1053,7 @@ async function apiDashboard() {
     const recentClasses = classList.slice(0, 8);
     const recentClassesHtml = classList.length ? `<section class="card">
       <div class="card-head row between">
-        <div>
-          <h2>${attendanceOnly ? 'Kelas yang Diampu' : 'Pemantauan Frekuensi Periode Aktif'}</h2>
-          <p>Menampilkan akses langsung ke frekuensi praktikum pada periode berjalan.</p>
-        </div>
+        <h2>${attendanceOnly ? 'Kelas yang Diampu' : 'Pemantauan Frekuensi'}</h2>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           <div class="row dash-filter-pills" role="group" aria-label="Filter cepat kelas">
             <button type="button" class="small active" data-dash-class-filter="ALL">Semua (${classList.length})</button>
@@ -1150,8 +1097,7 @@ async function apiDashboard() {
 
     view.innerHTML = `<div class="intro row between">
         <div class="intro-head">
-          <h1>${attendanceOnly ? 'Dashboard Pengampu Praktikum' : 'Dashboard Analitik Praktikum'}</h1>
-          <p>Visualisasi realisasi pertemuan, kepatuhan presensi, distribusi frekuensi mata kuliah, dan kesiapan operasional periode aktif.</p>
+          <h1>${attendanceOnly ? 'Dashboard Pengampu' : 'Dashboard Praktikum'}</h1>
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
           ${exportPeriodBtnHtml}
@@ -1171,12 +1117,8 @@ async function apiDashboard() {
       </div>
       <div class="dash-analytics-grid">
         <section class="card dash-chart-card">
-          <div class="card-head row between">
-            <div>
-              <h2>Analitik Realisasi &amp; Progres Operasional</h2>
-              <p>Persentase pencapaian sesi pertemuan, pencatatan kehadiran, serta distribusi beban kelas per mata kuliah.</p>
-            </div>
-            <span class="badge teal">${esc(activePeriod?.academic_year || 'Periode Aktif')} · ${esc(activePeriod?.semester || '')}</span>
+          <div class="card-head">
+            <h2>Analitik Realisasi &amp; Progres</h2>
           </div>
           <div class="card-body">
             ${radialGaugesHtml}
@@ -1186,8 +1128,7 @@ async function apiDashboard() {
         <div class="dash-side-stack">
           <section class="card dash-chart-card">
             <div class="card-head">
-              <h2>Komposisi Program Studi &amp; Status</h2>
-              <p>Sebaran frekuensi praktikum berdasarkan program studi dan kesiapan jadwal.</p>
+              <h2>Program Studi &amp; Status Kelas</h2>
             </div>
             <div class="card-body">
               ${prodiBreakdownHtml}
@@ -1197,7 +1138,6 @@ async function apiDashboard() {
           <section class="card dash-chart-card">
             <div class="card-head">
               <h2>Akses Cepat Modul</h2>
-              <p>Pintasan langsung ke modul manajemen praktikum.</p>
             </div>
             <div class="card-body">
               ${quickNavHtml}
@@ -1290,14 +1230,12 @@ async function apiClassListPage() {
           <button type="button" class="small" id="api-redraft-classes" disabled>${iconSvg('rotate-ccw')} <span>Kembalikan ke Draf</span></button>
         </div>
       </div>
-      <p class="help">Aktivasi perlu jadwal aktif, Dosen Pengampu, dan Asisten Utama. Kelas hanya dapat dikembalikan ke Draf sebelum ada sesi, pengajuan workflow, atau nilai. Mengubah filter akan mengosongkan pilihan massal.</p>
     </div>`: '';
     const classStatuses = [...new Set(classes.map(c => String(c.status || '')).filter(Boolean))];
     const classFilters = user.role === 'admin' ? `<div class="api-class-filters"><label>Status<select id="api-class-status-filter"><option value="">Semua status</option>${classStatuses.map(status => `<option value="${esc(status)}">${esc(apiStatus(status))}</option>`).join('')}</select></label><label class="api-class-search">Cari kelas<input id="api-class-search" type="search" placeholder="Mata kuliah, prodi, atau frekuensi"></label><span id="api-class-filter-count" class="help">${classes.length} kelas</span></div>` : '';
     const pageTitle = isLecturer ? (lecturerView === 'hasil' ? 'Hasil Penilaian' : 'Aktivitas & Presensi') : 'Kelas Praktikum';
-    const pageDescription = isLecturer ? (lecturerView === 'hasil' ? 'Jadwal yang sudah diajukan Asisten. Tinjau nilai dan beri revisi atau verifikasi.' : 'Semua kelas dan jadwal yang diampu, termasuk yang belum diajukan. Lihat rekap presensi per pertemuan.') : 'Daftar mengikuti batch akademik yang dipilih; histori lama tetap tersimpan dan tidak menerima perubahan.';
     const emptyMessage = isLecturer ? (lecturerView === 'hasil' ? 'Belum ada hasil penilaian yang diajukan kepada Anda.' : 'Belum ada kelas yang ditugaskan kepada akun Dosen ini.') : 'Belum ada kelas pada periode ini.';
-    view.innerHTML = `<div class="intro"><div class="intro-head"><h1>${pageTitle}</h1><p>${esc(pageDescription)}</p></div></div><section class="card"><div class="card-head row between"><div><h2>${selectedAcademicPeriod ? 'Histori Kelas' : (isLecturer ? (lecturerView === 'hasil' ? 'Pengajuan untuk Ditinjau' : 'Jadwal yang Diampu') : 'Kelas Periode Aktif')}</h2><p id="api-class-count">${classes.length} kelas ditampilkan.</p></div><div class="row card-head-actions">${user.role === 'admin' ? `<label class="inline-field">Periode<select id="api-period-filter"><option value="">Periode aktif (${esc(activePeriod?.academic_year || 'belum ditentukan')})</option>${periods.filter(period => Number(period.id_periode_akademik) !== Number(activePeriod?.id)).map(period => `<option value="${Number(period.id_periode_akademik)}" ${String(period.id_periode_akademik) === selectedAcademicPeriod ? 'selected' : ''}>${esc(period.tahun_akademik)} · ${esc(period.semester.nama)}${period.aktif ? ' · aktif' : ''}</option>`).join('')}</select></label><button class="small btn-subtle-teal" id="api-period-recap-download" title="Unduh rekap nilai & presensi periode dalam format Excel multi-sheet">${iconSvg('download')} <span>Unduh rekap periode</span></button>${isCurrent ? `<button class="small" id="api-import-schedule">${iconSvg('upload')} <span>Import jadwal</span></button><button class="small" id="api-roster-download">${iconSvg('download')} <span>Unduh roster rotasi</span></button><button class="small" id="api-roster-import">${iconSvg('upload')} <span>Impor roster rotasi</span></button><button class="primary small" id="api-create-class">${iconSvg('plus')} <span>Tambah kelas</span></button>` : ''}` : ''}</div></div>${selectedAcademicPeriod && !isCurrent ? '<div class="warning">Mode histori: data periode ini hanya untuk ditinjau. Kelas baru dan import jadwal hanya tersedia pada periode aktif.</div>' : ''}${classFilters}${statusSelectionControls}<div class="table-wrap"><table class="api-class-table"><thead><tr>${canChangeStatus ? '<th class="col-check">Pilih</th>' : ''}<th>Mata kuliah</th><th>Program studi</th><th>Kelompok / Kode</th><th>Periode</th><th>Status</th><th class="num">Pertemuan</th><th class="col-actions">Aksi</th></tr></thead><tbody>${classes.map(c => `<tr data-admin-class-row data-status="${esc(c.status)}" data-search="${esc([c.mata_kuliah.kode, c.mata_kuliah.nama, c.program_studi.kode, c.program_studi.nama, c.kelompok.nama, c.kelompok.kode].join(' ').toLowerCase())}">${canChangeStatus ? `<td class="col-check">${['DRAF', 'AKTIF'].includes(c.status) ? `<input type="checkbox" data-class-status-select value="${Number(c.id_kelas_kuliah)}" data-status="${esc(c.status)}" data-version="${Number(c.kelompok.versi)}" aria-label="Pilih ${esc(c.mata_kuliah.kode)} ${esc(c.kelompok.nama || c.kelompok.kode)}">` : '—'}</td>` : ''}<td><strong>${esc(c.mata_kuliah.kode)} · ${esc(c.mata_kuliah.nama)}</strong></td><td>${esc(c.program_studi.nama)}</td><td><strong>${esc(c.kelompok.nama || c.kelompok.kode)}</strong><small class="muted" style="display:block">Kode: ${esc(c.kelompok.kode)}</small></td><td>${esc(c.periode.tahun_akademik)} · ${esc(c.periode.semester)}</td><td><div class="row" style="gap:4px;flex-wrap:wrap">${apiClassStatusBadge(c.status)}${apiRoleBadge(c.peran_di_kelas)}</div></td><td class="num">${Number(c.jumlah_pertemuan_rencana)}</td><td class="col-actions"><button type="button" class="small btn-table-action" data-api-class="${Number(c.id_kelas_kuliah)}"><span>${isLecturer ? (lecturerView === 'hasil' ? 'Tinjau' : 'Lihat aktivitas') : 'Buka'}</span> ${iconSvg('arrow-right')}</button></td></tr>`).join('') || `<tr><td colspan="${canChangeStatus ? 8 : 7}" class="empty">${emptyMessage}</td></tr>`}${user.role === 'admin' && classes.length ? `<tr id="api-class-filter-empty" hidden><td colspan="${canChangeStatus ? 8 : 7}" class="empty">Tidak ada kelas yang cocok dengan filter.</td></tr>` : ''}</tbody></table></div></section>`;
+    view.innerHTML = `<div class="intro"><div class="intro-head"><h1>${pageTitle}</h1></div></div><section class="card"><div class="card-head row between"><div><h2>${selectedAcademicPeriod ? 'Histori Kelas' : (isLecturer ? (lecturerView === 'hasil' ? 'Pengajuan untuk Ditinjau' : 'Jadwal yang Diampu') : 'Kelas Periode Aktif')} <span class="badge" id="api-class-count">${classes.length} kelas</span></h2></div><div class="row card-head-actions">${user.role === 'admin' ? `<label class="inline-field">Periode<select id="api-period-filter"><option value="">Periode aktif (${esc(activePeriod?.academic_year || 'belum ditentukan')})</option>${periods.filter(period => Number(period.id_periode_akademik) !== Number(activePeriod?.id)).map(period => `<option value="${Number(period.id_periode_akademik)}" ${String(period.id_periode_akademik) === selectedAcademicPeriod ? 'selected' : ''}>${esc(period.tahun_akademik)} · ${esc(period.semester.nama)}${period.aktif ? ' · aktif' : ''}</option>`).join('')}</select></label><button class="small btn-subtle-teal" id="api-period-recap-download" title="Unduh rekap nilai & presensi periode dalam format Excel multi-sheet">${iconSvg('download')} <span>Unduh rekap periode</span></button>${isCurrent ? `<button class="small" id="api-import-schedule">${iconSvg('upload')} <span>Import jadwal</span></button><button class="small" id="api-roster-download">${iconSvg('download')} <span>Unduh roster rotasi</span></button><button class="small" id="api-roster-import">${iconSvg('upload')} <span>Impor roster rotasi</span></button><button class="primary small" id="api-create-class">${iconSvg('plus')} <span>Tambah kelas</span></button>` : ''}` : ''}</div></div>${selectedAcademicPeriod && !isCurrent ? '<div class="warning">Mode histori: data periode ini hanya untuk ditinjau.</div>' : ''}${classFilters}${statusSelectionControls}<div class="table-wrap"><table class="api-class-table"><thead><tr>${canChangeStatus ? '<th class="col-check">Pilih</th>' : ''}<th>Mata kuliah</th><th>Program studi</th><th>Kelompok / Kode</th><th>Periode</th><th>Status</th><th class="num">Pertemuan</th><th class="col-actions">Aksi</th></tr></thead><tbody>${classes.map(c => `<tr data-admin-class-row data-status="${esc(c.status)}" data-search="${esc([c.mata_kuliah.kode, c.mata_kuliah.nama, c.program_studi.kode, c.program_studi.nama, c.kelompok.nama, c.kelompok.kode].join(' ').toLowerCase())}">${canChangeStatus ? `<td class="col-check">${['DRAF', 'AKTIF'].includes(c.status) ? `<input type="checkbox" data-class-status-select value="${Number(c.id_kelas_kuliah)}" data-status="${esc(c.status)}" data-version="${Number(c.kelompok.versi)}" aria-label="Pilih ${esc(c.mata_kuliah.kode)} ${esc(c.kelompok.nama || c.kelompok.kode)}">` : '—'}</td>` : ''}<td><strong>${esc(c.mata_kuliah.kode)} · ${esc(c.mata_kuliah.nama)}</strong></td><td>${esc(c.program_studi.nama)}</td><td><strong>${esc(c.kelompok.nama || c.kelompok.kode)}</strong><small class="muted" style="display:block">Kode: ${esc(c.kelompok.kode)}</small></td><td>${esc(c.periode.tahun_akademik)} · ${esc(c.periode.semester)}</td><td><div class="row" style="gap:4px;flex-wrap:wrap">${apiClassStatusBadge(c.status)}${apiRoleBadge(c.peran_di_kelas)}</div></td><td class="num">${Number(c.jumlah_pertemuan_rencana)}</td><td class="col-actions"><button type="button" class="small btn-table-action" data-api-class="${Number(c.id_kelas_kuliah)}"><span>${isLecturer ? (lecturerView === 'hasil' ? 'Tinjau' : 'Lihat aktivitas') : 'Buka'}</span> ${iconSvg('arrow-right')}</button></td></tr>`).join('') || `<tr><td colspan="${canChangeStatus ? 8 : 7}" class="empty">${emptyMessage}</td></tr>`}${user.role === 'admin' && classes.length ? `<tr id="api-class-filter-empty" hidden><td colspan="${canChangeStatus ? 8 : 7}" class="empty">Tidak ada kelas yang cocok dengan filter.</td></tr>` : ''}</tbody></table></div></section>`;
     const applyClassFilters = () => {
       const status = $('#api-class-status-filter')?.value || '', query = ($('#api-class-search')?.value || '').trim().toLowerCase();
       let visible = 0;
@@ -1415,26 +1353,26 @@ async function apiClassDetail(id) {
           <div class="freq-meta-strip">
             <div class="freq-meta-item">
               <div>
-                <span class="meta-label">${iconSvg('layers')} Kelompok / Kode Frekuensi</span>
-                <strong>${esc(c.kelompok.nama || c.kelompok.kode)} · ${esc(c.kelompok.kode)}</strong>
+                <span class="meta-label">${iconSvg('layers')} Frekuensi</span>
+                <strong>${esc(c.kelompok.nama || c.kelompok.kode)}</strong>
               </div>
             </div>
             <div class="freq-meta-item">
               <div>
-                <span class="meta-label">${iconSvg('calendar')} Program Studi &amp; Periode</span>
-                <strong>${esc(c.program_studi.nama)} · ${esc(c.periode.tahun_akademik)} ${esc(c.periode.semester)}</strong>
+                <span class="meta-label">${iconSvg('calendar')} Program Studi</span>
+                <strong>${esc(c.program_studi.nama)}</strong>
               </div>
             </div>
             <div class="freq-meta-item">
               <div>
-                <span class="meta-label">${iconSvg('clock')} Jadwal &amp; Laboratorium</span>
+                <span class="meta-label">${iconSvg('clock')} Jadwal &amp; Lab</span>
                 <strong>${esc(regSchedLabel)} · ${esc(regLabLabel)}</strong>
               </div>
             </div>
             <div class="freq-meta-item">
               <div>
-                <span class="meta-label">${iconSvg('users')} Target &amp; Peserta</span>
-                <strong>${Number(c.jumlah_pertemuan_rencana)} pertemuan · ${students.length} mahasiswa</strong>
+                <span class="meta-label">${iconSvg('users')} Peserta</span>
+                <strong>${students.length} mahasiswa · ${Number(c.jumlah_pertemuan_rencana)} sesi</strong>
               </div>
             </div>
           </div>
@@ -1445,7 +1383,7 @@ async function apiClassDetail(id) {
         ${readTabs.map(([key, label, ic, cnt], idx) => `<button type="button" role="tab" aria-selected="${idx === 0}" data-read-tab="${key}" class="${idx === 0 ? 'active' : ''}">${iconSvg(ic)} <span>${label}</span>${cnt !== null && cnt !== undefined ? `<span class="tab-count">${cnt}</span>` : ''}</button>`).join('')}
       </div>
       <section class="card api-detail-panel" data-read-panel="schedules">
-        <div class="card-head"><h2>Jadwal dan penugasan</h2><p>Rincian waktu pelaksanaan, laboratorium, dan tim pengajar frekuensi ini.</p></div>
+        <div class="card-head"><h2>Jadwal dan penugasan</h2></div>
         <div class="schedule-cards-list">
           ${schedules.length ? schedules.map(s => `
             <div class="api-detail-row schedule-card">
@@ -1830,9 +1768,9 @@ const relations = { prodi_id: 'prodi', kelas_id: 'kelas', tahun_id: 'tahun_akade
 async function masters() { try { masterData = await api('/admin/data'); if (masterTab === 'periode_aktif') { activePeriod = await api('/active-period'); periodMaster(); return; } if (masterTab === 'anggota_frekuensi') { frequencyMaster(); return; } $('#view').innerHTML = `<div class="intro"><h1>Data Master</h1></div><div class="master-tabs">${Object.entries(masterLabels).map(([k, l]) => `<button class="${masterTab === k ? 'active' : ''}" data-master="${k}">${l}</button>`).join('')}</div><section class="card"><div class="card-head row between"><h2>${masterLabels[masterTab]}</h2><div class="row">${masterTab === 'users' ? '<button class="small" id="import-users">↑ Import Excel</button>' : ''}${masterTab === 'jadwal_praktikum' ? '<button class="small" id="import-schedule">↑ Import jadwal</button>' : ''}${false ? '<button class="small" id="import">↑ Import Excel</button>' : ''}${masterTab === 'bands' ? '<button class="primary small" id="save-bands">Simpan ambang</button>' : '<button class="primary small" id="add">+ Tambah data</button>'}</div></div><div id="master-content"></div></section>`; document.querySelectorAll('[data-master]').forEach(b => b.onclick = () => { masterTab = b.dataset.master; masters() }); if (masterTab === 'bands') { $('#master-content').innerHTML = '<div class="card-body"><p>Batas bawah inklusif. Nilai menggunakan ambang tertinggi yang terpenuhi.</p>' + masterData.bands.map(b => `<label style="display:inline-grid;margin:10px">${b.letter}<input type="number" min="0" max="100" step="0.01" data-band="${b.letter}" value="${b.min}" style="width:90px"></label>`).join('') + '</div>'; $('#save-bands').onclick = async () => { try { await api('/admin/bands', { bands: [...document.querySelectorAll('[data-band]')].map(el => ({ letter: el.dataset.band, min: Number(el.value) })) }); toast('Konfigurasi tersimpan.') } catch (e) { toast(e.message) } }; return } const cols = (masterTab === 'users' ? ['no', 'name', 'email', 'role', 'nim', 'active'] : ['no', ...fields[masterTab]]); $('#master-content').innerHTML = `<div class="table-wrap"><table><thead><tr>${cols.map(c => `<th>${esc(c === 'no' ? 'No' : fieldLabels[c] || c)}</th>`).join('')}<th>AKSI</th></tr></thead><tbody>${masterData[masterTab].map((r, index) => `<tr>${cols.map(c => `<td>${esc(c === 'no' ? index + 1 : relations[c] ? masterData[relations[c]].find(x => x.id === r[c])?.name || r[c] : r[c])}</td>`).join('')}<td>${masterTab === 'users' ? `<button class="small" data-user="${r.id}" data-active="${r.active ? 0 : 1}">${r.active ? 'Nonaktifkan' : 'Aktifkan'}</button>` : `<button class="small" data-edit="${r.id}">Edit</button>`}${masterTab === 'jadwal_praktikum' ? ` <button class="small" data-sync="${r.id}">Sinkron peserta</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`; masterSearch(); $('#add').onclick = () => editMaster(); document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editMaster(masterData[masterTab].find(r => r.id === Number(b.dataset.edit)))); document.querySelectorAll('[data-sync]').forEach(b => b.onclick = async () => { try { await api('/classes/' + b.dataset.sync + '/sync', {}); classes = await api('/classes'); toast('Peserta kelas berhasil disinkronkan.') } catch (e) { toast(e.message) } }); document.querySelectorAll('[data-user]').forEach(b => b.onclick = async () => { try { await api('/admin/user-status', { id: Number(b.dataset.user), active: Number(b.dataset.active) }); masters() } catch (e) { toast(e.message) } }); if ($('#import-users')) $('#import-users').onclick = importUsers; if ($('#import-schedule')) $('#import-schedule').onclick = importSchedule; if ($('#import')) $('#import').onclick = importExcel } catch (e) { toast(e.message) } }
 function editMaster(row) { if (masterTab === 'users') { createUser(); return } const m = dialog(`<form><h2>${row ? 'Edit' : 'Tambah'} ${masterLabels[masterTab]}</h2><div class="form-grid">${fields[masterTab].map(f => { let options = f === 'asisten2_id' ? [['', 'Tidak ada (opsional)'], ...masterData.asisten.map(x => [x.id, x.name])] : f === 'frequency' ? masterData.frekuensi_praktikum.map(x => [x.name, x.name]) : relations[f] ? masterData[relations[f]].map(x => [x.id, x.name]) : f === 'role' ? Object.entries(roleLabel) : f === 'day' ? ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map(x => [x, x]) : f === 'active' ? [[1, 'Aktif'], [0, 'Nonaktif']] : f === 'status' ? [['Aktif', 'Aktif'], ['Nonaktif', 'Nonaktif']] : null; return `<label>${fieldLabels[f]}${options ? `<select name="${f}">${options.map(([v, l]) => `<option value="${esc(v)}" ${String(row?.[f]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>` : `<input name="${f}" required value="${esc(row?.[f] || '')}" ${f === 'password' ? 'type="password" minlength="6"' : f === 'email' ? 'type="email"' : f === 'sks' ? 'type="number" min="1"' : ''}>`}</label>` }).join('')}</div><div class="row"><button type="button" data-close>Batal</button><button class="primary">Simpan data</button></div></form>`); m.querySelector('form').onsubmit = async e => { e.preventDefault(); const values = Object.fromEntries(new FormData(e.target)); for (const k in values) if (k.endsWith('_id') || ['active', 'sks'].includes(k)) values[k] = k === 'asisten2_id' && values[k] === '' ? null : Number(values[k]); try { await api('/admin/' + (masterTab === 'users' ? 'users' : 'master'), masterTab === 'users' ? values : { table: masterTab, id: row?.id, values }); m.close(); classes = await api('/classes'); masters(); toast('Data berhasil disimpan.') } catch (x) { toast(x.message) } } }
 function importExcel() { const m = dialog(`<form><h2>Import mahasiswa dari Excel</h2><p>Gunakan file .xlsx dengan judul kolom <strong>NIM</strong> dan <strong>Nama</strong> pada baris pertama. NIM harus berupa teks. Seluruh baris dibatalkan bila ada NIM duplikat.</p><label>Kelas tujuan<select name="kelas_id">${masterData.kelas.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>File Excel<input id="xlsx-file" type="file" accept=".xlsx" required></label><p>Sesudah import, gunakan “Sinkron peserta” pada jadwal praktikum.</p><div class="row"><button type="button" data-close>Batal</button><button class="primary">Import mahasiswa</button></div></form>`); m.querySelector('form').onsubmit = async e => { e.preventDefault(); const f = $('#xlsx-file').files[0]; if (f.size > 4e6) { toast('Ukuran file maksimal 4 MB.'); return } const reader = new FileReader(); reader.onload = async () => { try { const r = await api('/admin/import', { base64: reader.result.split(',')[1], kelas_id: Number(new FormData(e.target).get('kelas_id')) }); m.close(); masters(); toast(r.count + ' mahasiswa berhasil diimport.') } catch (x) { toast(x.message) } }; reader.readAsDataURL(f) } }
-async function auditPage() { const view = user?.api_mode ? $('#api-view') : $('#view'); if (!view) return; try { const rows = await api('/admin/audit'); view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Log Aktivitas</h1><p>Riwayat perubahan transaksi kelas, presensi, penilaian, dan konfigurasi pada sistem praktikum.</p></div></div><section class="card">${auditTable(rows)}</section>` } catch (e) { toast(e.message) } }
-async function gradeConfigPage() { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat ambang nilai dari API pusat…</div>'; try { const data = await api('/admin/grade-bands'); view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Konfigurasi Nilai</h1><p>Tetapkan nilai minimum untuk setiap predikat huruf pada perhitungan nilai akhir praktikum.</p></div></div><section class="card"><div class="card-head"><h2>Ambang predikat</h2><p>Versi konfigurasi ${Number(data.versi)}. Predikat dipilih dari nilai minimum tertinggi yang terpenuhi.</p></div><form id="grade-band-form"><div class="table-wrap"><table><thead><tr><th>Predikat</th><th class="num">Nilai minimum</th></tr></thead><tbody>${data.rentang.map(b => `<tr><td><strong>${esc(b.kode)}</strong></td><td class="num"><input data-grade-code="${esc(b.kode)}" type="number" min="0" max="100" step="0.01" value="${Number(b.nilai_minimum)}" required></td></tr>`).join('')}</tbody></table></div><div class="card-body row" style="justify-content:flex-end"><button type="submit" class="primary">${iconSvg('save')} <span>Simpan ambang</span></button></div></form></section>`; $('#grade-band-form').onsubmit = async event => { event.preventDefault(); const rentang = [...event.currentTarget.querySelectorAll('[data-grade-code]')].map(input => ({ kode: input.dataset.gradeCode, nilai_minimum: Number(input.value) })); try { await api('/admin/grade-bands', { versi: Number(data.versi), rentang }, 'PUT'); toast('Konfigurasi nilai tersimpan.'); await gradeConfigPage() } catch (error) { toast(error.message) } } } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` } }
-async function periodManagementPage() { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat periode akademik dari API pusat…</div>'; try { const data = await api('/admin/periods'), periods = Array.isArray(data.periode) ? data.periode : [], semesters = Array.isArray(data.semester) ? data.semester : []; view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Periode Akademik</h1><p>Kelola siklus semester aktif, rentang pelaksanaan praktikum, dan unduh rekap hasil studi Excel.</p></div></div><section class="card"><div class="card-head row between"><div><h2>Siklus akademik</h2><p>Satu periode operasional aktif pada satu waktu. Periode aktif menerima transaksi Praktikum baru.</p></div><button class="primary small" id="period-create">${iconSvg('plus')} <span>Buat periode</span></button></div><div class="table-wrap"><table><thead><tr><th>Tahun ajaran</th><th>Semester</th><th>Rentang pelaksanaan</th><th class="num">Kelas</th><th>Status</th><th class="col-actions">Aksi</th></tr></thead><tbody>${periods.map(period => `<tr><td><strong>${esc(period.tahun_akademik)}</strong></td><td>${esc(period.semester?.nama || '—')} <small>(${esc(period.semester?.kode || '—')})</small></td><td>${esc(period.tanggal_mulai)} – ${esc(period.tanggal_selesai)}</td><td class="num">${Number(period.jumlah_kelas || 0)}</td><td><span class="badge ${period.aktif ? 'green' : ''}">${period.aktif ? 'Aktif' : 'Ditutup'}</span></td><td class="col-actions"><div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="small btn-subtle-teal" data-period-export="${Number(period.id_periode_akademik)}" title="Unduh rekap nilai & presensi periode dalam format Excel multi-sheet">${iconSvg('download')} <span>Unduh Rekap Excel</span></button>${period.aktif ? '<span class="help" style="margin:0">Periode berjalan</span>' : `<button class="small" data-period-edit="${Number(period.id_periode_akademik)}">${iconSvg('edit')} <span>Ubah tanggal</span></button> <button class="small primary" data-period-activate="${Number(period.id_periode_akademik)}">${iconSvg('check-circle')} <span>Aktifkan</span></button>`}</div></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Belum ada periode akademik.</td></tr>'}</tbody></table></div></section>`; $('#period-create').onclick = () => periodForm(semesters); document.querySelectorAll('[data-period-export]').forEach(button => button.onclick = () => { const pId = Number(button.dataset.periodExport); const period = periods.find(item => Number(item.id_periode_akademik) === pId); const label = period ? `${period.tahun_akademik}-${period.semester?.nama || ''}` : pId; downloadPeriodRecap(pId, label, button); }); document.querySelectorAll('[data-period-edit]').forEach(button => button.onclick = () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodEdit)); periodForm(semesters, period) }); document.querySelectorAll('[data-period-activate]').forEach(button => button.onclick = async () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodActivate)); if (!period || !confirm(`Aktifkan ${period.tahun_akademik} ${period.semester.nama}? Periode lain akan ditutup untuk transaksi baru, tanpa menghapus histori.`)) return; button.disabled = true; try { await api(`/admin/periods/${Number(period.id_periode_akademik)}/activate`, {}, 'POST'); activePeriod = await api('/active-period'); selectedAcademicPeriod = ''; classes = user.role === 'mahasiswa' ? [] : await api('/classes'); toast('Periode aktif diperbarui. Histori lama tetap tersimpan.'); periodManagementPage(); renderPeriodSummary() } catch (error) { toast(error.message); button.disabled = false } }) } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` } }
+async function auditPage() { const view = user?.api_mode ? $('#api-view') : $('#view'); if (!view) return; try { const rows = await api('/admin/audit'); view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Log Aktivitas</h1></div></div><section class="card">${auditTable(rows)}</section>` } catch (e) { toast(e.message) } }
+async function gradeConfigPage() { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat ambang nilai dari API pusat…</div>'; try { const data = await api('/admin/grade-bands'); view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Konfigurasi Nilai</h1></div></div><section class="card"><div class="card-head row between"><h2>Ambang predikat</h2><span class="badge">Versi ${Number(data.versi)}</span></div><form id="grade-band-form"><div class="table-wrap"><table><thead><tr><th>Predikat</th><th class="num">Nilai minimum</th></tr></thead><tbody>${data.rentang.map(b => `<tr><td><strong>${esc(b.kode)}</strong></td><td class="num"><input data-grade-code="${esc(b.kode)}" type="number" min="0" max="100" step="0.01" value="${Number(b.nilai_minimum)}" required></td></tr>`).join('')}</tbody></table></div><div class="card-body row" style="justify-content:flex-end"><button type="submit" class="primary">${iconSvg('save')} <span>Simpan ambang</span></button></div></form></section>`; $('#grade-band-form').onsubmit = async event => { event.preventDefault(); const rentang = [...event.currentTarget.querySelectorAll('[data-grade-code]')].map(input => ({ kode: input.dataset.gradeCode, nilai_minimum: Number(input.value) })); try { await api('/admin/grade-bands', { versi: Number(data.versi), rentang }, 'PUT'); toast('Konfigurasi nilai tersimpan.'); await gradeConfigPage() } catch (error) { toast(error.message) } } } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` } }
+async function periodManagementPage() { const view = $('#api-view'); view.innerHTML = '<div class="empty">Memuat periode akademik dari API pusat…</div>'; try { const data = await api('/admin/periods'), periods = Array.isArray(data.periode) ? data.periode : [], semesters = Array.isArray(data.semester) ? data.semester : []; view.innerHTML = `<div class="intro"><div class="intro-head"><h1>Periode Akademik</h1></div></div><section class="card"><div class="card-head row between"><h2>Siklus akademik</h2><button class="primary small" id="period-create">${iconSvg('plus')} <span>Buat periode</span></button></div><div class="table-wrap"><table><thead><tr><th>Tahun ajaran</th><th>Semester</th><th>Rentang pelaksanaan</th><th class="num">Kelas</th><th>Status</th><th class="col-actions">Aksi</th></tr></thead><tbody>${periods.map(period => `<tr><td><strong>${esc(period.tahun_akademik)}</strong></td><td>${esc(period.semester?.nama || '—')} <small>(${esc(period.semester?.kode || '—')})</small></td><td>${esc(period.tanggal_mulai)} – ${esc(period.tanggal_selesai)}</td><td class="num">${Number(period.jumlah_kelas || 0)}</td><td><span class="badge ${period.aktif ? 'green' : ''}">${period.aktif ? 'Aktif' : 'Ditutup'}</span></td><td class="col-actions"><div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="small btn-subtle-teal" data-period-export="${Number(period.id_periode_akademik)}" title="Unduh rekap nilai & presensi periode dalam format Excel multi-sheet">${iconSvg('download')} <span>Unduh Rekap Excel</span></button>${period.aktif ? '<span class="help" style="margin:0">Periode berjalan</span>' : `<button class="small" data-period-edit="${Number(period.id_periode_akademik)}">${iconSvg('edit')} <span>Ubah tanggal</span></button> <button class="small primary" data-period-activate="${Number(period.id_periode_akademik)}">${iconSvg('check-circle')} <span>Aktifkan</span></button>`}</div></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Belum ada periode akademik.</td></tr>'}</tbody></table></div></section>`; $('#period-create').onclick = () => periodForm(semesters); document.querySelectorAll('[data-period-export]').forEach(button => button.onclick = () => { const pId = Number(button.dataset.periodExport); const period = periods.find(item => Number(item.id_periode_akademik) === pId); const label = period ? `${period.tahun_akademik}-${period.semester?.nama || ''}` : pId; downloadPeriodRecap(pId, label, button); }); document.querySelectorAll('[data-period-edit]').forEach(button => button.onclick = () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodEdit)); periodForm(semesters, period) }); document.querySelectorAll('[data-period-activate]').forEach(button => button.onclick = async () => { const period = periods.find(item => Number(item.id_periode_akademik) === Number(button.dataset.periodActivate)); if (!period || !confirm(`Aktifkan ${period.tahun_akademik} ${period.semester.nama}? Periode lain akan ditutup untuk transaksi baru, tanpa menghapus histori.`)) return; button.disabled = true; try { await api(`/admin/periods/${Number(period.id_periode_akademik)}/activate`, {}, 'POST'); activePeriod = await api('/active-period'); selectedAcademicPeriod = ''; classes = user.role === 'mahasiswa' ? [] : await api('/classes'); toast('Periode aktif diperbarui. Histori lama tetap tersimpan.'); periodManagementPage(); renderPeriodSummary() } catch (error) { toast(error.message); button.disabled = false } }) } catch (error) { view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>` } }
 async function downloadPeriodRecap(periodId, periodLabel, triggerBtn = null) {
   const originalHtml = triggerBtn ? triggerBtn.innerHTML : '';
   if (triggerBtn) {
@@ -1889,14 +1827,10 @@ async function accessManagementPage() {
     view.innerHTML = `
       <div class="intro">
         <h1>Manajemen Akses</h1>
-        <p>Kelola akun pengguna, penetapan peran kanonikal, cakupan laboratorium, dan otorisasi sistem ICLabs.</p>
       </div>
       <section class="card">
         <div class="card-head row between">
-          <div>
-            <h2>Daftar Pengguna</h2>
-            <p>${users.length} akun ditemukan berdasarkan filter.</p>
-          </div>
+          <h2>Daftar Pengguna <span class="badge">${users.length} akun</span></h2>
           <div class="row" style="gap:8px">
             <button class="small" id="access-bulk-assign">${iconSvg('users')} <span>Penetapan Peran Massal</span></button>
             <button class="primary small" id="access-create-user">${iconSvg('user-plus')} <span>Tambah Pengguna</span></button>
@@ -2534,11 +2468,133 @@ async function addComponent() {
 }
 function importSchedule() {
   let base64 = null;
-  const m = dialog(`<form><h2>Import jadwal praktikum</h2><p>Gunakan nama data master dan email akun yang sudah terdaftar. Satu kesalahan membatalkan seluruh import; jadwal lama tidak ditimpa.</p><a class="link" href="api.php?route=/admin/schedule-template" download>↓ Unduh template Excel (.xlsx)</a><small>Template memuat satu baris contoh. Ganti dengan jadwal yang akan diimport.</small><label>File jadwal (.xlsx, maksimal 4 MB)<input id="schedule-file" type="file" accept=".xlsx" required></label><div id="schedule-preview"></div><div class="row"><button type="button" data-close>Batal</button><button id="preview-schedule">Periksa file</button><button type="button" class="primary" id="commit-schedule" disabled>Import jadwal</button></div></form>`);
-  const commit = m.querySelector('#commit-schedule'), file = m.querySelector('#schedule-file'), preview = m.querySelector('#schedule-preview');
-  file.onchange = () => { base64 = null; commit.disabled = true; preview.textContent = '' };
-  m.querySelector('form').onsubmit = async e => { e.preventDefault(); commit.disabled = true; base64 = null; const f = file.files[0]; if (!f || f.size > 4e6) { toast('Pilih file XLSX maksimal 4 MB.'); return } const reader = new FileReader(); reader.onload = async () => { try { const encoded = reader.result.split(',')[1], r = await api('/admin/import-schedule', { base64: encoded, preview: true }); preview.innerHTML = `<p>${r.rows.length} jadwal valid · ${r.errors.length} kesalahan</p>${r.errors.length ? '<div class="warning">' + r.errors.map(x => `Baris ${x.line}: ${esc(x.error)}`).join('<br>') + '</div>' : ''}<div class="table-wrap"><table><thead><tr><th>BARIS</th><th>MATA KULIAH / KELAS</th><th>FREKUENSI</th><th>HARI / JAM</th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${x.line}</td><td>${esc(x.display['kode mk'])} / ${esc(x.display.kelas)}</td><td>${esc(x.values.frequency || '—')}</td><td>${esc(x.values.day)} ${esc(x.values.time)}</td></tr>`).join('')}</tbody></table></div>`; if (!r.errors.length && r.rows.length) { base64 = encoded; commit.disabled = false } } catch (x) { preview.textContent = x.message } }; reader.readAsDataURL(f) };
-  commit.onclick = async () => { if (!base64) return; commit.disabled = true; try { const r = await api('/admin/import-schedule', { base64 }); m.close(); classes = await api('/classes'); if (user?.api_mode) { await apiClassList() } else { await masters() } toast(r.count + ' jadwal berhasil diimport. Gunakan Sinkron peserta untuk mengisi daftar mahasiswa.') } catch (e) { toast(e.message); commit.disabled = false } };
+  const m = dialog(`<form class="modal-schedule-form">
+    <div class="modal-schedule-header">
+      <div class="modal-header-left">
+        <div class="modal-icon-badge is-blue">${iconSvg('upload')}</div>
+        <div class="modal-title-wrap">
+          <h2>Import Jadwal Praktikum (Excel)</h2>
+          <p>Unggah jadwal massal menggunakan template Excel interaktif yang terhubung dengan referensi master.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-schedule-body">
+      <div class="form-section-card schedule-template-card">
+        <div class="form-section-header">
+          <span class="section-icon">${iconSvg('download')}</span>
+          <span>1. Template Excel Interaktif (.xlsx)</span>
+        </div>
+        <div class="schedule-template-box">
+          <div class="schedule-template-info">
+            <strong>Format standar siap pakai dengan 1 baris contoh record</strong>
+            <p>Dilengkapi dropdown pilihan otomatis (Prodi, Kode MK, Laboratorium, Email Dosen/Asisten, Hari, Frekuensi) serta sheet <b>Referensi Master</b>.</p>
+            <div class="schedule-template-pills">
+              <span class="badge blue">1 Contoh Record</span>
+              <span class="badge green">Dropdown Master Aktif</span>
+              <span class="badge">Sheet Referensi Master</span>
+            </div>
+          </div>
+          <a class="small btn-subtle-teal schedule-template-download" href="${esc(apiUrl('/admin/schedule-template'))}" download="template-jadwal.xlsx">${iconSvg('download')} <span>Unduh Template (.xlsx)</span></a>
+        </div>
+      </div>
+      <div class="form-section-card">
+        <div class="form-section-header">
+          <span class="section-icon">${iconSvg('check')}</span>
+          <span>2. Pilih Berkas &amp; Pratinjau Validasi</span>
+        </div>
+        <label class="schedule-file-drop">
+          <span>File jadwal (.xlsx, maksimal 4 MB)</span>
+          <input id="schedule-file" type="file" accept=".xlsx" required>
+          <small>Satu kesalahan pada baris akan membatalkan seluruh import; jadwal yang sudah ada tidak ditimpa.</small>
+        </label>
+        <div id="schedule-preview" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="modal-schedule-footer">
+      <div class="modal-footer-note">
+        <span>${iconSvg('shield-check')}</span>
+        <span>Periksa pratinjau baris sebelum menyimpan jadwal.</span>
+      </div>
+      <div class="modal-footer-actions">
+        <button type="button" class="btn-modal-cancel" data-close>Batal</button>
+        <button type="submit" class="small" id="preview-schedule">${iconSvg('search')} <span>Periksa File</span></button>
+        <button type="button" class="primary" id="commit-schedule" disabled>${iconSvg('save')} <span>Import Jadwal</span></button>
+      </div>
+    </div>
+  </form>`);
+  m.classList.add('modal-schedule');
+  m.addEventListener('close', () => m.classList.remove('modal-schedule'), { once: true });
+  const commit = m.querySelector('#commit-schedule'), previewBtn = m.querySelector('#preview-schedule'), file = m.querySelector('#schedule-file'), preview = m.querySelector('#schedule-preview');
+  const runPreview = () => {
+    commit.disabled = true;
+    base64 = null;
+    const f = file.files[0];
+    if (!f || f.size > 4e6) {
+      toast('Pilih file XLSX maksimal 4 MB.');
+      return;
+    }
+    previewBtn.disabled = true;
+    preview.innerHTML = '<div class="empty">Memeriksa format dan memvalidasi referensi jadwal…</div>';
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const encoded = reader.result.split(',')[1];
+        const r = await api('/admin/import-schedule', { base64: encoded, preview: true });
+        const validCount = (r.rows || []).length;
+        const errCount = (r.errors || []).length;
+        preview.innerHTML = `<div class="schedule-preview-summary">
+            <span class="badge ${validCount ? 'green' : ''}">${validCount} baris valid</span>
+            <span class="badge ${errCount ? 'red' : 'green'}">${errCount ? `${errCount} kesalahan` : '0 kesalahan'}</span>
+          </div>
+          ${errCount ? `<div class="warning" style="margin:8px 0">${r.errors.map(x => `<b>Baris ${Number(x.line)}:</b> ${esc(x.error)}`).join('<br>')}</div>` : ''}
+          ${validCount ? `<div class="table-wrap" style="max-height:240px;overflow:auto"><table class="compact-table"><thead><tr><th>BARIS</th><th>MATA KULIAH / KELAS</th><th>FREKUENSI</th><th>LABORATORIUM</th><th>HARI / JAM</th></tr></thead><tbody>${r.rows.map(x => `<tr><td>${Number(x.line)}</td><td><strong>${esc(x.display['kode mk'])}</strong><br><small>${esc(x.display.prodi || '')} · ${esc(x.display.kelas)}</small></td><td><span class="badge blue">${esc(x.values.frequency || '—')}</span></td><td>${esc(x.display.laboratorium || '—')}</td><td>${esc(x.values.day)}<br><small>${esc(x.values.time)}</small></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+        if (!errCount && validCount) {
+          base64 = encoded;
+          commit.disabled = false;
+        }
+      } catch (x) {
+        preview.innerHTML = `<div class="error" style="margin:8px 0" role="alert">${esc(x.message)}</div>`;
+      } finally {
+        previewBtn.disabled = false;
+      }
+    };
+    reader.readAsDataURL(f);
+  };
+  file.onchange = () => {
+    base64 = null;
+    commit.disabled = true;
+    preview.textContent = '';
+    if (file.files[0]) runPreview();
+  };
+  m.querySelector('form').onsubmit = e => {
+    e.preventDefault();
+    runPreview();
+  };
+  commit.onclick = async () => {
+    if (!base64) return;
+    commit.disabled = true;
+    const origHtml = commit.innerHTML;
+    commit.innerHTML = `${iconSvg('refresh', 'spin')} <span>Mengimpor…</span>`;
+    try {
+      const r = await api('/admin/import-schedule', { base64 });
+      m.close();
+      classes = await api('/classes');
+      if (user?.api_mode) {
+        if (page === 'Sinkron Jadwal' && $('#google-sheet-review')) {
+          $('#google-sheet-review').innerHTML = `<section class="card gs-result"><div class="card-head"><h2>Import Excel Berhasil</h2><p>${Number(r.count)} jadwal praktikum baru berhasil ditambahkan dari berkas Excel.</p></div></section>`;
+        } else {
+          await apiClassList();
+        }
+      } else {
+        await masters();
+      }
+      toast(r.count + ' jadwal berhasil diimport.');
+    } catch (e) {
+      toast(e.message);
+      commit.disabled = false;
+      commit.innerHTML = origHtml;
+    }
+  };
 }
 function createUser() {
   const available = masterData.mahasiswa.filter(m => !masterData.users.some(u => u.mahasiswa_id === m.id));
@@ -3301,65 +3357,52 @@ async function apiClassEditor(c, selectedMeeting, selectedSchedule) {
       </div>
       <div class="freq-hero-body">
         <div class="freq-title-row">
-          <div>
-            <div class="row" style="gap:8px;margin-bottom:6px">
-              <span class="badge blue">${esc(c.mata_kuliah.kode)}</span>
-              <span class="badge ${c.status === 'AKTIF' ? 'green' : 'yellow'}">${esc(apiStatus(c.status))}</span>
-              ${apiRoleBadge(c.peran_di_kelas)}
-            </div>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <span class="badge blue">${esc(c.mata_kuliah.kode)}</span>
             <h1>${esc(c.mata_kuliah.nama)}</h1>
+            <span class="badge ${c.status === 'AKTIF' ? 'green' : 'yellow'}">${esc(apiStatus(c.status))}</span>
+            ${apiRoleBadge(c.peran_di_kelas)}
           </div>
         </div>
         <div class="freq-meta-strip">
           <div class="freq-meta-item">
             <div>
-              <span class="meta-label">${iconSvg('layers')} Frekuensi / Kelompok</span>
+              <span class="meta-label">${iconSvg('layers')} Frekuensi</span>
               <strong>${esc(c.kelompok.nama || c.kelompok.kode)}</strong>
-              <small>Kode: ${esc(c.kelompok.kode)}</small>
+              ${c.kelompok.nama && c.kelompok.nama !== c.kelompok.kode ? `<small>${esc(c.kelompok.kode)}</small>` : ''}
             </div>
           </div>
           <div class="freq-meta-item">
             <div>
-              <span class="meta-label">${iconSvg('calendar')} Program Studi & Periode</span>
+              <span class="meta-label">${iconSvg('calendar')} Program Studi</span>
               <strong>${esc(c.program_studi.nama)}</strong>
               <small>${esc(c.periode.tahun_akademik)} · ${esc(c.periode.semester)}</small>
             </div>
           </div>
           <div class="freq-meta-item">
             <div>
-              <span class="meta-label">${iconSvg('clock')} Jadwal Reguler & Lab</span>
+              <span class="meta-label">${iconSvg('clock')} Jadwal &amp; Lab</span>
               <strong>${primaryTimeStr}</strong>
               <small>${primaryLabStr}</small>
             </div>
           </div>
           <div class="freq-meta-item">
             <div>
-              <span class="meta-label">${iconSvg('users')} Target & Peserta</span>
-              <strong>${meetings} Pertemuan</strong>
-              <small>${hasRoster ? `${students.length} Mahasiswa terdaftar` : `${(c.sesi || []).length} Sesi tercatat`}</small>
+              <span class="meta-label">${iconSvg('users')} Peserta &amp; Sesi</span>
+              <strong>${hasRoster ? `${students.length} Mahasiswa` : `${(c.sesi || []).length} Sesi`}</strong>
+              <small>Target ${meetings} pertemuan</small>
             </div>
           </div>
-        </div>
-        <div class="freq-quick-bar">
-          <div class="row" style="gap:10px;flex-wrap:wrap">
-            ${primarySched ? `<div class="schedule-workflow">${apiWorkflowIndicator(primarySched, user.role)}</div>` : '<span class="badge gray">Belum ada jadwal</span>'}
-            <span class="badge ${midSchedule ? 'yellow' : 'gray'}">MID: ${midSchedule ? `${esc(midSchedule.tanggal_mulai || 'Terjadwal')}` : 'Belum diatur'}</span>
-            <span class="badge ${uasSchedule ? 'purple' : 'gray'}">UAS: ${uasSchedule ? `${esc(uasSchedule.tanggal_mulai || 'Terjadwal')}` : 'Belum diatur'}</span>
-          </div>
-          <button type="button" class="small btn-subtle-teal" id="api-quick-open-schedules">${iconSvg('calendar')} <span>Kelola Jadwal & Ujian (${schedules.length})</span></button>
         </div>
         ${c.catatan ? `<div class="warning" style="margin-top:12px">${esc(c.catatan)}</div>` : ''}
       </div>
     </div>
     <div class="api-detail-tabs" role="tablist" aria-label="Bagian kelas praktikum">${tabs.map(([key, label]) => `<button type="button" role="tab" aria-selected="${key === activeTab}" data-api-detail-tab="${key}" class="${key === activeTab ? 'active' : ''}">${iconSvg(tabIcons[key] || 'layers')} <span>${label}</span>${tabCounts[key] != null ? `<span class="tab-count">${tabCounts[key]}</span>` : ''}</button>`).join('')}</div>
     <div class="api-detail-panel" data-api-panel="schedules" ${activeTab === 'schedules' ? '' : 'hidden'}>
-      <section class="card"><div class="card-head row between"><div><h2>Jadwal dan penugasan</h2><p>Daftar jadwal pelaksanaan praktikum, tim pengajar/asisten, status verifikasi nilai, dan unduhan laporan.</p></div></div><div class="schedule-cards-list">${scheduleRows}</div></section>
+      <section class="card"><div class="card-head row between"><h2>Jadwal dan penugasan</h2></div><div class="schedule-cards-list">${scheduleRows}</div></section>
       <section class="card exam-schedule-section" style="margin-top:16px">
         <div class="card-head row between">
-          <div>
-            <h2>Jadwal Ujian (MID & UAS)</h2>
-            <p>Asisten dapat menentukan atau memperbarui jadwal pelaksanaan ujian MID dan UAS frekuensi ini.</p>
-          </div>
+          <h2>Jadwal Ujian (MID &amp; UAS)</h2>
         </div>
         <div class="exam-schedule-grid">
           <div class="exam-card">

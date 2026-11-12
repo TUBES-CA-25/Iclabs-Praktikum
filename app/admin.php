@@ -446,27 +446,7 @@ function admin_route($part)
     }
 
     if ($part === 'schedule-template' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-        xlsx_download(
-            array(
-                schedule_headers(),
-                array(
-                    '2026/2027',
-                    'Ganjil',
-                    'Teknik Informatika',
-                    '130106RP4',
-                    'Lab Startup',
-                    'dosen@fikom.umi.ac.id',
-                    'asisten1@fikom.umi.ac.id',
-                    'asisten2@fikom.umi.ac.id',
-                    'Selasa',
-                    '07.00-10.20',
-                    'Aktif',
-                    'TI_ALPRO-1'
-                )
-            ),
-            'template-jadwal.xlsx',
-            1
-        );
+        xlsx_schedule_template_download(array(), array(), 'template-jadwal.xlsx');
         exit;
     }
 

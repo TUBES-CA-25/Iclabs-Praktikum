@@ -680,6 +680,426 @@ function xlsx_roster_rotation_download(array $template, $filename = 'template-ro
     }
 }
 
+function xlsx_schedule_template_download(array $references = array(), array $classes = array(), $filename = 'template-jadwal.xlsx')
+{
+    if (!class_exists('ZipArchive')) {
+        reject('Ekstensi ZIP PHP diperlukan untuk membuat template Excel.', 503);
+    }
+
+    $headers = array(
+        'tahun akademik',
+        'semester',
+        'prodi',
+        'kode mk',
+        'laboratorium',
+        'email dosen',
+        'email asisten 1',
+        'email asisten 2',
+        'email pendamping',
+        'hari',
+        'jam',
+        'aktif',
+        'frekuensi',
+    );
+
+    // Build reference lists with sensible defaults so named ranges are never empty.
+    $years = array();
+    $semesters = array();
+    foreach ((array) ($references['periode_akademik'] ?? array()) as $p) {
+        if (!empty($p['tahun_akademik'])) {
+            $years[] = trim((string) $p['tahun_akademik']);
+        }
+        $sem = trim((string) ($p['nama_semester'] ?? $p['semester'] ?? ''));
+        if ($sem !== '') {
+            $semesters[] = $sem;
+        }
+    }
+    foreach ($classes as $c) {
+        if (!empty($c['periode']['tahun_akademik'])) {
+            $years[] = trim((string) $c['periode']['tahun_akademik']);
+        }
+        if (!empty($c['periode']['semester'])) {
+            $semesters[] = trim((string) $c['periode']['semester']);
+        }
+    }
+    $years = array_values(array_unique(array_filter($years)));
+    if ($years === array()) {
+        $years = array('2026/2027');
+    }
+    $semesters = array_values(array_unique(array_merge($semesters, array('Ganjil', 'Genap'))));
+
+    $programs = array();
+    foreach ((array) ($references['program_studi'] ?? array()) as $pr) {
+        $name = trim((string) ($pr['nama'] ?? ''));
+        if ($name !== '') {
+            $programs[] = array(
+                'nama' => $name,
+                'kode' => trim((string) ($pr['kode'] ?? '')),
+            );
+        }
+    }
+    if ($programs === array()) {
+        $programs = array(
+            array('nama' => 'Teknik Informatika', 'kode' => 'TI'),
+            array('nama' => 'Sistem Informasi', 'kode' => 'SI'),
+        );
+    }
+
+    $courses = array();
+    foreach ((array) ($references['mata_kuliah'] ?? array()) as $mk) {
+        $code = trim((string) ($mk['kode'] ?? ''));
+        if ($code !== '') {
+            $courses[] = array(
+                'kode' => $code,
+                'nama' => trim((string) ($mk['nama'] ?? '')),
+            );
+        }
+    }
+    if ($courses === array()) {
+        $courses = array(
+            array('kode' => '130106RP4', 'nama' => 'Pemrograman'),
+            array('kode' => '130107RP4', 'nama' => 'Algoritma dan Pemrograman'),
+        );
+    }
+
+    $labs = array();
+    foreach ((array) ($references['laboratorium'] ?? array()) as $lab) {
+        $name = trim((string) ($lab['nama'] ?? ''));
+        if ($name !== '') {
+            $labs[] = array(
+                'nama' => $name,
+                'kode' => trim((string) ($lab['kode'] ?? '')),
+            );
+        }
+    }
+    if ($labs === array()) {
+        $labs = array(
+            array('nama' => 'Lab Startup', 'kode' => 'LAB-STARTUP'),
+        );
+    }
+
+    $lecturers = array();
+    foreach ((array) ($references['dosen'] ?? array()) as $d) {
+        $email = trim((string) ($d['email'] ?? ''));
+        if ($email !== '') {
+            $lecturers[] = array(
+                'email' => $email,
+                'nama' => trim((string) ($d['nama'] ?? '')),
+            );
+        }
+    }
+    if ($lecturers === array()) {
+        $lecturers = array(
+            array('email' => 'dosen@fikom.umi.ac.id', 'nama' => 'Dosen Pengampu Contoh'),
+        );
+    }
+
+    $assistants = array();
+    $seenAssistantEmails = array();
+    foreach ((array) ($references['asisten'] ?? array()) as $a) {
+        $email = trim((string) ($a['email'] ?? ''));
+        if ($email !== '') {
+            $seenAssistantEmails[mb_strtolower($email, 'UTF-8')] = true;
+            $assistants[] = array(
+                'email' => $email,
+                'nama' => trim((string) ($a['nama'] ?? '')),
+            );
+        }
+    }
+    foreach (array(
+        array('email' => '13020230049@student.umi.ac.id', 'nama' => 'Asisten 1 (Contoh)'),
+        array('email' => '13020230100@student.umi.ac.id', 'nama' => 'Asisten 2 (Contoh)'),
+    ) as $defaultAssistant) {
+        $key = mb_strtolower($defaultAssistant['email'], 'UTF-8');
+        if (!isset($seenAssistantEmails[$key])) {
+            $seenAssistantEmails[$key] = true;
+            $assistants[] = $defaultAssistant;
+        }
+    }
+
+    $classItems = array();
+    $seenFreqs = array();
+    foreach ($classes as $c) {
+        $freqCode = trim((string) ($c['kelompok']['kode'] ?? ''));
+        if ($freqCode === '') {
+            continue;
+        }
+        $infoParts = array_filter(array(
+            trim((string) ($c['program_studi']['nama'] ?? '')),
+            trim((string) ($c['mata_kuliah']['kode'] ?? '')),
+            trim((string) ($c['mata_kuliah']['nama'] ?? '')),
+            ((int) ($c['jumlah_jadwal'] ?? 0) > 0) ? 'Sudah terjadwal' : 'Belum terjadwal',
+        ));
+        if (!isset($seenFreqs[$freqCode])) {
+            $seenFreqs[$freqCode] = true;
+            $classItems[] = array(
+                'frekuensi' => $freqCode,
+                'info' => implode(' · ', $infoParts),
+            );
+        }
+    }
+    if ($classItems === array()) {
+        $classItems = array(
+            array('frekuensi' => 'TI_ALPRO-1', 'info' => 'Teknik Informatika · 130106RP4 · Contoh Frekuensi'),
+        );
+    }
+
+    // Select 1 valid example record (preferring an unscheduled class with complete period dates).
+    $exampleYear = '2026/2027';
+    $exampleSemester = 'Ganjil';
+    $exampleProdi = 'Teknik Informatika';
+    $exampleCourseCode = '130106RP4';
+    $exampleLab = 'Lab Startup';
+    $exampleLecturer = $lecturers[0]['email'];
+    $exampleAssistant1 = '13020230049@student.umi.ac.id';
+    $exampleAssistant2 = '13020230100@student.umi.ac.id';
+    $exampleFreq = 'TI_ALPRO-1';
+
+    $chosenClass = null;
+    foreach ($classes as $c) {
+        if ((int) ($c['jumlah_jadwal'] ?? 0) === 0 && !empty($c['periode']['tanggal_mulai']) && !empty($c['periode']['tanggal_selesai'])) {
+            $chosenClass = $c;
+            break;
+        }
+    }
+    if ($chosenClass === null) {
+        foreach ($classes as $c) {
+            if ((int) ($c['jumlah_jadwal'] ?? 0) === 0) {
+                $chosenClass = $c;
+                break;
+            }
+        }
+    }
+    if ($chosenClass !== null) {
+        $exampleYear = trim((string) ($chosenClass['periode']['tahun_akademik'] ?? $exampleYear)) ?: $exampleYear;
+        $exampleSemester = trim((string) ($chosenClass['periode']['semester'] ?? $exampleSemester)) ?: $exampleSemester;
+        $exampleProdi = trim((string) ($chosenClass['program_studi']['nama'] ?? $exampleProdi)) ?: $exampleProdi;
+        $exampleCourseCode = trim((string) ($chosenClass['mata_kuliah']['kode'] ?? $exampleCourseCode)) ?: $exampleCourseCode;
+        $exampleFreq = trim((string) ($chosenClass['kelompok']['kode'] ?? $exampleFreq)) ?: $exampleFreq;
+    } else {
+        $exampleYear = $years[0] ?? $exampleYear;
+        $exampleSemester = $semesters[0] ?? $exampleSemester;
+        $exampleProdi = $programs[0]['nama'] ?? $exampleProdi;
+        $exampleCourseCode = $courses[0]['kode'] ?? $exampleCourseCode;
+        $exampleFreq = $classItems[0]['frekuensi'] ?? $exampleFreq;
+    }
+
+    $labNames = array_column($labs, 'nama');
+    if (!in_array($exampleLab, $labNames, true)) {
+        $exampleLab = $labs[0]['nama'];
+    }
+
+    $exampleRow = array(
+        $exampleYear,
+        $exampleSemester,
+        $exampleProdi,
+        $exampleCourseCode,
+        $exampleLab,
+        $exampleLecturer,
+        $exampleAssistant1,
+        $exampleAssistant2,
+        '',
+        'Selasa',
+        '07.00-10.20',
+        'Aktif',
+        $exampleFreq,
+    );
+
+    $sheetRows = array($headers, $exampleRow);
+    $maxDataRow = 200;
+    $sheet1Xml = '';
+    foreach ($sheetRows as $rIndex => $rowValues) {
+        $rowNumber = $rIndex + 1;
+        $height = $rowNumber === 1 ? '28' : '22';
+        $style = $rowNumber === 1 ? 1 : 2;
+        $sheet1Xml .= '<row r="'.$rowNumber.'" ht="'.$height.'" customHeight="1">';
+        foreach ($rowValues as $cIndex => $val) {
+            $col = column_name($cIndex + 1);
+            $sheet1Xml .= '<c r="'.$col.$rowNumber.'" s="'.$style.'" t="inlineStr"><is><t xml:space="preserve">'.xml_escape($val).'</t></is></c>';
+        }
+        $sheet1Xml .= '</row>';
+    }
+
+    // Build Sheet 2 (Referensi Master) so dropdown named ranges work & users can view names alongside codes/emails.
+    $refHeaders = array(
+        'Tahun Akademik',
+        'Semester',
+        'Program Studi',
+        'Kode MK',
+        'Nama Mata Kuliah (Info)',
+        'Laboratorium',
+        'Email Dosen',
+        'Nama Dosen (Info)',
+        'Email Asisten',
+        'Nama Asisten (Info)',
+        'Kode Frekuensi Kelas',
+        'Detail Kelas / Status Jadwal (Info)',
+    );
+    $maxRefRows = max(
+        count($years),
+        count($semesters),
+        count($programs),
+        count($courses),
+        count($labs),
+        count($lecturers),
+        count($assistants),
+        count($classItems),
+        1
+    );
+
+    $sheet2Xml = '<row r="1" ht="26" customHeight="1">';
+    foreach ($refHeaders as $cIndex => $hText) {
+        $col = column_name($cIndex + 1);
+        $sheet2Xml .= '<c r="'.$col.'1" s="1" t="inlineStr"><is><t xml:space="preserve">'.xml_escape($hText).'</t></is></c>';
+    }
+    $sheet2Xml .= '</row>';
+
+    for ($i = 0; $i < $maxRefRows; $i++) {
+        $rowNumber = $i + 2;
+        $cells = array(
+            0 => $years[$i] ?? '',
+            1 => $semesters[$i] ?? '',
+            2 => $programs[$i]['nama'] ?? '',
+            3 => $courses[$i]['kode'] ?? '',
+            4 => $courses[$i]['nama'] ?? '',
+            5 => $labs[$i]['nama'] ?? '',
+            6 => $lecturers[$i]['email'] ?? '',
+            7 => $lecturers[$i]['nama'] ?? '',
+            8 => $assistants[$i]['email'] ?? '',
+            9 => $assistants[$i]['nama'] ?? '',
+            10 => $classItems[$i]['frekuensi'] ?? '',
+            11 => $classItems[$i]['info'] ?? '',
+        );
+        $sheet2Xml .= '<row r="'.$rowNumber.'" ht="20" customHeight="1">';
+        foreach ($cells as $cIndex => $val) {
+            if ($val === '') {
+                continue;
+            }
+            $col = column_name($cIndex + 1);
+            $sheet2Xml .= '<c r="'.$col.$rowNumber.'" s="2" t="inlineStr"><is><t xml:space="preserve">'.xml_escape($val).'</t></is></c>';
+        }
+        $sheet2Xml .= '</row>';
+    }
+
+    $validations = array(
+        array('sqref' => 'A2:A'.$maxDataRow, 'formula' => 'RefTahunAkademik', 'title' => 'Tahun Akademik', 'prompt' => 'Pilih tahun akademik periode (contoh: 2026/2027).', 'stop' => false),
+        array('sqref' => 'B2:B'.$maxDataRow, 'formula' => 'RefSemester', 'title' => 'Semester', 'prompt' => 'Pilih Ganjil atau Genap.', 'stop' => true),
+        array('sqref' => 'C2:C'.$maxDataRow, 'formula' => 'RefProdi', 'title' => 'Program Studi', 'prompt' => 'Pilih nama Program Studi sesuai daftar master.', 'stop' => false),
+        array('sqref' => 'D2:D'.$maxDataRow, 'formula' => 'RefKodeMk', 'title' => 'Kode Mata Kuliah', 'prompt' => 'Pilih Kode MK (cek nama MK di sheet Referensi Master).', 'stop' => false),
+        array('sqref' => 'E2:E'.$maxDataRow, 'formula' => 'RefLaboratorium', 'title' => 'Laboratorium', 'prompt' => 'Pilih nama Laboratorium pelaksanaan praktikum.', 'stop' => false),
+        array('sqref' => 'F2:F'.$maxDataRow, 'formula' => 'RefEmailDosen', 'title' => 'Email Dosen Pengampu', 'prompt' => 'Pilih email Dosen (cek nama dosen di sheet Referensi Master).', 'stop' => false),
+        array('sqref' => 'G2:G'.$maxDataRow, 'formula' => 'RefEmailAsisten', 'title' => 'Email Asisten 1 (Utama)', 'prompt' => 'Wajib: Pilih email Asisten Utama.', 'stop' => false),
+        array('sqref' => 'H2:H'.$maxDataRow, 'formula' => 'RefEmailAsisten', 'title' => 'Email Asisten 2 (Opsional)', 'prompt' => 'Opsional: Pilih email Asisten Pengajar Pendukung atau kosongkan.', 'stop' => false),
+        array('sqref' => 'I2:I'.$maxDataRow, 'formula' => 'RefEmailAsisten', 'title' => 'Email Pendamping (Opsional)', 'prompt' => 'Opsional: Pilih email Pendamping Teknis / Asisten 3 atau kosongkan.', 'stop' => false),
+        array('sqref' => 'J2:J'.$maxDataRow, 'formula' => '"Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu"', 'title' => 'Hari Praktikum', 'prompt' => 'Pilih hari pelaksanaan (Senin s/d Minggu).', 'stop' => true),
+        array('sqref' => 'L2:L'.$maxDataRow, 'formula' => '"Aktif,Nonaktif"', 'title' => 'Status Jadwal', 'prompt' => 'Pilih Aktif atau Nonaktif.', 'stop' => true),
+        array('sqref' => 'M2:M'.$maxDataRow, 'formula' => 'RefFrekuensi', 'title' => 'Kode Frekuensi Kelas', 'prompt' => 'Pilih atau ketik kode frekuensi kelas praktikum (contoh: TI_ALPRO-1).', 'stop' => false),
+    );
+
+    $dvXml = '<dataValidations count="'.(count($validations) + 1).'">';
+    foreach ($validations as $dv) {
+        $errorAttr = $dv['stop']
+            ? 'showErrorMessage="1" errorStyle="stop" errorTitle="Pilihan tidak sesuai" error="Pilih nilai dari daftar dropdown."'
+            : 'showErrorMessage="0"';
+        $dvXml .= '<dataValidation type="list" allowBlank="1" showInputMessage="1" '.$errorAttr.' promptTitle="'.xml_escape($dv['title']).'" prompt="'.xml_escape($dv['prompt']).'" sqref="'.$dv['sqref'].'"><formula1>'.xml_escape($dv['formula']).'</formula1></dataValidation>';
+    }
+    $dvXml .= '<dataValidation type="none" allowBlank="1" showInputMessage="1" promptTitle="Format Jam Praktikum" prompt="Ketik jam mulai dan selesai dengan format HH.MM-HH.MM (contoh: 07.00-10.20)." sqref="K2:K'.$maxDataRow.'"/>';
+    $dvXml .= '</dataValidations>';
+
+    $sheet1 = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        .'<cols>'
+        .'<col min="1" max="1" width="18" customWidth="1"/>'
+        .'<col min="2" max="2" width="14" customWidth="1"/>'
+        .'<col min="3" max="3" width="26" customWidth="1"/>'
+        .'<col min="4" max="4" width="18" customWidth="1"/>'
+        .'<col min="5" max="5" width="26" customWidth="1"/>'
+        .'<col min="6" max="9" width="30" customWidth="1"/>'
+        .'<col min="10" max="10" width="15" customWidth="1"/>'
+        .'<col min="11" max="11" width="18" customWidth="1"/>'
+        .'<col min="12" max="12" width="14" customWidth="1"/>'
+        .'<col min="13" max="13" width="22" customWidth="1"/>'
+        .'</cols>'
+        .'<sheetData>'.$sheet1Xml.'</sheetData>'
+        .'<autoFilter ref="A1:M'.$maxDataRow.'"/>'
+        .$dvXml
+        .'<pageMargins left="0.25" right="0.25" top="0.4" bottom="0.4" header="0.2" footer="0.2"/></worksheet>';
+
+    $sheet2 = '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        .'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+        .'<cols>'
+        .'<col min="1" max="2" width="16" customWidth="1"/>'
+        .'<col min="3" max="3" width="26" customWidth="1"/>'
+        .'<col min="4" max="4" width="18" customWidth="1"/>'
+        .'<col min="5" max="5" width="34" customWidth="1"/>'
+        .'<col min="6" max="6" width="26" customWidth="1"/>'
+        .'<col min="7" max="10" width="28" customWidth="1"/>'
+        .'<col min="11" max="11" width="22" customWidth="1"/>'
+        .'<col min="12" max="12" width="46" customWidth="1"/>'
+        .'</cols>'
+        .'<sheetData>'.$sheet2Xml.'</sheetData>'
+        .'<autoFilter ref="A1:L'.($maxRefRows + 1).'"/>'
+        .'</worksheet>';
+
+    $definedNames = '<definedNames>'
+        .'<definedName name="RefTahunAkademik">\'Referensi Master\'!$A$2:$A$'.(count($years) + 1).'</definedName>'
+        .'<definedName name="RefSemester">\'Referensi Master\'!$B$2:$B$'.(count($semesters) + 1).'</definedName>'
+        .'<definedName name="RefProdi">\'Referensi Master\'!$C$2:$C$'.(count($programs) + 1).'</definedName>'
+        .'<definedName name="RefKodeMk">\'Referensi Master\'!$D$2:$D$'.(count($courses) + 1).'</definedName>'
+        .'<definedName name="RefLaboratorium">\'Referensi Master\'!$F$2:$F$'.(count($labs) + 1).'</definedName>'
+        .'<definedName name="RefEmailDosen">\'Referensi Master\'!$G$2:$G$'.(count($lecturers) + 1).'</definedName>'
+        .'<definedName name="RefEmailAsisten">\'Referensi Master\'!$I$2:$I$'.(count($assistants) + 1).'</definedName>'
+        .'<definedName name="RefFrekuensi">\'Referensi Master\'!$K$2:$K$'.(count($classItems) + 1).'</definedName>'
+        .'</definedNames>';
+
+    $stylesXml = '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        .'<fonts count="2">'
+        .'<font><sz val="10"/><name val="Calibri"/><color rgb="FF0F172A"/></font>'
+        .'<font><b/><sz val="10"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>'
+        .'</fonts>'
+        .'<fills count="4">'
+        .'<fill><patternFill patternType="none"/></fill>'
+        .'<fill><patternFill patternType="gray125"/></fill>'
+        .'<fill><patternFill patternType="solid"><fgColor rgb="FF123B5D"/><bgColor indexed="64"/></patternFill></fill>'
+        .'<fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>'
+        .'</fills>'
+        .'<borders count="2">'
+        .'<border/>'
+        .'<border><left style="thin"><color rgb="FFCBD5E1"/></left><right style="thin"><color rgb="FFCBD5E1"/></right><top style="thin"><color rgb="FFCBD5E1"/></top><bottom style="thin"><color rgb="FFCBD5E1"/></bottom></border>'
+        .'</borders>'
+        .'<cellStyleXfs count="1"><xf/></cellStyleXfs>'
+        .'<cellXfs count="3">'
+        .'<xf fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        .'<xf fontId="1" fillId="2" borderId="1" xfId="0" applyAlignment="1" applyFill="1" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+        .'<xf fontId="0" fillId="3" borderId="1" xfId="0" applyAlignment="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>'
+        .'</cellXfs>'
+        .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+        .'</styleSheet>';
+
+    $file = tempnam(sys_get_temp_dir(), 'iclabs_sched_');
+    $zip = new ZipArchive();
+    try {
+        if ($zip->open($file, ZipArchive::OVERWRITE) !== true) {
+            reject('Tidak dapat membuat template Excel jadwal.', 500);
+        }
+        $zip->addFromString('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+        $zip->addFromString('_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Jadwal Praktikum" sheetId="1" r:id="rId1"/><sheet name="Referensi Master" sheetId="2" r:id="rId2"/></sheets>'.$definedNames.'</workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1);
+        $zip->addFromString('xl/worksheets/sheet2.xml', $sheet2);
+        $zip->addFromString('xl/styles.xml', $stylesXml);
+        $zip->close();
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        header('Content-Length: '.filesize($file));
+        readfile($file);
+    } finally {
+        @unlink($file);
+    }
+}
+
 function component_value(
     $items,
     $number
