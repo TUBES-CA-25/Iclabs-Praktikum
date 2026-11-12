@@ -21,13 +21,13 @@ $resetAvailable = !empty($runtimeConfig['iclabs_api_mode'])
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="assets/style.css?v=<?= filemtime(__DIR__ . '/assets/style.css') ?>">
-	<link rel="icon" type="image/jpeg" href="assets/logo-iclabs.jpg">
+	<link rel="icon" type="image/png" href="assets/logo-iclabs.png">
 </head>
 <body>
 	<main class="iclabs-login auth-page">
 		<div class="auth-layout auth-layout--compact">
 			<section class="auth-showcase auth-showcase--compact" aria-label="Informasi keamanan akun ICLabs">
-				<div class="auth-brand"><img src="assets/logo-iclabs.jpg" alt="" width="48" height="48"><span><strong>ICLabs</strong><small>FIKOM · UMI</small></span></div>
+				<div class="auth-brand"><img src="assets/logo-iclabs.png" alt="Logo ICLabs" width="48" height="48"><span><strong>ICLabs</strong><small>FIKOM · UMI</small></span></div>
 				<div class="auth-showcase-copy"><p class="auth-showcase-eyebrow">ICLABS PRAKTIKUM</p><h2>Kata sandi<br>baru.</h2><p>Pulihkan akses ke akun Praktikum Anda.</p></div>
 				<p class="auth-showcase-footer">Fakultas Ilmu Komputer<br>Universitas Muslim Indonesia</p>
 			</section>

@@ -8,7 +8,7 @@
 	<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 	<link rel="stylesheet" href="assets/style.css?v=<?= filemtime(__DIR__ . '/assets/style.css') ?>">
-	<link rel="icon" type="image/jpeg" href="assets/logo-iclabs.jpg"></head>
+	<link rel="icon" type="image/png" href="assets/logo-iclabs.png"></head>
 <body>
 	<div id="app"></div>
 	<div id="toast" role="status"></div>

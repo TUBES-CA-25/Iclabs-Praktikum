@@ -61,7 +61,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Instalasi ICLabs Praktikum</title>
     <link rel="stylesheet" href="assets/style.css">
-<link rel="icon" type="image/jpeg" href="assets/logo-iclabs.jpg"></head>
+<link rel="icon" type="image/png" href="assets/logo-iclabs.png"></head>
 
 <body>
     <main class="workspace" style="max-width: 680px">
@@ -69,7 +69,7 @@ try {
             <div class="card-body">
                 <div class="eyebrow">PHP NATIVE · MYSQL · XAMPP</div>
 
-                <img class="setup-logo" src="assets/logo-iclabs.jpg" alt="Logo ICLabs" width="90" height="95"><h1>Instalasi ICLabs Praktikum</h1>
+                <img class="setup-logo" src="assets/logo-iclabs.png" alt="Logo ICLabs" width="90" height="95"><h1>Instalasi ICLabs Praktikum</h1>
 
                 <?php if ($error): ?>
                     <p class="error">

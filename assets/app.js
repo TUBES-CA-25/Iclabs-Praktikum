@@ -7,7 +7,7 @@ const num = v => v === null || v === undefined ? '—' : Number(v).toFixed(1); c
 async function api(path, data, method) { const r = await fetch(apiUrl(path), { method: method || (data ? 'POST' : 'GET'), headers: data ? { 'Content-Type': 'application/json', 'X-CSRF-Token': user?.csrf || authCsrf || '' } : {}, body: data ? JSON.stringify(data) : undefined }); const b = r.status === 204 ? null : await r.json(); if (!r.ok) { if (r.status === 401 && !['/login', '/auth/csrf', '/auth/activation-request', '/auth/password-reset-request'].includes(path)) login(); throw Error(b?.error || 'Permintaan API ditolak.') } return b }
 function toast(s) { $('#toast').textContent = s; $('#toast').style.display = 'block'; setTimeout(() => $('#toast').style.display = 'none', 4500) }
 function badge(s) { return `<span class="badge ${['Dikunci', 'Terverifikasi', 'Lengkap'].includes(s) ? 'green' : s === 'Perlu Revisi' ? 'red' : ['Diajukan', 'Draft'].includes(s) ? 'yellow' : ''}">${esc(s)}</span>` }
-function brand() { return '<div class="brand"><img class="brand-logo" src="assets/logo-iclabs.jpg" alt="Logo ICLabs" width="44" height="47"><div><strong>ICLabs Praktikum</strong><small>FIKOM UMI</small></div></div>' }
+function brand() { return '<div class="brand"><img class="brand-logo" src="assets/logo-iclabs.png" alt="Logo ICLabs" width="44" height="47"><div><strong>ICLabs Praktikum</strong><small>FIKOM UMI</small></div></div>' }
 function initLoginInteractive() {
   const canvas = document.getElementById("particle-canvas");
   if (canvas) {
@@ -174,7 +174,7 @@ function login() {
 
       <div class="auth-split-content">
         <div class="brand auth-split-logo-badge animate-levitate">
-          <img src="assets/navbar-icon.webp" alt="Logo ICLabs" class="brand-logo">
+          <img src="assets/logo-iclabs.png" alt="Logo ICLabs" class="brand-logo">
         </div>
         <h1 class="auth-split-title animate-enter">ICLABS-PRAKTIKUM</h1>
         <p class="auth-split-subtitle animate-enter" style="animation-delay: 0.2s">
@@ -201,7 +201,7 @@ function login() {
         <div class="glass-card">
           <!-- Mobile Brand Banner -->
           <div class="auth-mobile-header">
-            <img src="assets/navbar-icon.webp" alt="ICLabs Logo">
+            <img src="assets/logo-iclabs.png" alt="Logo ICLabs">
             <div>
               <strong>IC-LABS PRAKTIKUM</strong>
               <small>Fakultas Ilmu Komputer UMI</small>
@@ -400,7 +400,7 @@ function login() {
   bindAccountRequest('password-reset-request', '/auth/password-reset-request', 'reset-status');
   if (typeof window.startIclabsIntro === 'function') window.startIclabsIntro();
 }
-async function init() { try { user = await api('/me'); activePeriod = await api('/active-period'); classes = user.role === 'mahasiswa' ? [] : await api('/classes'); current = null; changes.clear(); page = user.api_mode ? (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Ringkasan') : (user.role === 'mahasiswa' ? 'Nilai Saya' : 'Dashboard'); render() } catch (e) { if (!user) { if (!$('#login')) login(); if (e.message && e.message !== 'Silakan login.' && $('#login-error')) { $('#login-error').innerHTML = `<i class="fas fa-circle-exclamation text-lg"></i><span>${esc(e.message)}</span>`; $('#login-error').classList.add('is-visible') } return } app.innerHTML = `<main class="iclabs-login auth-page"><section class="login-panel auth-form-panel auth-fallback-panel" aria-labelledby="api-fallback-title"><div class="login-heading"><h1 id="api-fallback-title">Layanan belum terhubung</h1><p>Data Praktikum belum dapat dimuat dari API pusat.</p></div><div class="error" role="alert">${esc(e.message || 'Fitur ini belum tersedia melalui API pusat.')}</div><div class="auth-fallback-actions"><button class="login-submit" type="button" onclick="init()">Coba lagi <span aria-hidden="true">→</span></button><button class="auth-secondary-action" type="button" onclick="logout()">Keluar dari akun</button></div></section></main>` } }
+async function init() { try { user = await api('/me'); activePeriod = await api('/active-period'); classes = user.role === 'mahasiswa' ? [] : await api('/classes'); current = null; changes.clear(); page = user.api_mode ? 'Ringkasan' : (user.role === 'mahasiswa' ? 'Dashboard' : 'Dashboard'); render() } catch (e) { if (!user) { if (!$('#login')) login(); if (e.message && e.message !== 'Silakan login.' && $('#login-error')) { $('#login-error').innerHTML = `<i class="fas fa-circle-exclamation text-lg"></i><span>${esc(e.message)}</span>`; $('#login-error').classList.add('is-visible') } return } app.innerHTML = `<main class="iclabs-login auth-page"><section class="login-panel auth-form-panel auth-fallback-panel" aria-labelledby="api-fallback-title"><div class="login-heading"><h1 id="api-fallback-title">Layanan belum terhubung</h1><p>Data Praktikum belum dapat dimuat dari API pusat.</p></div><div class="error" role="alert">${esc(e.message || 'Fitur ini belum tersedia melalui API pusat.')}</div><div class="auth-fallback-actions"><button class="login-submit" type="button" onclick="init()">Coba lagi <span aria-hidden="true">→</span></button><button class="auth-secondary-action" type="button" onclick="logout()">Keluar dari akun</button></div></section></main>` } }
 function iconSvg(name, cls = '') {
   const s = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" aria-hidden="true"';
   const c = cls ? `class="svg-icon ${cls}"` : 'class="svg-icon"';
@@ -451,19 +451,19 @@ function iconSvg(name, cls = '') {
 const iconMap = { 'Nilai Saya': 'file-text', 'Dashboard': 'grid', 'Jadwal Praktikum': 'calendar', 'Absensi': 'check-square', 'Penilaian': 'file-text', 'Verifikasi': 'shield-check', 'Laporan': 'bar-chart', 'Aktivitas & Presensi': 'check-square', 'Hasil Penilaian': 'file-text', 'Kelas Praktikum': 'grid', 'Ringkasan': 'grid', 'Data Master': 'settings', 'Konfigurasi Nilai': 'percent', 'Periode Akademik': 'clock', 'Sinkron Jadwal': 'refresh', 'Log Aktivitas': 'clock', 'Manajemen Akses': 'users' };
 const icons = new Proxy(iconMap, { get: (t, k) => iconSvg(t[k] || 'grid') });
 function render() {
-  if (user?.api_mode) { renderApiMode(); return } const nav = user.role === 'mahasiswa' ? ['Nilai Saya'] : Object.keys(iconMap).filter(x => x !== 'Nilai Saya' && (user.role === 'admin' || !['Data Master', 'Log Aktivitas'].includes(x))); app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">Navigasi</div><nav class="nav">${nav.map(x => `<button data-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Sistem Aktif</span></span></div><button id="logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span></div></div><div class="profile"><div class="avatar">${esc(user.name.split(' ').map(x => x[0]).slice(0, 2).join(''))}</div><button id="account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="period-summary">${periodSummary()}</div><div id="view"></div></main></div></div>`;
-  document.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navigate(b.dataset.nav)); $('#logout').onclick = logout; $('#header-logout').onclick = logout; $('#account').onclick = account; $('.profile .avatar').onclick = account; $('#menu').onclick = () => $('.sidebar').classList.toggle('open'); if (user.role === 'mahasiswa') studentPortal(); else if (current) renderClass(); else if (page === 'Dashboard') dashboard(); else if (page === 'Data Master') masters(); else if (page === 'Log Aktivitas') auditPage(); else listPage()
+  if (user?.api_mode) { renderApiMode(); return } const nav = user.role === 'mahasiswa' ? ['Dashboard', 'Nilai Saya'] : Object.keys(iconMap).filter(x => x !== 'Nilai Saya' && (user.role === 'admin' || !['Data Master', 'Log Aktivitas'].includes(x))); app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">Navigasi</div><nav class="nav">${nav.map(x => `<button data-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Sistem Aktif</span></span></div><button id="logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span></div></div><div class="profile"><div class="avatar">${esc(user.name.split(' ').map(x => x[0]).slice(0, 2).join(''))}</div><button id="account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="period-summary">${periodSummary()}</div><div id="view"></div></main></div></div>`;
+  document.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => navigate(b.dataset.nav)); $('#logout').onclick = logout; $('#header-logout').onclick = logout; $('#account').onclick = account; $('.profile .avatar').onclick = account; $('#menu').onclick = () => $('.sidebar').classList.toggle('open'); if (user.role === 'mahasiswa') { if (page === 'Dashboard') studentDashboard(); else studentPortal(); } else if (current) renderClass(); else if (page === 'Dashboard') dashboard(); else if (page === 'Data Master') masters(); else if (page === 'Log Aktivitas') auditPage(); else listPage()
 }
 function renderApiMode() {
   const student = user.role === 'mahasiswa', hasStudentRole = (user.roles || []).includes('MAHASISWA');
   const canManageAccess = Boolean(user.can_manage_access || user.role === 'admin' || (user.roles || []).some(r => ['SUPER_ADMIN', 'ADMIN_ICLABS', 'KEPALA_LAB', 'LABORAN'].includes(r)));
-  const nav = student ? ['Nilai Saya'] : (user.role === 'admin' ? ['Ringkasan', 'Kelas Praktikum', 'Sinkron Jadwal', 'Periode Akademik', 'Konfigurasi Nilai', 'Log Aktivitas'] : (user.role === 'dosen' ? ['Ringkasan', 'Aktivitas & Presensi', 'Hasil Penilaian'] : ['Ringkasan', 'Kelas Praktikum']));
+  const nav = student ? ['Ringkasan', 'Nilai Saya'] : (user.role === 'admin' ? ['Ringkasan', 'Kelas Praktikum', 'Sinkron Jadwal', 'Periode Akademik', 'Konfigurasi Nilai', 'Log Aktivitas'] : (user.role === 'dosen' ? ['Ringkasan', 'Aktivitas & Presensi', 'Hasil Penilaian'] : ['Ringkasan', 'Kelas Praktikum']));
   if (canManageAccess && !nav.includes('Manajemen Akses')) nav.push('Manajemen Akses');
   if (!student && hasStudentRole) nav.push('Nilai Saya');
   const initials = (user.name || user.email || 'IC').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
   app.innerHTML = `<div class="app"><aside class="sidebar">${brand()}<div class="navlabel">Navigasi</div><nav class="nav">${nav.map(x => `<button data-api-nav="${x}" class="${page === x ? 'active' : ''}"><span class="icon">${icons[x]}</span><span>${x}</span></button>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-status-card"><span class="system-status-indicator"><span class="status-dot-pulse"></span><span>Mode API Terhubung</span></span></div><button id="api-logout" class="sidebar-logout-btn">${iconSvg('logout')} <span>Keluar</span></button></div></aside><div class="content"><header class="topbar"><div class="topbar-context"><button class="mobile" id="api-menu" aria-label="Buka menu">${iconSvg('menu')}</button><div class="topbar-breadcrumbs"><span class="topbar-crumb-app">ICLabs Praktikum</span><span class="topbar-crumb-sep">/</span><span class="topbar-crumb-page" id="topbar-current-page">${page}</span></div></div><div class="profile"><div class="avatar">${esc(initials)}</div><button id="api-account" aria-label="Akun dan ganti password"><span class="profile-name"><strong>${esc(user.name)}</strong><small>${roleLabel[user.role]}</small></span>${iconSvg('chevron-down')}</button><button id="api-header-logout" class="logout-button" aria-label="Logout dari akun">${iconSvg('logout')} <span>Keluar</span></button></div></header><main class="workspace"><div id="api-period-summary">${apiPeriodSummary()}</div><div id="api-view"></div></main></div></div>`;
   document.querySelectorAll('[data-api-nav]').forEach(b => b.onclick = () => { if (window.apiDraftStorageFailed && !confirm('Draft presensi gagal disimpan pada perangkat ini. Tetap tinggalkan halaman?')) return; window.apiDraftStorageFailed = false; page = b.dataset.apiNav; apiCurrent = null; window.selectedStudentClassId = null; renderApiMode() }); $('#api-logout').onclick = logout; $('#api-header-logout').onclick = logout; $('#api-account').onclick = account; $('#api-menu').onclick = () => $('.sidebar').classList.toggle('open');
-  if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else if (page === 'Manajemen Akses') accessManagementPage(); else apiDashboard();
+  if (student && page === 'Ringkasan') apiStudentDashboard(); else if (student || page === 'Nilai Saya') apiStudentGrades(); else if (apiCurrent) apiClassDetailWithEntry(apiCurrent); else if (['Kelas Praktikum', 'Aktivitas & Presensi', 'Hasil Penilaian'].includes(page)) apiClassListPage(); else if (page === 'Sinkron Jadwal') googleSheetScheduleSyncPage(); else if (page === 'Periode Akademik') periodManagementPage(); else if (page === 'Konfigurasi Nilai') gradeConfigPage(); else if (page === 'Log Aktivitas') auditPage(); else if (page === 'Manajemen Akses') accessManagementPage(); else apiDashboard();
 }
 let googleSheetReview = null, googleSheetRenderTimer = null;
 let googleSheetAssistantRecommendationTimer = null;
@@ -1436,20 +1436,22 @@ async function apiClassDetail(id) {
     $('#api-back').onclick = apiClassList;
   }
 }
-async function apiStudentGrades() {
+async function apiStudentDashboard() {
   const view = $('#api-view');
-  view.innerHTML = '<div class="empty">Memuat data praktikum dari API pusat…</div>';
+  view.innerHTML = '<div class="empty">Memuat dashboard mahasiswa dari API pusat…</div>';
   try {
-    const [rows, meetingResult] = await Promise.all([
+    const [rows, meetingResult, classList] = await Promise.all([
       api('/student/grades'),
-      api('/meeting-grades').then(items => ({ items, error: null })).catch(error => ({ items: [], error: error.message }))
+      api('/meeting-grades').then(items => ({ items: Array.isArray(items) ? items : (Array.isArray(items?.data) ? items.data : []), error: null })).catch(error => ({ items: [], error: error.message })),
+      api('/classes').catch(() => [])
     ]);
-    if (!Array.isArray(rows)) throw Error('Format nilai mahasiswa tidak valid.');
-    const groups = new Map(), meetingGroups = new Map();
+    if (!Array.isArray(rows)) throw Error('Format data praktikum mahasiswa tidak valid.');
+    const groups = new Map();
     for (const row of rows) {
       const key = String(row.id_kelas_kuliah);
       if (!groups.has(key)) {
         groups.set(key, {
+          id: key,
           first: row,
           summary: row.ringkasan_nilai,
           attendance: row.kehadiran || [],
@@ -1459,17 +1461,401 @@ async function apiStudentGrades() {
       }
       if (row.kode_komponen) groups.get(key).components.push(row);
     }
-    for (const meeting of meetingResult.items) {
+    const classMap = new Map();
+    if (Array.isArray(classList)) {
+      classList.forEach(c => classMap.set(String(c.id_kelas_kuliah), c));
+    }
+
+    const courseList = [...groups.values()];
+    const totalCourses = courseList.length;
+    const totalHadir = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_hadir) || 0), 0);
+    const totalSesi = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_sesi) || 0), 0);
+    const overallAttPct = totalSesi > 0 ? Math.round((totalHadir / totalSesi) * 100) : (totalCourses ? 100 : 0);
+
+    const gradesWithScore = courseList.filter(g => g.summary?.nilai_akhir != null);
+    const overallAvgScore = gradesWithScore.length
+      ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(1)
+      : '—';
+    const overallAvgScoreNum = gradesWithScore.length
+      ? Math.min(100, Math.max(0, Number(overallAvgScore)))
+      : 0;
+
+    const evalEvaluasi = courseList.filter(g => g.summary?.rata_evaluasi != null);
+    const avgEvaluasi = evalEvaluasi.length
+      ? (evalEvaluasi.reduce((acc, g) => acc + Number(g.summary.rata_evaluasi), 0) / evalEvaluasi.length).toFixed(1)
+      : '—';
+
+    const evalAsistensi = courseList.filter(g => g.summary?.rata_asistensi != null);
+    const avgAsistensi = evalAsistensi.length
+      ? (evalAsistensi.reduce((acc, g) => acc + Number(g.summary.rata_asistensi), 0) / evalAsistensi.length).toFixed(1)
+      : '—';
+
+    const passedCount = courseList.filter(g => Number(g.summary?.nilai_akhir || 0) >= 70).length;
+    const verifiedCount = courseList.filter(g => {
+      const cls = classMap.get(g.id);
+      return (cls?.jadwal || []).some(j => j.status_workflow === 'TERVERIFIKASI' || j.status_workflow === 'DIKUNCI');
+    }).length;
+
+    const studentNim = user.nim || (rows[0]?.nim) || user.email.split('@')[0];
+    const studentProdi = (classList[0]?.program_studi?.nama) || (rows[0]?.program_studi) || 'Teknik Informatika';
+    const periodLabel = activePeriod?.academic_year ? `${activePeriod.academic_year} · ${activePeriod.semester || ''}` : 'Semester Aktif';
+    const initials = (user.name || user.email || 'MU').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
+
+    const weekdays = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
+    const schedules = [];
+    courseList.forEach(g => {
+      const cls = classMap.get(g.id);
+      if (cls && Array.isArray(cls.jadwal)) {
+        cls.jadwal.forEach(j => {
+          if (j.status === 'AKTIF') {
+            const dosen = (j.pengajar || []).find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU')?.nama || 'Dosen Pengampu';
+            const asisten = (j.pengajar || []).find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA')?.nama || '';
+            schedules.push({
+              courseCode: cls.mata_kuliah?.kode || g.first.kode_mata_kuliah,
+              courseName: cls.mata_kuliah?.nama || g.first.nama_mata_kuliah,
+              frequency: cls.kelompok?.kode || g.first.kode_kelompok,
+              dayName: weekdays[j.hari_ke] || 'Hari Belum Diatur',
+              timeText: `${j.jam_mulai}–${j.jam_selesai}`,
+              room: j.nama_laboratorium || 'Laboratorium',
+              dosen,
+              asisten
+            });
+          }
+        });
+      }
+    });
+
+    const kpis = [
+      [totalCourses, 'Praktikum Terdaftar', totalCourses ? `${courseList.map(g => g.first.kode_kelompok).join(' · ')}` : 'Belum terdaftar', totalCourses ? 'Aktif' : 'Kosong', '#0f766e'],
+      [`${overallAttPct}%`, 'Tingkat Kehadiran', `${totalHadir} dari ${totalSesi} sesi hadir`, overallAttPct >= 75 ? 'Memenuhi Syarat' : 'Perlu Perhatian', overallAttPct >= 75 ? '#0f766e' : '#b45309'],
+      [overallAvgScore, 'Rata-rata Nilai', `Evaluasi ${avgEvaluasi} · Asistensi ${avgAsistensi}`, gradesWithScore.length ? 'Nilai Berjalan' : 'Proses Pengisian', '#0369a1'],
+      [`${passedCount} / ${totalCourses}`, 'Capaian Praktikum', `${Math.max(0, totalCourses - passedCount)} mata kuliah berjalan`, verifiedCount > 0 ? `${verifiedCount} Terverifikasi` : 'Dipantau', '#0f766e']
+    ];
+
+    const kpiStripHtml = `<div class="dash-kpi-strip stats">
+      ${kpis.map(([val, label, sub, pill, color]) => `
+        <div class="dash-kpi-card stat">
+          <div class="row between">
+            <span class="label">${esc(label)}</span>
+            <span class="dash-kpi-pill" style="color:${color};background-color:${color}14;border-color:${color}33">${esc(pill)}</span>
+          </div>
+          <b>${esc(val)}</b>
+          <small>${esc(sub)}</small>
+        </div>
+      `).join('')}
+    </div>`;
+
+    const radialGaugesHtml = `<div class="dash-radial-grid">
+      ${renderRadialGaugeSvg(overallAttPct, '#0f766e', 'Kepatuhan Presensi', `${totalHadir} dari ${totalSesi} sesi hadir`, `${totalHadir}/${totalSesi}`)}
+      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgEvaluasi) || 0)), '#0284c7', 'Rata-rata Evaluasi', 'Tugas & modul praktikum', avgEvaluasi)}
+      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgAsistensi) || 0)), '#d97706', 'Rata-rata Asistensi', 'Bimbingan & laporan asisten', avgAsistensi)}
+    </div>`;
+
+    const courseChartHtml = courseList.length ? `
+      <div class="dash-course-chart">
+        <div class="dash-subhead row between">
+          <strong>Distribusi Nilai Mata Kuliah</strong>
+          <small class="muted">Skala 0 – 100</small>
+        </div>
+        <div class="dash-bar-list">
+          ${courseList.map(g => {
+            const score = g.summary?.nilai_akhir != null ? Number(g.summary.nilai_akhir) : null;
+            const scoreText = score != null ? `${score.toFixed(1)}${g.summary?.predikat ? ` (${g.summary.predikat})` : ''}` : 'Berjalan';
+            const pct = score != null ? Math.min(100, Math.max(0, score)) : 0;
+            return `
+              <div class="dash-bar-row">
+                <div class="dash-bar-meta row between">
+                  <div class="dash-bar-title">
+                    <strong>${esc(g.first.kode_mata_kuliah)} · ${esc(g.first.nama_mata_kuliah)}</strong>
+                    <span class="badge blue">Frekuensi ${esc(g.first.kode_kelompok)}</span>
+                  </div>
+                  <div class="dash-bar-values">
+                    <strong>${esc(scoreText)}</strong>
+                  </div>
+                </div>
+                <div class="dash-bar-track">
+                  <div class="dash-bar-fill">
+                    <div class="dash-bar-fill-active" style="width:${pct}%;background-color:${pct >= 75 ? '#0f766e' : (pct >= 60 ? '#0284c7' : '#d97706')}"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : '<div class="empty">Belum ada nilai mata kuliah pada periode ini.</div>';
+
+    const scheduleListHtml = schedules.length ? `
+      <div class="student-schedule-list">
+        ${schedules.map(item => `
+          <div class="student-schedule-item">
+            <div class="student-schedule-time">
+              <strong>${esc(item.dayName)}, ${esc(item.timeText)}</strong>
+              <small>${esc(item.room)} · ${esc(item.frequency)}</small>
+            </div>
+            <div style="text-align:right">
+              <span class="badge blue">${esc(item.courseCode)}</span><br>
+              <small class="muted">${esc(item.dosen)}</small>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '<div class="empty">Belum ada jadwal praktikum yang ditetapkan untuk kelas Anda.</div>';
+
+    const courseCardsHtml = courseList.length ? `
+      <div class="student-course-grid">
+        ${courseList.map(g => {
+          const r = g.first, s = g.summary, att = g.attendanceSummary;
+          const cls = classMap.get(g.id);
+          const activeSchedule = (cls?.jadwal || []).find(j => j.status === 'AKTIF');
+          const dayName = activeSchedule ? (weekdays[activeSchedule.hari_ke] || '—') : '—';
+          const timeText = activeSchedule ? `${activeSchedule.jam_mulai}–${activeSchedule.jam_selesai}` : '—';
+          const labName = activeSchedule?.nama_laboratorium || 'Laboratorium';
+          const dosenName = activeSchedule?.pengajar?.find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU')?.nama || 'Dosen Pengampu';
+          const asistenName = activeSchedule?.pengajar?.find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA')?.nama || 'Asisten';
+
+          return `
+            <div class="student-course-card">
+              <div class="student-course-header">
+                <div class="student-course-title">
+                  <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
+                  <small>Kelompok ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
+                </div>
+                <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
+              </div>
+              <div class="student-course-meta">
+                <div class="student-meta-item">
+                  <span class="label">Laboratorium</span>
+                  <strong>${esc(labName)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Jadwal</span>
+                  <strong>${esc(dayName)}, ${esc(timeText)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Dosen</span>
+                  <strong>${esc(dosenName)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Asisten Utama</span>
+                  <strong>${esc(asistenName)}</strong>
+                </div>
+              </div>
+              <div class="student-grade-pills">
+                <div class="student-grade-pill ${att.persentase >= 75 ? 'highlight' : ''}">
+                  <span class="label">Kehadiran</span>
+                  <strong>${att.persentase}%</strong>
+                </div>
+                <div class="student-grade-pill">
+                  <span class="label">Evaluasi</span>
+                  <strong>${s?.rata_evaluasi != null ? Number(s.rata_evaluasi).toFixed(1) : '—'}</strong>
+                </div>
+                <div class="student-grade-pill">
+                  <span class="label">Asistensi</span>
+                  <strong>${s?.rata_asistensi != null ? Number(s.rata_asistensi).toFixed(1) : '—'}</strong>
+                </div>
+                <div class="student-grade-pill highlight">
+                  <span class="label">Nilai Akhir</span>
+                  <strong>${s?.nilai_akhir != null ? Number(s.nilai_akhir).toFixed(1) : '—'}${s?.predikat ? ` (${esc(s.predikat)})` : ''}</strong>
+                </div>
+              </div>
+              <div class="row between" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border,#e2e8f0)">
+                <small class="muted">${att.total_hadir} dari ${att.total_sesi} sesi tercatat</small>
+                <button type="button" class="small btn-subtle-teal" data-open-student-detail="${esc(g.id)}">
+                  <span>Lihat Rincian Nilai &amp; Presensi</span> ${iconSvg('arrow-right')}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '<div class="empty">Anda belum terdaftar dalam kelas praktikum aktif periode ini.</div>';
+
+    view.innerHTML = `
+      <div class="intro row between">
+        <div class="intro-head">
+          <h1>Dashboard Mahasiswa</h1>
+          <p>${esc(user.name)} · NIM ${esc(studentNim)} · ${esc(studentProdi)} · Periode ${esc(periodLabel)}</p>
+        </div>
+        <div class="row">
+          <button type="button" class="small btn-subtle-teal" id="student-dash-open-grades">
+            ${iconSvg('file-text')} <span>Lihat Nilai Saya</span>
+          </button>
+        </div>
+      </div>
+
+      ${kpiStripHtml}
+
+      <div class="dash-analytics-grid">
+        <div class="dash-main-chart">
+          <section class="card dash-chart-card">
+            <div class="card-head">
+              <div>
+                <h2>Analitik Realisasi &amp; Performa Akademik</h2>
+                <p>Pantau ketercapaian kehadiran, nilai praktikum, dan status komponen semester ini.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              ${radialGaugesHtml}
+              ${courseChartHtml}
+            </div>
+          </section>
+        </div>
+        <div class="dash-side-stack">
+          <section class="card">
+            <div class="card-head">
+              <h2>Profil Praktikan</h2>
+            </div>
+            <div class="card-body" style="padding:16px">
+              <div class="student-profile-strip">
+                <div class="student-profile-avatar">${esc(initials)}</div>
+                <div class="student-profile-copy">
+                  <strong>${esc(user.name)}</strong>
+                  <small>${esc(studentNim)} · ${esc(studentProdi)}</small>
+                  <small class="badge green" style="align-self:flex-start;margin-top:4px">Mahasiswa Aktif</small>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Jadwal Praktikum Mingguan</h2>
+              <p>Agenda praktikum rutin semester berjalan.</p>
+            </div>
+            <div class="card-body" style="padding:16px">
+              ${scheduleListHtml}
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Ketentuan &amp; Standar Praktikum</h2>
+            </div>
+            <div class="card-body" style="padding:16px">
+              <div class="student-guide-box">
+                <div class="student-guide-item">
+                  ${iconSvg('shield-check')}
+                  <span><strong>Syarat Presensi 75%:</strong> Mahasiswa wajib memenuhi minimal 75% kehadiran untuk berhak mengikuti evaluasi akhir.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('check-circle')}
+                  <span><strong>Asistensi Modul:</strong> Selesaikan asistensi berkala bersama Asisten Praktikum sebelum batas waktu penutupan modul.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('clock')}
+                  <span><strong>Nilai Berjalan:</strong> Nilai sementara dapat diperbarui secara bertahap oleh Dosen dan Asisten hingga verifikasi semester selesai.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="card" style="margin-top:20px">
+        <div class="card-head row between">
+          <div>
+            <h2>Mata Kuliah Praktikum Saya</h2>
+            <p>${totalCourses} frekuensi praktikum aktif yang Anda ikuti.</p>
+          </div>
+        </div>
+        <div class="card-body" style="padding:18px">
+          ${courseCardsHtml}
+        </div>
+      </section>
+    `;
+
+    $('#student-dash-open-grades').onclick = () => {
+      page = 'Nilai Saya';
+      window.selectedStudentClassId = null;
+      renderApiMode();
+    };
+
+    document.querySelectorAll('[data-open-student-detail]').forEach(btn => {
+      btn.onclick = () => {
+        window.selectedStudentClassId = btn.dataset.openStudentDetail;
+        page = 'Nilai Saya';
+        renderApiMode();
+      };
+    });
+  } catch (error) {
+    view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>`;
+  }
+}
+
+async function apiStudentGrades() {
+  const view = $('#api-view');
+  view.innerHTML = '<div class="empty">Memuat data praktikum dari API pusat…</div>';
+  try {
+    const [rows, meetingResult, classList] = await Promise.all([
+      api('/student/grades'),
+      api('/meeting-grades').then(items => ({ items: Array.isArray(items) ? items : (Array.isArray(items?.data) ? items.data : []), error: null })).catch(error => ({ items: [], error: error.message })),
+      api('/classes').catch(() => [])
+    ]);
+    if (!Array.isArray(rows)) throw Error('Format nilai mahasiswa tidak valid.');
+    const groups = new Map(), meetingGroups = new Map();
+    for (const row of rows) {
+      const key = String(row.id_kelas_kuliah);
+      if (!groups.has(key)) {
+        groups.set(key, {
+          id: key,
+          first: row,
+          summary: row.ringkasan_nilai,
+          attendance: row.kehadiran || [],
+          attendanceSummary: row.ringkasan_kehadiran || { total_hadir: 0, total_sesi: 0, persentase: 0 },
+          components: []
+        });
+      }
+      if (row.kode_komponen) groups.get(key).components.push(row);
+    }
+    const meetingList = Array.isArray(meetingResult?.items) ? meetingResult.items : (Array.isArray(meetingResult) ? meetingResult : []);
+    for (const meeting of meetingList) {
       const key = String(meeting.id_kelas_kuliah);
       if (!meetingGroups.has(key)) meetingGroups.set(key, { first: meeting, meetings: [] });
       meetingGroups.get(key).meetings.push(meeting);
     }
+
+    const classMap = new Map();
+    if (Array.isArray(classList)) {
+      classList.forEach(c => classMap.set(String(c.id_kelas_kuliah), c));
+    }
+
     const fmt = value => value === null || value === undefined ? '—' : Number(value).toFixed(2);
     const attendanceTone = { HADIR: 'green', IZIN: 'yellow', SAKIT: 'yellow', ALPA: 'red', TERLAMBAT: 'yellow' };
     const attendanceLabel = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
+    const studentNim = user.nim || (rows[0]?.nim) || user.email.split('@')[0];
+
+    const weekdays = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
+    function extractScheduleInfo(cls, fallbackFirst) {
+      let dayName = 'Jadwal Reguler', timeText = '—', room = 'Laboratorium';
+      let dosen = '—', asisten_1 = '—', asisten_2 = '', asisten_3 = '';
+      let sks = fallbackFirst?.sks || cls?.mata_kuliah?.sks || cls?.sks || 3;
+      let workflow = 'DRAF';
+
+      if (cls && Array.isArray(cls.jadwal) && cls.jadwal.length) {
+        const j = cls.jadwal.find(x => x.status === 'AKTIF') || cls.jadwal[0];
+        if (j) {
+          if (j.hari_ke) dayName = weekdays[j.hari_ke] || dayName;
+          if (j.jam_mulai && j.jam_selesai) timeText = `${String(j.jam_mulai).slice(0, 5)}–${String(j.jam_selesai).slice(0, 5)}`;
+          room = j.nama_laboratorium || j.nama_ruang || room;
+          workflow = j.status_workflow || workflow;
+          if (Array.isArray(j.pengajar)) {
+            const d = j.pengajar.find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU');
+            if (d) dosen = d.nama || 'Dosen Pengampu';
+            const a1 = j.pengajar.find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA');
+            if (a1) asisten_1 = a1.nama || 'Asisten 1';
+            const a2 = j.pengajar.find(p => p.peran === 'ASISTEN_PENGAJAR_PENDUKUNG' || p.kode_peran === 'ASISTEN_PENGAJAR_PENDUKUNG');
+            if (a2) asisten_2 = a2.nama || '';
+            const a3 = j.pengajar.find(p => p.peran === 'PENDAMPING_TEKNIS' || p.kode_peran === 'PENDAMPING_TEKNIS');
+            if (a3) asisten_3 = a3.nama || '';
+          }
+        }
+      }
+      return { dayName, timeText, room, dosen, asisten_1, asisten_2, asisten_3, sks, workflow };
+    }
 
     if (!groups.size) {
-      view.innerHTML = `<div class="intro"><h1>Praktikum Saya</h1><p>${esc(user.name)} · Hasil Penilaian & Presensi Praktikum</p></div><section class="card"><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
+      view.innerHTML = `<div class="intro"><h1>Nilai &amp; Presensi Praktikum</h1><p>${esc(user.name)} · Hasil Penilaian &amp; Presensi Praktikum</p></div><section class="card"><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
       return;
     }
 
@@ -1478,35 +1864,141 @@ async function apiStudentGrades() {
       : null;
 
     if (!selectedId) {
+      const courseList = [...groups.values()];
+      const totalHadir = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_hadir) || 0), 0);
+      const totalSesi = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_sesi) || 0), 0);
+      const overallAttPct = totalSesi > 0 ? Math.round((totalHadir / totalSesi) * 100) : (courseList.length ? 100 : 0);
+
+      const gradesWithScore = courseList.filter(g => g.summary?.nilai_akhir != null);
+      const overallAvgScore = gradesWithScore.length
+        ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(1)
+        : '—';
+
+      const verifiedCount = courseList.filter(g => {
+        const cls = classMap.get(g.id);
+        const sched = extractScheduleInfo(cls, g.first);
+        return sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
+      }).length;
+
       view.innerHTML = `
-        <div class="intro">
-          <h1>Praktikum Saya</h1>
-          <p>${esc(user.name)} · ${groups.size} frekuensi praktikum terdaftar sebagai praktikan</p>
+        <div class="intro row between">
+          <div class="intro-head">
+            <h1>Nilai &amp; Presensi Praktikum</h1>
+            <p>${esc(user.name)} · NIM ${esc(studentNim)} · ${groups.size} frekuensi praktikum aktif terdaftar</p>
+          </div>
+          <div class="row">
+            <button type="button" class="small btn-back" id="student-back-to-dashboard-top">${iconSvg('arrow-left')} <span>Kembali ke Dashboard</span></button>
+          </div>
         </div>
+
+        <div class="dash-kpi-strip stats" style="margin-bottom:16px">
+          <div class="dash-kpi-card stat">
+            <span class="label">Praktikum Terdaftar</span>
+            <b>${groups.size} <small style="font-weight:normal;font-size:13px">Kelas</small></b>
+            <small class="badge green">Aktif Semester Ini</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Rata-rata Kehadiran</span>
+            <b>${overallAttPct}%</b>
+            <small class="badge ${overallAttPct >= 75 ? 'green' : 'yellow'}">${totalHadir} dari ${totalSesi} sesi hadir</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Rata-rata Nilai</span>
+            <b>${overallAvgScore}</b>
+            <small>${gradesWithScore.length} dari ${groups.size} kelas dinilai</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Status Verifikasi</span>
+            <b>${verifiedCount} <small style="font-weight:normal;font-size:13px">/ ${groups.size}</small></b>
+            <small class="badge ${verifiedCount === groups.size && groups.size > 0 ? 'green' : ''}">${verifiedCount > 0 ? `${verifiedCount} Terverifikasi` : 'Nilai Sementara'}</small>
+          </div>
+        </div>
+
         <section class="card">
           <div class="card-head">
             <div>
               <h2>Pilih Frekuensi Praktikum</h2>
-              <p>Pilih kelas praktikum di bawah untuk melihat rincian absensi kehadiran, nilai per komponen, bobot, dan nilai pertemuan.</p>
+              <p>Pilih kelas praktikum di bawah untuk membuka dashboard rincian absensi kehadiran, grafik performa modul, dan bobot nilai akhir.</p>
             </div>
           </div>
-          ${[...groups.entries()].map(([id, group]) => {
-        const r = group.first, s = group.summary, att = group.attendanceSummary;
-        return `
-              <button class="api-class-row" data-select-student-class="${esc(id)}">
-                <span>
-                  <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
-                  <small>Kelompok ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)} · ${group.components.length} komponen nilai</small>
-                </span>
-                <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
-                <span class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.total_hadir} / ${att.total_sesi} Hadir (${att.persentase}%)</span>
-                ${s?.nilai_akhir != null ? `<span class="badge">${fmt(s.nilai_akhir)}${s.predikat ? ` (${esc(s.predikat)})` : ''}</span>` : '<span class="badge">Nilai berjalan</span>'}
-                <span class="btn-row-arrow" aria-hidden="true">${iconSvg('arrow-right')}</span>
-              </button>
-            `;
-      }).join('')}
+          <div class="card-body">
+            <div class="student-course-grid">
+              ${[...groups.entries()].map(([id, group]) => {
+                const r = group.first, s = group.summary, att = group.attendanceSummary;
+                const cls = classMap.get(id);
+                const sched = extractScheduleInfo(cls, r);
+                const isVerified = sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
+                const workflowBadge = isVerified ? '<span class="badge green">Terverifikasi</span>' : '<span class="badge yellow">Nilai Berjalan</span>';
+
+                return `
+                  <div class="student-course-card">
+                    <div class="student-course-header">
+                      <div class="student-course-title">
+                        <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
+                        <small>${sched.sks} SKS · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
+                      </div>
+                      <div class="row" style="gap:4px">
+                        <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
+                        ${workflowBadge}
+                      </div>
+                    </div>
+
+                    <div class="student-course-meta">
+                      <div class="student-meta-item">
+                        <span class="label">Jadwal Praktikum</span>
+                        <strong>${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
+                      </div>
+                      <div class="student-meta-item">
+                        <span class="label">Laboratorium</span>
+                        <strong>${esc(sched.room)}</strong>
+                      </div>
+                      <div class="student-meta-item">
+                        <span class="label">Dosen Pengampu</span>
+                        <strong>${esc(sched.dosen)}</strong>
+                      </div>
+                      <div class="student-meta-item">
+                        <span class="label">Asisten Utama</span>
+                        <strong>${esc(sched.asisten_1)}</strong>
+                      </div>
+                    </div>
+
+                    <div class="student-grade-pills">
+                      <div class="student-grade-pill">
+                        <span class="label">Kehadiran</span>
+                        <strong>${att.persentase}%</strong>
+                      </div>
+                      <div class="student-grade-pill">
+                        <span class="label">Evaluasi</span>
+                        <strong>${fmt(s?.rata_evaluasi)}</strong>
+                      </div>
+                      <div class="student-grade-pill">
+                        <span class="label">Asistensi</span>
+                        <strong>${fmt(s?.rata_asistensi)}</strong>
+                      </div>
+                      <div class="student-grade-pill highlight">
+                        <span class="label">Nilai Akhir</span>
+                        <strong>${s?.nilai_akhir != null ? fmt(s.nilai_akhir) : '—'}${s?.predikat ? ` (${esc(s.predikat)})` : ''}</strong>
+                      </div>
+                    </div>
+
+                    <button type="button" class="primary small" style="width:100%;justify-content:center;margin-top:6px" data-select-student-class="${esc(id)}">
+                      ${iconSvg('bar-chart')} <span>Buka Dashboard Frekuensi</span> <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
         </section>
       `;
+
+      if ($('#student-back-to-dashboard-top')) {
+        $('#student-back-to-dashboard-top').onclick = () => {
+          page = 'Ringkasan';
+          window.selectedStudentClassId = null;
+          renderApiMode();
+        };
+      }
       document.querySelectorAll('[data-select-student-class]').forEach(b => {
         b.onclick = () => {
           window.selectedStudentClassId = b.dataset.selectStudentClass;
@@ -1520,8 +2012,40 @@ async function apiStudentGrades() {
     const r = selectedGroup.first, s = selectedGroup.summary, att = selectedGroup.attendanceSummary;
     const components = selectedGroup.components, attendance = selectedGroup.attendance;
     const classMeetings = meetingGroups.get(selectedId)?.meetings || [];
+    const cls = classMap.get(selectedId);
+    const sched = extractScheduleInfo(cls, r);
+
+    const isVerified = sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
+    const workflowTone = isVerified ? 'green' : (sched.workflow === 'DIAJUKAN' ? 'yellow' : (sched.workflow === 'PERLU_REVISI' ? 'red' : ''));
+    const workflowLabel = sched.workflow === 'TERVERIFIKASI' ? 'Disetujui Dosen' : (sched.workflow === 'DIKUNCI' ? 'Penilaian Dikunci' : (sched.workflow === 'DIAJUKAN' ? 'Menunggu Dosen' : (sched.workflow === 'PERLU_REVISI' ? 'Perlu Revisi' : 'Nilai Sementara (Draf)')));
+
+    const hadirCount = attendance.filter(a => a.status === 'HADIR').length;
+    const izinCount = attendance.filter(a => a.status === 'IZIN').length;
+    const sakitCount = attendance.filter(a => a.status === 'SAKIT').length;
+    const alpaCount = attendance.filter(a => a.status === 'ALPA').length;
+
+    const evalComponents = components.filter(c => (c.kode_komponen || '').startsWith('EVALUASI') || (c.nama_komponen || '').toLowerCase().includes('evaluasi'));
+    const asistComponents = components.filter(c => (c.kode_komponen || '').startsWith('ASISTENSI') || (c.nama_komponen || '').toLowerCase().includes('asistensi'));
 
     const attendanceRows = attendance.length ? `
+      <div class="dash-att-summary-strip">
+        <div class="dash-att-summary-item">
+          <span class="label">Hadir</span>
+          <strong style="color:#0f766e">${hadirCount}</strong>
+        </div>
+        <div class="dash-att-summary-item">
+          <span class="label">Izin</span>
+          <strong style="color:#b45309">${izinCount}</strong>
+        </div>
+        <div class="dash-att-summary-item">
+          <span class="label">Sakit</span>
+          <strong style="color:#b45309">${sakitCount}</strong>
+        </div>
+        <div class="dash-att-summary-item">
+          <span class="label">Alpa</span>
+          <strong style="color:#b91c1c">${alpaCount}</strong>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1553,21 +2077,28 @@ async function apiStudentGrades() {
         <table>
           <thead>
             <tr>
-              <th>KOMPONEN</th>
+              <th>KOMPONEN PENILAIAN</th>
               <th>BOBOT PERSEN</th>
               <th>NILAI ANDA</th>
+              <th>KONTRIBUSI BOBOT</th>
               <th>TANGGAL INPUT</th>
             </tr>
           </thead>
           <tbody>
-            ${components.map(c => `
-              <tr>
-                <td>${esc(c.nama_komponen || c.kode_komponen)}</td>
-                <td>${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
-                <td><strong>${fmt(c.nilai)}</strong></td>
-                <td>${esc(c.diubah_pada || '—')}</td>
-              </tr>
-            `).join('')}
+            ${components.map(c => {
+              const contribution = c.bobot_persen != null && c.nilai != null
+                ? ((Number(c.nilai) * Number(c.bobot_persen)) / 100).toFixed(2)
+                : '—';
+              return `
+                <tr>
+                  <td><strong>${esc(c.nama_komponen || c.kode_komponen)}</strong></td>
+                  <td>${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
+                  <td><strong>${fmt(c.nilai)}</strong></td>
+                  <td><span class="badge blue">${contribution} poin</span></td>
+                  <td>${esc(c.diubah_pada || '—')}</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -1575,7 +2106,7 @@ async function apiStudentGrades() {
 
     const meetingRows = classMeetings.length ? classMeetings.map(meeting => `
       <div class="card-body" style="border-bottom:1px solid var(--border-color, #e2e8f0);padding-bottom:16px;margin-bottom:16px">
-        <div class="row between" style="margin-bottom:8px">
+        <div class="row between" style="margin-bottom:10px">
           <h3 style="margin:0">Pertemuan ${Number(meeting.nomor_pertemuan)} · ${esc(meeting.tanggal_sesi || 'Tanggal belum ditentukan')}</h3>
           <span class="badge ${meeting.lengkap ? 'green' : 'yellow'}">Nilai pertemuan: ${meeting.nilai_pertemuan === null ? 'Belum lengkap' : fmt(meeting.nilai_pertemuan)}</span>
         </div>
@@ -1586,15 +2117,15 @@ async function apiStudentGrades() {
                 <th>KATEGORI</th>
                 <th>BOBOT</th>
                 <th>NILAI</th>
-                <th>CATATAN</th>
+                <th>CATATAN ASISTEN</th>
               </tr>
             </thead>
             <tbody>
               ${meeting.komponen.map(component => `
                 <tr>
-                  <td>${esc(component.nama)}</td>
+                  <td><strong>${esc(component.nama)}</strong></td>
                   <td>${Number(component.bobot_persen)}%</td>
-                  <td>${fmt(component.nilai)}</td>
+                  <td><strong>${fmt(component.nilai)}</strong></td>
                   <td>${esc(component.catatan || '—')}</td>
                 </tr>
               `).join('')}
@@ -1604,92 +2135,294 @@ async function apiStudentGrades() {
       </div>
     `).join('') : '<div class="empty">Belum ada nilai kategori per pertemuan.</div>';
 
+    const componentBarsHtml = components.length ? `
+      <div class="dash-comp-list">
+        ${components.map(c => {
+          const score = Math.min(100, Math.max(0, Number(c.nilai) || 0));
+          const weight = c.bobot_persen != null ? Number(c.bobot_persen) : null;
+          const contribution = weight != null && c.nilai != null ? ((Number(c.nilai) * weight) / 100).toFixed(2) : null;
+          const color = score >= 80 ? '#0f766e' : (score >= 65 ? '#0284c7' : '#b45309');
+          return `
+            <div class="dash-comp-item">
+              <div class="dash-comp-head">
+                <span class="dash-comp-name">${esc(c.nama_komponen || c.kode_komponen)}</span>
+                <span class="dash-comp-meta">
+                  <strong>${fmt(c.nilai)}</strong> <small>/ 100</small>
+                  ${weight !== null ? `<span class="badge">${weight}%</span>` : ''}
+                </span>
+              </div>
+              <div class="dash-comp-bar">
+                <div class="dash-comp-fill" style="width:${score}%;background-color:${color}"></div>
+              </div>
+              <div class="dash-comp-foot">
+                <span>${contribution !== null ? `Kontribusi: ${contribution} poin` : 'Bobot belum diatur'}</span>
+                <span>${c.diubah_pada ? esc(c.diubah_pada) : ''}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '<div class="empty" style="margin-top:12px">Belum ada komponen nilai akhir yang tercatat.</div>';
+
+    const activeTab = window.apiStudentDetailTab || 'attendance';
+    const detailTabs = [
+      ['attendance', 'Presensi Sesi', attendance.length, 'check-square'],
+      ['components', 'Komponen Nilai & Bobot', components.length, 'file-text'],
+      ['meetings', 'Evaluasi Tiap Pertemuan', classMeetings.length, 'table']
+    ];
+
     view.innerHTML = `
-      <div class="intro">
-        <div class="row between">
-          <button class="small btn-back" id="student-back-to-classes">${iconSvg('arrow-left')} <span>Kembali ke daftar kelas praktikum</span></button>
-          ${groups.size > 1 ? `
-            <label class="inline-field" style="margin:0">
-              Pindah frekuensi:
-              <select id="student-class-selector">
-                ${[...groups.entries()].map(([gid, g]) => `<option value="${esc(gid)}" ${gid === selectedId ? 'selected' : ''}>${esc(g.first.kode_kelompok)} · ${esc(g.first.nama_mata_kuliah)}</option>`).join('')}
-              </select>
-            </label>
-          ` : ''}
+      <div class="freq-nav-bar">
+        <div class="freq-nav-actions">
+          <button type="button" class="small btn-back" id="student-back-to-list">${iconSvg('arrow-left')} <span>Daftar Frekuensi</span></button>
+          <button type="button" class="small btn-back" id="student-back-to-dashboard">${iconSvg('grid')} <span>Dashboard Utama</span></button>
         </div>
-        <div style="margin-top:16px">
-          <small class="muted">${esc(r.kode_mata_kuliah)} · Frekuensi ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
-          <h1 style="margin-top:4px">${esc(r.nama_mata_kuliah)}</h1>
-          <p>Praktikan · Kelompok ${esc(r.kode_kelompok)} · Total ${att.total_hadir} dari ${att.total_sesi} sesi hadir (${att.persentase}%)</p>
+        ${groups.size > 1 ? `
+          <div class="freq-pill-nav" role="tablist" aria-label="Pindah frekuensi">
+            ${[...groups.entries()].map(([gid, g]) => `
+              <button type="button" class="freq-pill-btn ${gid === selectedId ? 'active' : ''}" data-freq-switch="${esc(gid)}">
+                <span>${esc(g.first.kode_kelompok)}</span>
+                <small>${esc(g.first.kode_mata_kuliah)}</small>
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="freq-hero-card">
+        <div class="freq-hero-badges">
+          <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
+          <span class="badge">${esc(r.kode_mata_kuliah)} · ${sched.sks} SKS</span>
+          <span class="badge">${esc(r.semester)} ${esc(r.tahun_akademik)}</span>
+          <span class="badge ${workflowTone}">${workflowLabel}</span>
+        </div>
+        <div class="freq-hero-title">
+          <h1>${esc(r.nama_mata_kuliah)}</h1>
+          <p>Dashboard Rincian Frekuensi · Ruang ${esc(sched.room)} · ${esc(sched.dayName)}, ${esc(sched.timeText)} · Dosen: ${esc(sched.dosen)}</p>
         </div>
       </div>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Ringkasan kehadiran & nilai</h2>
+      <div class="dash-kpi-strip stats" style="margin-bottom:16px">
+        <div class="dash-kpi-card stat">
+          <span class="label">Total Kehadiran</span>
+          <b>${att.total_hadir} <small style="font-weight:normal;font-size:13px">/ ${att.total_sesi} sesi</small></b>
+          <small class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.persentase}% Kehadiran</small>
         </div>
-        <div class="card-body">
-          <div class="stats">
-            <div class="stat">
-              <span class="label">Total Kehadiran</span>
-              <b>${att.total_hadir} <small style="font-weight:normal;font-size:13px">/ ${att.total_sesi} sesi</small></b>
-              <small class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.persentase}% Kehadiran</small>
-            </div>
-            <div class="stat">
-              <span class="label">Rata-rata Evaluasi</span>
-              <b>${fmt(s?.rata_evaluasi)}</b>
-              <small>${components.filter(c => c.kode_komponen?.startsWith('EVALUASI')).length} evaluasi dinilai</small>
-            </div>
-            <div class="stat">
-              <span class="label">Rata-rata Asistensi</span>
-              <b>${fmt(s?.rata_asistensi)}</b>
-              <small>${components.filter(c => c.kode_komponen?.startsWith('ASISTENSI')).length} asistensi dinilai</small>
-            </div>
-            <div class="stat">
-              <span class="label">Nilai Akhir</span>
-              <b>${fmt(s?.nilai_akhir)}</b>
-              <small>${s?.predikat ? `Predikat ${esc(s.predikat)}` : (s?.konfigurasi_nilai_tersedia ? 'Belum lengkap' : 'Konfigurasi belum tersedia')}</small>
+        <div class="dash-kpi-card stat">
+          <span class="label">Nilai Akhir</span>
+          <b>${fmt(s?.nilai_akhir)}</b>
+          <small class="badge ${s?.predikat ? 'green' : ''}">${s?.predikat ? `Predikat ${esc(s.predikat)}` : (s?.konfigurasi_nilai_tersedia ? 'Nilai Berjalan' : 'Belum Dikonfigurasi')}</small>
+        </div>
+        <div class="dash-kpi-card stat">
+          <span class="label">Rata-rata Evaluasi</span>
+          <b>${fmt(s?.rata_evaluasi)}</b>
+          <small>${evalComponents.length} modul dinilai</small>
+        </div>
+        <div class="dash-kpi-card stat">
+          <span class="label">Rata-rata Asistensi</span>
+          <b>${fmt(s?.rata_asistensi)}</b>
+          <small>${asistComponents.length} asistensi dinilai</small>
+        </div>
+      </div>
+
+      <div class="dash-analytics-grid">
+        <section class="dash-chart-card card">
+          <div class="card-head">
+            <div>
+              <h2>Visualisasi Capaian &amp; Bobot Komponen</h2>
+              <p>Grafik capaian presensi, evaluasi tugas modul, dan kontribusi komponen ke nilai akhir.</p>
             </div>
           </div>
-        </div>
-      </section>
+          <div class="card-body">
+            <div class="dash-radial-grid">
+              ${renderRadialGaugeSvg(att.persentase, '#0f766e', 'Presensi', `${att.total_hadir} dari ${att.total_sesi} sesi`, `${att.total_hadir}/${att.total_sesi}`)}
+              ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(s?.rata_evaluasi) || 0)), '#0284c7', 'Evaluasi', 'Tugas & modul praktikum', fmt(s?.rata_evaluasi))}
+              ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(s?.rata_asistensi) || 0)), '#0d9488', 'Asistensi', 'Konsultasi & laporan', fmt(s?.rata_asistensi))}
+            </div>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Presensi mahasiswa · ${att.total_hadir} Hadir (${att.persentase}%)</h2>
-          <p>Catatan kehadiran Anda pada setiap pertemuan praktikum.</p>
-        </div>
-        ${attendanceRows}
-      </section>
+            <div class="dash-course-chart">
+              <div class="dash-subhead">
+                <strong>Distribusi Komponen &amp; Bobot Nilai Akhir</strong>
+              </div>
+              ${componentBarsHtml}
+            </div>
+          </div>
+        </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Komponen & bobot nilai akhir semester</h2>
-          <p>Rincian perolehan nilai dan bobot persentase pada kelas praktikum ini.</p>
-        </div>
-        ${componentRows}
-      </section>
+        <div class="dash-side-stack">
+          <section class="card">
+            <div class="card-head">
+              <h2>Informasi Pelaksanaan</h2>
+            </div>
+            <div class="card-body">
+              <div class="dash-personnel-list">
+                <div class="dash-personnel-item">
+                  ${iconSvg('calendar')}
+                  <div class="dash-personnel-copy">
+                    <span class="dash-personnel-role">Hari &amp; Jam</span>
+                    <strong class="dash-personnel-name">${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
+                  </div>
+                </div>
+                <div class="dash-personnel-item">
+                  ${iconSvg('grid')}
+                  <div class="dash-personnel-copy">
+                    <span class="dash-personnel-role">Laboratorium</span>
+                    <strong class="dash-personnel-name">${esc(sched.room)}</strong>
+                  </div>
+                </div>
+                <div class="dash-personnel-item">
+                  ${iconSvg('clock')}
+                  <div class="dash-personnel-copy">
+                    <span class="dash-personnel-role">Beban Akademik</span>
+                    <strong class="dash-personnel-name">${sched.sks} SKS · ${esc(r.semester)} ${esc(r.tahun_akademik)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <section class="card">
-        <div class="card-head">
-          <h2>Nilai tiap pertemuan</h2>
-          <p>Riwayat nilai kategori dan umpan balik asisten per pertemuan.</p>
+          <section class="card">
+            <div class="card-head">
+              <h2>Pengajar &amp; Asisten</h2>
+            </div>
+            <div class="card-body">
+              <div class="dash-personnel-list">
+                <div class="dash-personnel-item">
+                  ${iconSvg('users')}
+                  <div class="dash-personnel-copy">
+                    <span class="dash-personnel-role">Dosen Pengampu</span>
+                    <strong class="dash-personnel-name">${esc(sched.dosen)}</strong>
+                  </div>
+                </div>
+                <div class="dash-personnel-item">
+                  ${iconSvg('shield-check')}
+                  <div class="dash-personnel-copy">
+                    <span class="dash-personnel-role">Asisten Utama (1)</span>
+                    <strong class="dash-personnel-name">${esc(sched.asisten_1)}</strong>
+                  </div>
+                </div>
+                ${sched.asisten_2 ? `
+                  <div class="dash-personnel-item">
+                    ${iconSvg('users')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Asisten Pendukung (2)</span>
+                      <strong class="dash-personnel-name">${esc(sched.asisten_2)}</strong>
+                    </div>
+                  </div>
+                ` : ''}
+                ${sched.asisten_3 ? `
+                  <div class="dash-personnel-item">
+                    ${iconSvg('users')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Pendamping Teknis (3)</span>
+                      <strong class="dash-personnel-name">${esc(sched.asisten_3)}</strong>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Status &amp; Panduan</h2>
+            </div>
+            <div class="card-body">
+              <div class="student-guide-box">
+                <div class="student-guide-item">
+                  ${iconSvg('check-circle')}
+                  <span>Status Verifikasi: <strong class="badge ${workflowTone}">${workflowLabel}</strong></span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('check')}
+                  <span>Syarat minimal kehadiran untuk berhak mengikuti ujian adalah 75%.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('check')}
+                  <span>Nilai akhir final disahkan setelah diverifikasi penuh oleh Dosen Pengampu.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('check')}
+                  <span>Konsultasikan catatan evaluasi atau revisi tugas langsung dengan Asisten terkait.</span>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-        ${meetingResult.error ? `<div class="warning">${esc(meetingResult.error)}</div>` : ''}
-        ${meetingRows}
-      </section>
+      </div>
+
+      <div class="api-detail-tabs" role="tablist" aria-label="Rincian data frekuensi">
+        ${detailTabs.map(([key, label, count, iconName]) => `
+          <button type="button" role="tab" aria-selected="${key === activeTab}" data-api-detail-tab="${key}" class="${key === activeTab ? 'active' : ''}">
+            ${iconSvg(iconName)} <span>${label}</span><span class="tab-count">${count}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <div class="api-detail-panel" data-api-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}>
+        <section class="card">
+          <div class="card-head">
+            <h2>Presensi Pertemuan Mahasiswa · ${att.total_hadir} Hadir (${att.persentase}%)</h2>
+            <p>Catatan kehadiran resmi Anda pada setiap pertemuan sesi praktikum.</p>
+          </div>
+          <div class="card-body">
+            ${attendanceRows}
+          </div>
+        </section>
+      </div>
+
+      <div class="api-detail-panel" data-api-panel="components" ${activeTab === 'components' ? '' : 'hidden'}>
+        <section class="card">
+          <div class="card-head">
+            <h2>Komponen &amp; Bobot Nilai Akhir Semester</h2>
+            <p>Rincian perolehan nilai, bobot persentase, dan kontribusi poin pada kelas praktikum ini.</p>
+          </div>
+          <div class="card-body">
+            ${componentRows}
+          </div>
+        </section>
+      </div>
+
+      <div class="api-detail-panel" data-api-panel="meetings" ${activeTab === 'meetings' ? '' : 'hidden'}>
+        <section class="card">
+          <div class="card-head">
+            <h2>Nilai Tiap Pertemuan &amp; Catatan Asisten</h2>
+            <p>Riwayat penilaian kategori dan catatan umpan balik asisten pada setiap sesi.</p>
+          </div>
+          ${meetingResult.error ? `<div class="warning" style="margin:16px 20px 0">${esc(meetingResult.error)}</div>` : ''}
+          ${meetingRows}
+        </section>
+      </div>
     `;
 
-    $('#student-back-to-classes').onclick = () => {
+    $('#student-back-to-list').onclick = () => {
       window.selectedStudentClassId = null;
       apiStudentGrades();
     };
-    if ($('#student-class-selector')) {
-      $('#student-class-selector').onchange = e => {
-        window.selectedStudentClassId = e.target.value;
+    $('#student-back-to-dashboard').onclick = () => {
+      page = 'Ringkasan';
+      window.selectedStudentClassId = null;
+      renderApiMode();
+    };
+    document.querySelectorAll('[data-freq-switch]').forEach(b => {
+      b.onclick = () => {
+        window.selectedStudentClassId = b.dataset.freqSwitch;
         apiStudentGrades();
       };
-    }
+    });
+    document.querySelectorAll('[data-api-detail-tab]').forEach(button => {
+      button.onclick = () => {
+        window.apiStudentDetailTab = button.dataset.apiDetailTab;
+        document.querySelectorAll('[data-api-detail-tab]').forEach(tab => {
+          const selected = tab === button;
+          tab.classList.toggle('active', selected);
+          tab.setAttribute('aria-selected', String(selected));
+        });
+        document.querySelectorAll('[data-api-panel]').forEach(panel => {
+          panel.hidden = panel.dataset.apiPanel !== button.dataset.apiDetailTab;
+        });
+      };
+    });
   } catch (error) {
     view.innerHTML = `<div class="error" role="alert">${esc(error.message)}</div>`;
   }
@@ -2604,23 +3337,756 @@ function createUser() {
   role.onchange = sync; student.onchange = sync; sync();
   form.onsubmit = async e => { e.preventDefault(); const values = Object.fromEntries(new FormData(form)); if (values.role === 'mahasiswa') values.mahasiswa_id = Number(values.mahasiswa_id); else delete values.mahasiswa_id; try { await api('/admin/users', values); m.close(); await masters(); toast('Akun pengguna berhasil dibuat.') } catch (x) { toast(x.message) } };
 }
+async function studentDashboard() {
+  $('#view').innerHTML = '<div class="empty">Memuat dashboard mahasiswa…</div>';
+  try {
+    const data = await api('/student/grades');
+    if (user?.role !== 'mahasiswa') return;
+    if (!data.student) {
+      $('#view').innerHTML = '<section class="card"><div class="card-body"><h1>Dashboard Mahasiswa</h1><p>Akun belum terhubung ke data mahasiswa. Hubungi pengelola laboratorium untuk memeriksa hubungan akun dengan NIM Anda.</p></div></section>';
+      return;
+    }
+    const s = data.student, courses = data.classes || [];
+    const totalCourses = courses.length;
+    const totalHadir = courses.reduce((acc, c) => acc + (c.meetings ? c.meetings.filter(m => m.value === 'H').length : 0), 0);
+    const totalSesi = courses.reduce((acc, c) => acc + (c.meetings ? c.meetings.length : 0), 0);
+    const overallAttPct = totalSesi > 0 ? Math.round((totalHadir / totalSesi) * 100) : (totalCourses ? 100 : 0);
+
+    const gradesWithScore = courses.filter(c => c.na != null);
+    const overallAvgScore = gradesWithScore.length
+      ? (gradesWithScore.reduce((acc, c) => acc + Number(c.na), 0) / gradesWithScore.length).toFixed(1)
+      : '—';
+    const evalCourses = courses.filter(c => c.ev != null);
+    const avgEvaluasi = evalCourses.length ? (evalCourses.reduce((acc, c) => acc + Number(c.ev), 0) / evalCourses.length).toFixed(1) : '—';
+    const asisCourses = courses.filter(c => c.as != null);
+    const avgAsistensi = asisCourses.length ? (asisCourses.reduce((acc, c) => acc + Number(c.as), 0) / asisCourses.length).toFixed(1) : '—';
+
+    const verifiedCount = courses.filter(c => !c.provisional).length;
+    const passedCount = courses.filter(c => Number(c.na || 0) >= 70).length;
+
+    const initials = (s.name || 'M').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
+
+    const kpis = [
+      [totalCourses, 'Praktikum Terdaftar', totalCourses ? `${courses.map(c => c.class).join(' · ')}` : 'Belum terdaftar', totalCourses ? 'Aktif' : 'Kosong', '#0f766e'],
+      [`${overallAttPct}%`, 'Tingkat Kehadiran', `${totalHadir} dari ${totalSesi} sesi hadir`, overallAttPct >= 75 ? 'Memenuhi Syarat' : 'Perlu Perhatian', overallAttPct >= 75 ? '#0f766e' : '#b45309'],
+      [overallAvgScore, 'Rata-rata Nilai', `Evaluasi ${avgEvaluasi} · Asistensi ${avgAsistensi}`, gradesWithScore.length ? 'Nilai Berjalan' : 'Proses Pengisian', '#0369a1'],
+      [`${passedCount} / ${totalCourses}`, 'Capaian Praktikum', `${Math.max(0, totalCourses - passedCount)} mata kuliah berjalan`, verifiedCount > 0 ? `${verifiedCount} Terverifikasi` : 'Dipantau', '#0f766e']
+    ];
+
+    const kpiStripHtml = `<div class="dash-kpi-strip stats">
+      ${kpis.map(([val, label, sub, pill, color]) => `
+        <div class="dash-kpi-card stat">
+          <div class="row between">
+            <span class="label">${esc(label)}</span>
+            <span class="dash-kpi-pill" style="color:${color};background-color:${color}14;border-color:${color}33">${esc(pill)}</span>
+          </div>
+          <b>${esc(val)}</b>
+          <small>${esc(sub)}</small>
+        </div>
+      `).join('')}
+    </div>`;
+
+    const radialGaugesHtml = `<div class="dash-radial-grid">
+      ${renderRadialGaugeSvg(overallAttPct, '#0f766e', 'Kepatuhan Presensi', `${totalHadir} dari ${totalSesi} sesi hadir`, `${totalHadir}/${totalSesi}`)}
+      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgEvaluasi) || 0)), '#0284c7', 'Rata-rata Evaluasi', 'Tugas & modul praktikum', avgEvaluasi)}
+      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgAsistensi) || 0)), '#d97706', 'Rata-rata Asistensi', 'Bimbingan & laporan asisten', avgAsistensi)}
+    </div>`;
+
+    const courseChartHtml = courses.length ? `
+      <div class="dash-course-chart">
+        <div class="dash-subhead row between">
+          <strong>Distribusi Nilai Mata Kuliah</strong>
+          <small class="muted">Skala 0 – 100</small>
+        </div>
+        <div class="dash-bar-list">
+          ${courses.map(c => {
+            const score = c.na != null ? Number(c.na) : null;
+            const scoreText = score != null ? `${score.toFixed(1)}${c.letter ? ` (${c.letter})` : ''}` : 'Berjalan';
+            const pct = score != null ? Math.min(100, Math.max(0, score)) : 0;
+            return `
+              <div class="dash-bar-row">
+                <div class="dash-bar-meta row between">
+                  <div class="dash-bar-title">
+                    <strong>${esc(c.code)} · ${esc(c.course)}</strong>
+                    <span class="badge blue">Frekuensi ${esc(c.class)}</span>
+                  </div>
+                  <div class="dash-bar-values">
+                    <strong>${esc(scoreText)}</strong>
+                  </div>
+                </div>
+                <div class="dash-bar-track">
+                  <div class="dash-bar-fill">
+                    <div class="dash-bar-fill-active" style="width:${pct}%;background-color:${pct >= 75 ? '#0f766e' : (pct >= 60 ? '#0284c7' : '#d97706')}"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : '<div class="empty">Belum ada kelas yang terdaftar.</div>';
+
+    const courseCardsHtml = courses.length ? `
+      <div class="student-course-grid">
+        ${courses.map(c => `
+          <div class="student-course-card">
+            <div class="student-course-header">
+              <div class="student-course-title">
+                <strong>${esc(c.code)} · ${esc(c.course)}</strong>
+                <small>Frekuensi ${esc(c.class)} · ${esc(c.semester)} ${esc(c.year)}</small>
+              </div>
+              <span class="badge blue">Frekuensi ${esc(c.class)}</span>
+            </div>
+            <div class="student-course-meta">
+              <div class="student-meta-item">
+                <span class="label">Laboratorium</span>
+                <strong>${esc(c.lab || '—')}</strong>
+              </div>
+              <div class="student-meta-item">
+                <span class="label">Jadwal</span>
+                <strong>${esc(c.day || '—')}, ${esc(c.time || '—')}</strong>
+              </div>
+              <div class="student-meta-item">
+                <span class="label">Dosen Pengampu</span>
+                <strong>${esc(c.lecturer || '—')}</strong>
+              </div>
+              <div class="student-meta-item">
+                <span class="label">Status Verifikasi</span>
+                <strong>${badge(c.state)}</strong>
+              </div>
+            </div>
+            <div class="student-grade-pills">
+              <div class="student-grade-pill ${Number(c.presence || 0) >= 75 ? 'highlight' : ''}">
+                <span class="label">Presensi</span>
+                <strong>${c.presence === null ? '—' : num(c.presence) + '%'}</strong>
+              </div>
+              <div class="student-grade-pill">
+                <span class="label">Evaluasi</span>
+                <strong>${num(c.ev)}</strong>
+              </div>
+              <div class="student-grade-pill">
+                <span class="label">Asistensi</span>
+                <strong>${num(c.as)}</strong>
+              </div>
+              <div class="student-grade-pill highlight">
+                <span class="label">Nilai Akhir</span>
+                <strong>${num(c.na)}${c.letter ? ` (${esc(c.letter)})` : ''}</strong>
+              </div>
+            </div>
+            <div class="row between" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border,#e2e8f0)">
+              <small class="muted">${c.meetings?.length || 0} / ${c.meeting_count} pertemuan tercatat</small>
+              <button type="button" class="small btn-subtle-teal" data-open-detail-course="${c.id}">
+                <span>Lihat Rincian Nilai &amp; Presensi</span> ${iconSvg('arrow-right')}
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '<div class="empty">Belum ada kelas praktikum yang terdaftar.</div>';
+
+    $('#view').innerHTML = `
+      <div class="intro row between">
+        <div class="intro-head">
+          <h1>Dashboard Mahasiswa</h1>
+          <p>${esc(s.name)} · NIM ${esc(s.nim)} · ${esc(s.prodi)} · Status ${esc(s.status || 'Aktif')}</p>
+        </div>
+        <div class="row">
+          <button type="button" class="small btn-subtle-teal" id="student-open-grades-page">
+            ${iconSvg('file-text')} <span>Buka Halaman Nilai Saya</span>
+          </button>
+        </div>
+      </div>
+
+      ${kpiStripHtml}
+
+      <div class="dash-analytics-grid">
+        <div class="dash-main-chart">
+          <section class="card dash-chart-card">
+            <div class="card-head">
+              <div>
+                <h2>Analitik Realisasi &amp; Performa Akademik</h2>
+                <p>Pantau ketercapaian kehadiran, nilai praktikum, dan status komponen semester ini.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              ${radialGaugesHtml}
+              ${courseChartHtml}
+            </div>
+          </section>
+        </div>
+        <div class="dash-side-stack">
+          <section class="card">
+            <div class="card-head">
+              <h2>Profil Praktikan</h2>
+            </div>
+            <div class="card-body" style="padding:16px">
+              <div class="student-profile-strip">
+                <div class="student-profile-avatar">${esc(initials)}</div>
+                <div class="student-profile-copy">
+                  <strong>${esc(s.name)}</strong>
+                  <small>${esc(s.nim)} · ${esc(s.prodi)}</small>
+                  <small class="badge green" style="align-self:flex-start;margin-top:4px">${esc(s.status || 'Aktif')}</small>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Jadwal Praktikum Mingguan</h2>
+              <p>Agenda praktikum rutin semester berjalan.</p>
+            </div>
+            <div class="card-body" style="padding:16px">
+              <div class="student-schedule-list">
+                ${courses.map(c => `
+                  <div class="student-schedule-item">
+                    <div class="student-schedule-time">
+                      <strong>${esc(c.day || '—')}, ${esc(c.time || '—')}</strong>
+                      <small>${esc(c.lab || 'Laboratorium')} · Frekuensi ${esc(c.class)}</small>
+                    </div>
+                    <div style="text-align:right">
+                      <span class="badge blue">${esc(c.code)}</span><br>
+                      <small class="muted">${esc(c.lecturer || 'Dosen')}</small>
+                    </div>
+                  </div>
+                `).join('') || '<div class="empty">Belum ada jadwal praktikum.</div>'}
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h2>Ketentuan &amp; Standar Praktikum</h2>
+            </div>
+            <div class="card-body" style="padding:16px">
+              <div class="student-guide-box">
+                <div class="student-guide-item">
+                  ${iconSvg('shield-check')}
+                  <span><strong>Syarat Presensi 75%:</strong> Mahasiswa wajib memenuhi minimal 75% kehadiran untuk berhak mengikuti evaluasi akhir.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('check-circle')}
+                  <span><strong>Asistensi Modul:</strong> Selesaikan asistensi berkala bersama Asisten Praktikum sebelum batas waktu penutupan modul.</span>
+                </div>
+                <div class="student-guide-item">
+                  ${iconSvg('clock')}
+                  <span><strong>Nilai Berjalan:</strong> Nilai sementara dapat diperbarui secara bertahap oleh Dosen dan Asisten hingga verifikasi semester selesai.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="card" style="margin-top:20px">
+        <div class="card-head row between">
+          <div>
+            <h2>Mata Kuliah Praktikum Saya</h2>
+            <p>${totalCourses} frekuensi praktikum aktif yang Anda ikuti.</p>
+          </div>
+        </div>
+        <div class="card-body" style="padding:18px">
+          ${courseCardsHtml}
+        </div>
+      </section>
+    `;
+
+    $('#student-open-grades-page').onclick = () => {
+      page = 'Nilai Saya';
+      render();
+    };
+
+    document.querySelectorAll('[data-open-detail-course]').forEach(btn => {
+      btn.onclick = () => {
+        const targetCourse = courses.find(c => c.id === Number(btn.dataset.openDetailCourse));
+        if (targetCourse) myGradeDetail(targetCourse);
+      };
+    });
+  } catch (e) {
+    if (user?.role === 'mahasiswa') $('#view').innerHTML = `<div class="error">${esc(e.message)}</div>`;
+  }
+}
+
 async function studentPortal() {
   $('#view').innerHTML = '<div class="empty">Memuat nilai Anda…</div>';
   try {
     const data = await api('/student/grades'); if (user?.role !== 'mahasiswa') return;
     if (!data.student) { $('#view').innerHTML = '<section class="card"><div class="card-body"><h1>Nilai Saya</h1><p>Akun belum terhubung ke data mahasiswa. Hubungi pengelola laboratorium untuk memeriksa hubungan akun dengan NIM Anda.</p></div></section>'; return }
     const s = data.student, courses = data.classes;
-    $('#view').innerHTML = `<div class="intro"><h1>Nilai Saya</h1><p>${esc(s.name)} · ${esc(s.nim)} · ${esc(s.prodi)}</p></div><div class="student-summary"><section class="stat"><span class="label">Kelas praktikum saya</span><b>${courses.length}</b><small>Seluruh kelas yang Anda ikuti</small></section><section class="stat"><span class="label">Penilaian terverifikasi</span><b>${courses.filter(c => !c.provisional).length}</b><small>Disetujui dosen atau dikunci</small></section><section class="stat"><span class="label">Penilaian sementara</span><b>${courses.filter(c => c.provisional).length}</b><small>Masih dalam proses pengisian/verifikasi</small></section></div><div class="filters"><input id="student-search" placeholder="Cari mata kuliah atau kelas…"><select id="student-year"><option value="">Semua tahun akademik</option>${[...new Set(courses.map(c => c.year))].map(y => `<option>${esc(y)}</option>`).join('')}</select><select id="student-semester"><option value="">Semua semester</option>${[...new Set(courses.map(c => c.semester))].map(y => `<option>${esc(y)}</option>`).join('')}</select></div><div id="my-grades"></div><p class="help">Nilai sementara masih dapat berubah. Jika ada nilai yang perlu diperiksa, hubungi asisten atau dosen pengampu kelas.</p>`;
+
+    const selectedCourseId = window.selectedLegacyCourseId && courses.some(c => c.id === window.selectedLegacyCourseId)
+      ? window.selectedLegacyCourseId
+      : null;
+
+    if (selectedCourseId) {
+      const c = courses.find(x => x.id === selectedCourseId);
+      const activeTab = window.legacyStudentDetailTab || 'attendance';
+
+      const attMeetings = c.meetings || [];
+      const hadirCount = attMeetings.filter(m => m.value === 'H').length;
+      const izinCount = attMeetings.filter(m => m.value === 'I').length;
+      const sakitCount = attMeetings.filter(m => m.value === 'S').length;
+      const alpaCount = attMeetings.filter(m => m.value === 'A').length;
+
+      const evalAvg = c.ev !== null ? num(c.ev) : '—';
+      const asistAvg = c.as !== null ? num(c.as) : '—';
+      const attPct = c.presence !== null ? Math.round(Number(c.presence)) : (attMeetings.length ? 100 : 0);
+
+      const compItems = [
+        { name: 'Evaluasi Tugas & Modul', weight: 20, value: c.ev },
+        { name: 'Asistensi & Konsultasi', weight: 20, value: c.as },
+        { name: 'Ujian Tengah Semester (MID)', weight: 30, value: c.mid },
+        { name: 'Ujian Akhir Semester (UAS)', weight: 30, value: c.uas }
+      ];
+
+      const compBarsHtml = `
+        <div class="dash-comp-list">
+          ${compItems.map(item => {
+            const score = item.value != null ? Math.min(100, Math.max(0, Number(item.value))) : 0;
+            const contrib = item.value != null ? ((Number(item.value) * item.weight) / 100).toFixed(2) : null;
+            const color = score >= 80 ? '#0f766e' : (score >= 65 ? '#0284c7' : '#b45309');
+            return `
+              <div class="dash-comp-item">
+                <div class="dash-comp-head">
+                  <span class="dash-comp-name">${esc(item.name)}</span>
+                  <span class="dash-comp-meta">
+                    <strong>${num(item.value)}</strong> <small>/ 100</small>
+                    <span class="badge">${item.weight}%</span>
+                  </span>
+                </div>
+                <div class="dash-comp-bar">
+                  <div class="dash-comp-fill" style="width:${item.value != null ? score : 0}%;background-color:${color}"></div>
+                </div>
+                <div class="dash-comp-foot">
+                  <span>${contrib !== null ? `Kontribusi: ${contrib} poin` : 'Belum dinilai'}</span>
+                  <span>Bobot kurikulum standar 20:20:30:30</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      const detailTabs = [
+        ['attendance', 'Presensi Sesi', attMeetings.length, 'check-square'],
+        ['components', 'Komponen Nilai & Bobot', compItems.length, 'file-text'],
+        ['meetings', 'Rincian Evaluasi & Asistensi', (c.evaluations?.length || 0) + (c.assistance?.length || 0), 'table']
+      ];
+
+      $('#view').innerHTML = `
+        <div class="freq-nav-bar">
+          <div class="freq-nav-actions">
+            <button type="button" class="small btn-back" id="legacy-back-to-list">${iconSvg('arrow-left')} <span>Daftar Frekuensi</span></button>
+            <button type="button" class="small btn-back" id="legacy-back-to-dashboard">${iconSvg('grid')} <span>Dashboard Utama</span></button>
+          </div>
+          ${courses.length > 1 ? `
+            <div class="freq-pill-nav" role="tablist" aria-label="Pindah frekuensi">
+              ${courses.map(course => `
+                <button type="button" class="freq-pill-btn ${course.id === selectedCourseId ? 'active' : ''}" data-legacy-freq-switch="${course.id}">
+                  <span>Frekuensi ${esc(course.class)}</span>
+                  <small>${esc(course.code)}</small>
+                </button>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="freq-hero-card">
+          <div class="freq-hero-badges">
+            <span class="badge blue">Frekuensi ${esc(c.class)}</span>
+            <span class="badge">${esc(c.code)} · 3 SKS</span>
+            <span class="badge">${esc(c.semester)} ${esc(c.year)}</span>
+            ${badge(c.state)}
+            ${c.provisional ? '<span class="badge yellow">Nilai Sementara</span>' : '<span class="badge green">Terverifikasi</span>'}
+          </div>
+          <div class="freq-hero-title">
+            <h1>${esc(c.course)}</h1>
+            <p>Dashboard Rincian Frekuensi · Ruang ${esc(c.lab)} · ${esc(c.day)}, ${esc(c.time)} · Dosen: ${esc(c.lecturer)}</p>
+          </div>
+        </div>
+
+        <div class="dash-kpi-strip stats" style="margin-bottom:16px">
+          <div class="dash-kpi-card stat">
+            <span class="label">Total Kehadiran</span>
+            <b>${hadirCount} <small style="font-weight:normal;font-size:13px">/ ${c.meeting_count} sesi</small></b>
+            <small class="badge ${attPct >= 75 ? 'green' : 'yellow'}">${attPct}% Kehadiran</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Nilai Akhir</span>
+            <b>${num(c.na)}</b>
+            <small class="badge ${c.letter ? 'green' : ''}">${c.letter ? `Huruf Mutu ${esc(c.letter)}` : 'Nilai Berjalan'}</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Rata-rata Evaluasi</span>
+            <b>${evalAvg}</b>
+            <small>${c.evaluation_count || 0} modul dievaluasi</small>
+          </div>
+          <div class="dash-kpi-card stat">
+            <span class="label">Rata-rata Asistensi</span>
+            <b>${asistAvg}</b>
+            <small>${c.assistance_count || 0} asistensi dievaluasi</small>
+          </div>
+        </div>
+
+        <div class="dash-analytics-grid">
+          <section class="dash-chart-card card">
+            <div class="card-head">
+              <div>
+                <h2>Visualisasi Capaian &amp; Bobot Komponen</h2>
+                <p>Grafik radial capaian presensi, evaluasi tugas modul, dan kontribusi komponen ke nilai akhir.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="dash-radial-grid">
+                ${renderRadialGaugeSvg(attPct, '#0f766e', 'Presensi', `${hadirCount} dari ${c.meeting_count} sesi`, `${hadirCount}/${c.meeting_count}`)}
+                ${renderRadialGaugeSvg(c.ev != null ? Math.min(100, Math.max(0, Number(c.ev))) : 0, '#0284c7', 'Evaluasi', 'Tugas & modul praktikum', evalAvg)}
+                ${renderRadialGaugeSvg(c.as != null ? Math.min(100, Math.max(0, Number(c.as))) : 0, '#0d9488', 'Asistensi', 'Konsultasi & laporan', asistAvg)}
+              </div>
+
+              <div class="dash-course-chart">
+                <div class="dash-subhead">
+                  <strong>Distribusi Komponen &amp; Bobot Nilai Akhir</strong>
+                </div>
+                ${compBarsHtml}
+              </div>
+            </div>
+          </section>
+
+          <div class="dash-side-stack">
+            <section class="card">
+              <div class="card-head">
+                <h2>Informasi Pelaksanaan</h2>
+              </div>
+              <div class="card-body">
+                <div class="dash-personnel-list">
+                  <div class="dash-personnel-item">
+                    ${iconSvg('calendar')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Hari &amp; Jam</span>
+                      <strong class="dash-personnel-name">${esc(c.day)}, ${esc(c.time)}</strong>
+                    </div>
+                  </div>
+                  <div class="dash-personnel-item">
+                    ${iconSvg('grid')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Laboratorium</span>
+                      <strong class="dash-personnel-name">${esc(c.lab)}</strong>
+                    </div>
+                  </div>
+                  <div class="dash-personnel-item">
+                    ${iconSvg('clock')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Beban Akademik</span>
+                      <strong class="dash-personnel-name">3 SKS · ${esc(c.semester)} ${esc(c.year)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <h2>Pengajar &amp; Asisten</h2>
+              </div>
+              <div class="card-body">
+                <div class="dash-personnel-list">
+                  <div class="dash-personnel-item">
+                    ${iconSvg('users')}
+                    <div class="dash-personnel-copy">
+                      <span class="dash-personnel-role">Dosen Pengampu</span>
+                      <strong class="dash-personnel-name">${esc(c.lecturer)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-head">
+                <h2>Status &amp; Panduan</h2>
+              </div>
+              <div class="card-body">
+                <div class="student-guide-box">
+                  <div class="student-guide-item">
+                    ${iconSvg('check-circle')}
+                    <span>Status: <strong class="badge ${c.provisional ? 'yellow' : 'green'}">${c.provisional ? 'Nilai Sementara' : 'Terverifikasi'}</strong></span>
+                  </div>
+                  <div class="student-guide-item">
+                    ${iconSvg('check')}
+                    <span>Syarat minimal kehadiran untuk berhak mengikuti ujian adalah 75%.</span>
+                  </div>
+                  <div class="student-guide-item">
+                    ${iconSvg('check')}
+                    <span>Nilai sementara masih dapat berubah hingga disahkan oleh Dosen Pengampu.</span>
+                  </div>
+                  <div class="student-guide-item">
+                    ${iconSvg('check')}
+                    <span>Hubungi Asisten atau Dosen jika terdapat ketidaksesuaian nilai.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="api-detail-tabs" role="tablist" aria-label="Rincian data frekuensi">
+          ${detailTabs.map(([key, label, count, iconName]) => `
+            <button type="button" role="tab" aria-selected="${key === activeTab}" data-legacy-tab="${key}" class="${key === activeTab ? 'active' : ''}">
+              ${iconSvg(iconName)} <span>${label}</span><span class="tab-count">${count}</span>
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="api-detail-panel" data-legacy-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}>
+          <section class="card">
+            <div class="card-head">
+              <h2>Presensi Pertemuan Mahasiswa · ${hadirCount} Hadir (${attPct}%)</h2>
+              <p>Catatan kehadiran resmi Anda pada setiap pertemuan praktikum.</p>
+            </div>
+            <div class="card-body">
+              <div class="dash-att-summary-strip">
+                <div class="dash-att-summary-item">
+                  <span class="label">Hadir</span>
+                  <strong style="color:#0f766e">${hadirCount}</strong>
+                </div>
+                <div class="dash-att-summary-item">
+                  <span class="label">Izin</span>
+                  <strong style="color:#b45309">${izinCount}</strong>
+                </div>
+                <div class="dash-att-summary-item">
+                  <span class="label">Sakit</span>
+                  <strong style="color:#b45309">${sakitCount}</strong>
+                </div>
+                <div class="dash-att-summary-item">
+                  <span class="label">Alpa</span>
+                  <strong style="color:#b91c1c">${alpaCount}</strong>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>PERTEMUAN</th>
+                      <th>TANGGAL</th>
+                      <th>MATERI</th>
+                      <th>STATUS KEHADIRAN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${Array.from({ length: c.meeting_count }, (_, i) => {
+                      const p = attMeetings.find(x => x.number === i + 1);
+                      const statusVal = p?.value;
+                      const statusLabels = { H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpa', T: 'Terlambat' };
+                      const statusTones = { H: 'green', I: 'yellow', S: 'yellow', A: 'red', T: 'yellow' };
+                      return `
+                        <tr>
+                          <td><strong>Pertemuan ${i + 1}</strong></td>
+                          <td>${esc(p?.date || '—')}</td>
+                          <td>${esc(p?.material || 'Belum tercatat')}</td>
+                          <td><span class="badge ${statusTones[statusVal] || ''}">${esc(statusLabels[statusVal] || 'Belum diisi')}</span></td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="api-detail-panel" data-legacy-panel="components" ${activeTab === 'components' ? '' : 'hidden'}>
+          <section class="card">
+            <div class="card-head">
+              <h2>Komponen &amp; Bobot Nilai Akhir Semester</h2>
+              <p>Rincian perolehan nilai, bobot persentase, dan kontribusi poin pada kelas praktikum ini.</p>
+            </div>
+            <div class="card-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>KOMPONEN PENILAIAN</th>
+                      <th>BOBOT PERSEN</th>
+                      <th>NILAI ANDA</th>
+                      <th>KONTRIBUSI BOBOT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${compItems.map(item => `
+                      <tr>
+                        <td><strong>${esc(item.name)}</strong></td>
+                        <td>${item.weight}%</td>
+                        <td><strong>${num(item.value)}</strong></td>
+                        <td><span class="badge blue">${item.value != null ? ((Number(item.value) * item.weight) / 100).toFixed(2) + ' poin' : '—'}</span></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="api-detail-panel" data-legacy-panel="meetings" ${activeTab === 'meetings' ? '' : 'hidden'}>
+          <section class="card">
+            <div class="card-head">
+              <h2>Rincian Nilai Evaluasi &amp; Asistensi Per Pertemuan</h2>
+              <p>Catatan nilai tugas modul evaluasi dan konsultasi asistensi mahasiswa.</p>
+            </div>
+            <div class="card-body">
+              <div style="margin-bottom:18px">
+                <h3 style="margin-bottom:10px">Tugas Evaluasi Modul</h3>
+                <div class="grade-chips">
+                  ${Array.from({ length: c.evaluation_count }, (_, i) => `
+                    <div><small>Evaluasi ${i + 1}</small><strong>${num(c.evaluations?.find(x => x.number === i + 1)?.value)}</strong></div>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <h3 style="margin-bottom:10px">Konsultasi Asistensi</h3>
+                <div class="grade-chips">
+                  ${Array.from({ length: c.assistance_count }, (_, i) => `
+                    <div><small>Asistensi ${i + 1}</small><strong>${num(c.assistance?.find(x => x.number === i + 1)?.value)}</strong></div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+
+      $('#legacy-back-to-list').onclick = () => {
+        window.selectedLegacyCourseId = null;
+        studentPortal();
+      };
+      $('#legacy-back-to-dashboard').onclick = () => {
+        page = 'Dashboard';
+        window.selectedLegacyCourseId = null;
+        render();
+      };
+      document.querySelectorAll('[data-legacy-freq-switch]').forEach(b => {
+        b.onclick = () => {
+          window.selectedLegacyCourseId = Number(b.dataset.legacyFreqSwitch);
+          studentPortal();
+        };
+      });
+      document.querySelectorAll('[data-legacy-tab]').forEach(button => {
+        button.onclick = () => {
+          window.legacyStudentDetailTab = button.dataset.legacyTab;
+          document.querySelectorAll('[data-legacy-tab]').forEach(tab => {
+            const selected = tab === button;
+            tab.classList.toggle('active', selected);
+            tab.setAttribute('aria-selected', String(selected));
+          });
+          document.querySelectorAll('[data-legacy-panel]').forEach(panel => {
+            panel.hidden = panel.dataset.legacyPanel !== button.dataset.legacyTab;
+          });
+        };
+      });
+      return;
+    }
+
+    $('#view').innerHTML = `
+      <div class="intro row between">
+        <div class="intro-head">
+          <h1>Nilai &amp; Presensi Praktikum</h1>
+          <p>${esc(s.name)} · NIM ${esc(s.nim)} · ${esc(s.prodi)} · ${courses.length} frekuensi terdaftar</p>
+        </div>
+        <div class="row">
+          <button type="button" class="small btn-back" id="student-portal-back-to-dash">
+            ${iconSvg('arrow-left')} <span>Kembali ke Dashboard</span>
+          </button>
+        </div>
+      </div>
+      <div class="dash-kpi-strip stats" style="margin-bottom:16px">
+        <section class="dash-kpi-card stat"><span class="label">Kelas Praktikum Saya</span><b>${courses.length} <small style="font-weight:normal;font-size:13px">Kelas</small></b><small class="badge green">Terdaftar Aktif</small></section>
+        <section class="dash-kpi-card stat"><span class="label">Penilaian Terverifikasi</span><b>${courses.filter(c => !c.provisional).length} <small style="font-weight:normal;font-size:13px">/ ${courses.length}</small></b><small class="badge ${courses.filter(c => !c.provisional).length ? 'green' : ''}">Disetujui Dosen</small></section>
+        <section class="dash-kpi-card stat"><span class="label">Penilaian Sementara</span><b>${courses.filter(c => c.provisional).length} <small style="font-weight:normal;font-size:13px">/ ${courses.length}</small></b><small class="badge yellow">Masih Berjalan</small></section>
+      </div>
+      <div class="filters">
+        <input id="student-search" placeholder="Cari mata kuliah atau kelas…">
+        <select id="student-year"><option value="">Semua tahun akademik</option>${[...new Set(courses.map(c => c.year))].map(y => `<option>${esc(y)}</option>`).join('')}</select>
+        <select id="student-semester"><option value="">Semua semester</option>${[...new Set(courses.map(c => c.semester))].map(y => `<option>${esc(y)}</option>`).join('')}</select>
+      </div>
+      <div id="my-grades"></div>
+      <p class="help">Nilai sementara masih dapat berubah. Jika ada nilai yang perlu diperiksa, hubungi asisten atau dosen pengampu kelas.</p>
+    `;
+    $('#student-portal-back-to-dash').onclick = () => {
+      page = 'Dashboard';
+      render();
+    };
     const update = () => {
-      const q = $('#student-search').value.toLowerCase(); const filtered = courses.filter(c => (c.course + ' ' + c.code + ' ' + c.class).toLowerCase().includes(q) && (!$('#student-year').value || c.year === $('#student-year').value) && (!$('#student-semester').value || c.semester === $('#student-semester').value));
-      $('#my-grades').innerHTML = filtered.map(c => `<section class="card"><div class="card-head row between"><div><h2>${esc(c.course)}</h2><p>${esc(c.code)} · Frekuensi ${esc(c.class)} · ${esc(c.semester)} ${esc(c.year)}</p></div><div class="row">${badge(c.state)}${c.provisional ? '<span class="badge yellow">Nilai sementara</span>' : ''}</div></div><div class="card-body"><p>${esc(c.day)}, ${esc(c.time)} · ${esc(c.lab)}<br>Dosen: ${esc(c.lecturer)}</p><div class="grade-summary">${[['Evaluasi', c.ev], ['Asistensi', c.as], ['MID', c.mid], ['UAS', c.uas], ['Nilai akhir', c.na]].map(([l, v]) => `<div><small>${l}</small><strong>${num(v)}</strong></div>`).join('')}<div><small>Huruf</small><strong>${esc(c.letter)}</strong></div></div><div class="row between" style="margin-top:22px"><small>Kehadiran: ${c.presence === null ? 'Belum ada pertemuan' : num(c.presence) + '%'} · ${c.meetings.length}/${c.meeting_count} pertemuan tercatat</small><button class="primary small" data-my-course="${c.id}">Lihat rincian nilai</button></div></div></section>`).join('') || '<section class="card"><div class="empty">' + (courses.length ? 'Tidak ada kelas sesuai filter.' : 'Anda belum terdaftar sebagai peserta praktikum. Hubungi pengelola laboratorium.') + '</div></section>';
-      document.querySelectorAll('[data-my-course]').forEach(b => b.onclick = () => myGradeDetail(courses.find(c => c.id === Number(b.dataset.myCourse))));
-    }; $('.filters').oninput = update; update();
+      const q = $('#student-search').value.toLowerCase();
+      const filtered = courses.filter(c => (c.course + ' ' + c.code + ' ' + c.class).toLowerCase().includes(q) && (!$('#student-year').value || c.year === $('#student-year').value) && (!$('#student-semester').value || c.semester === $('#student-semester').value));
+      $('#my-grades').innerHTML = filtered.length ? `
+        <div class="student-course-grid">
+          ${filtered.map(c => `
+            <div class="student-course-card">
+              <div class="student-course-header">
+                <div class="student-course-title">
+                  <strong>${esc(c.code)} · ${esc(c.course)}</strong>
+                  <small>3 SKS · ${esc(c.semester)} ${esc(c.year)}</small>
+                </div>
+                <div class="row" style="gap:4px">
+                  <span class="badge blue">Frekuensi ${esc(c.class)}</span>
+                  ${badge(c.state)}
+                  ${c.provisional ? '<span class="badge yellow">Sementara</span>' : '<span class="badge green">Terverifikasi</span>'}
+                </div>
+              </div>
+              <div class="student-course-meta">
+                <div class="student-meta-item">
+                  <span class="label">Jadwal Praktikum</span>
+                  <strong>${esc(c.day)}, ${esc(c.time)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Laboratorium</span>
+                  <strong>${esc(c.lab)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Dosen Pengampu</span>
+                  <strong>${esc(c.lecturer)}</strong>
+                </div>
+                <div class="student-meta-item">
+                  <span class="label">Kehadiran</span>
+                  <strong>${c.presence === null ? '—' : num(c.presence) + '%'} (${c.meetings.length}/${c.meeting_count})</strong>
+                </div>
+              </div>
+              <div class="student-grade-pills">
+                <div class="student-grade-pill">
+                  <span class="label">Evaluasi</span>
+                  <strong>${num(c.ev)}</strong>
+                </div>
+                <div class="student-grade-pill">
+                  <span class="label">Asistensi</span>
+                  <strong>${num(c.as)}</strong>
+                </div>
+                <div class="student-grade-pill">
+                  <span class="label">MID / UAS</span>
+                  <strong>${num(c.mid)} / ${num(c.uas)}</strong>
+                </div>
+                <div class="student-grade-pill highlight">
+                  <span class="label">Nilai Akhir</span>
+                  <strong>${num(c.na)}${c.letter ? ` (${esc(c.letter)})` : ''}</strong>
+                </div>
+              </div>
+              <button type="button" class="primary small" style="width:100%;justify-content:center;margin-top:6px" data-my-course="${c.id}">
+                ${iconSvg('bar-chart')} <span>Buka Dashboard Frekuensi</span> <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      ` : '<section class="card"><div class="empty">' + (courses.length ? 'Tidak ada kelas sesuai filter.' : 'Anda belum terdaftar sebagai peserta praktikum. Hubungi pengelola laboratorium.') + '</div></section>';
+      document.querySelectorAll('[data-my-course]').forEach(b => b.onclick = () => {
+        window.selectedLegacyCourseId = Number(b.dataset.myCourse);
+        studentPortal();
+      });
+    };
+    $('.filters').oninput = update; update();
   } catch (e) { if (user?.role === 'mahasiswa') $('#view').innerHTML = `<div class="error">${esc(e.message)}</div>` }
 }
 function myGradeDetail(c) {
-  const component = (title, count, items) => `<section><h3>${title}</h3><div class="grade-chips">${Array.from({ length: count }, (_, i) => `<div><small>${title} ${i + 1}</small><strong>${num(items.find(x => x.number === i + 1)?.value)}</strong></div>`).join('')}</div></section>`;
-  dialog(`<div class="row between"><h2>${esc(c.course)}</h2><button data-close>Tutup</button></div><p>Frekuensi ${esc(c.class)} · ${esc(c.year)} ${esc(c.semester)}</p>${c.provisional ? '<div class="warning">Nilai sementara — belum diverifikasi dosen.</div>' : ''}${component('Evaluasi', c.evaluation_count, c.evaluations)}${component('Asistensi', c.assistance_count, c.assistance)}<section style="margin:22px 0"><h3>Ujian & nilai akhir</h3><p>MID: ${num(c.mid)} · UAS: ${num(c.uas)} · Nilai akhir: ${num(c.na)} (${esc(c.letter)})</p><small>Evaluasi 20% + Asistensi 20% + MID 30% + UAS 30%. Tanda — berarti belum dinilai.</small></section><h3>Kehadiran per pertemuan</h3><div class="table-wrap"><table><thead><tr><th>PERTEMUAN</th><th>TANGGAL</th><th>MATERI</th><th>KEHADIRAN</th></tr></thead><tbody>${Array.from({ length: c.meeting_count }, (_, i) => { const p = c.meetings.find(x => x.number === i + 1); return `<tr><td>${i + 1}</td><td>${esc(p?.date || '—')}</td><td style="white-space:normal;min-width:150px">${esc(p?.material || 'Belum tercatat')}</td><td>${esc(({ H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpa', T: 'Terlambat' })[p?.value] || 'Belum diisi')}</td></tr>` }).join('')}</tbody></table></div>`);
+  window.selectedLegacyCourseId = c.id;
+  studentPortal();
 }
 window.addEventListener('beforeunload', e => { if (hasUnsaved()) { e.preventDefault(); e.returnValue = '' } }); init();
 function frequencyMaster() {

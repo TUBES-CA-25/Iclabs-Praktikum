@@ -55,7 +55,7 @@
     const backdrop = layer.querySelector('.iclabs-intro-backdrop');
     const name = layer.querySelector('.iclabs-intro-name');
     const skip = layer.querySelector('button');
-    fallback.src = new URL('logo-iclabs.jpg', assetBase).href;
+    fallback.src = new URL('logo-iclabs.png', assetBase).href;
     const model = document.createElement('model-viewer');
     const attributes = {
       src: new URL('iclabs-logo-3d.glb', assetBase).href, alt: '',
