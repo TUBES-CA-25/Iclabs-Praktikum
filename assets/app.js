@@ -4641,7 +4641,7 @@ async function apiScheduleForm(c, schedule, examType) {
         if (values.nomor_pertemuan) {
           values.nomor_pertemuan = Number(values.nomor_pertemuan);
         } else {
-          delete values.nomor_pertemuan;
+          values.nomor_pertemuan = null;
         }
         if (isExam) {
           values.catatan = 'UJIAN_' + effectiveExamType;
