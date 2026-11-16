@@ -8,6 +8,17 @@ async function api(path, data, method) { const r = await fetch(apiUrl(path), { m
 function toast(s) { $('#toast').textContent = s; $('#toast').style.display = 'block'; setTimeout(() => $('#toast').style.display = 'none', 4500) }
 function badge(s) { return `<span class="badge ${['Dikunci', 'Terverifikasi', 'Lengkap'].includes(s) ? 'green' : s === 'Perlu Revisi' ? 'red' : ['Diajukan', 'Draft'].includes(s) ? 'yellow' : ''}">${esc(s)}</span>` }
 function brand() { return '<div class="brand"><img class="brand-logo" src="assets/logo-iclabs.png" alt="Logo ICLabs" width="44" height="47"><div><strong>ICLabs Praktikum</strong><small>FIKOM UMI</small></div></div>' }
+function getResolvedAuthTheme() {
+  try {
+    const saved = localStorage.getItem('iclabs-auth-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch { }
+  if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+}
+
 function initLoginInteractive() {
   const canvas = document.getElementById("particle-canvas");
   if (canvas) {
@@ -125,7 +136,7 @@ function initLoginInteractive() {
     });
   });
 
-  // 5. Theme Mode Management (Dark Mode default)
+  // 5. Theme Mode Management (Default: Ikuti Sistem / Light Mode)
   const themeToggleBtn = document.getElementById("auth-theme-toggle");
   const loginRoot = document.querySelector(".iclabs-login-split");
 
@@ -144,8 +155,7 @@ function initLoginInteractive() {
     }
   };
 
-  const savedTheme = localStorage.getItem('iclabs-auth-theme') || 'dark';
-  applyTheme(savedTheme);
+  applyTheme(getResolvedAuthTheme());
 
   if (themeToggleBtn) {
     themeToggleBtn.onclick = (e) => {
@@ -157,11 +167,30 @@ function initLoginInteractive() {
       applyTheme(nextTheme);
     };
   }
+
+  // Listener untuk perubahan preferensi tema sistem secara real-time (jika user belum manual override)
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    const systemDarkMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e) => {
+      let hasManualSaved = false;
+      try { hasManualSaved = Boolean(localStorage.getItem('iclabs-auth-theme')); } catch { }
+      if (!hasManualSaved) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    try {
+      systemDarkMedia.addEventListener('change', handleSystemThemeChange);
+    } catch {
+      systemDarkMedia.addListener(handleSystemThemeChange);
+    }
+  }
 }
 
 function login() {
   user = null;
-  app.innerHTML = `<main class="iclabs-login auth-page iclabs-login-split">
+  const initialTheme = getResolvedAuthTheme();
+  const isLight = initialTheme === 'light';
+  app.innerHTML = `<main class="iclabs-login auth-page iclabs-login-split ${isLight ? 'theme-light' : ''}">
     <!-- Left Showcase Panel (Desktop) -->
     <div class="auth-split-showcase" aria-label="Laboratorium ICLabs">
       <div class="auth-split-bg">
@@ -213,8 +242,8 @@ function login() {
               <h2>Login ICLabs</h2>
               <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
             </div>
-            <button type="button" id="auth-theme-toggle" class="auth-theme-pill" aria-label="Ganti mode terang/gelap" title="Ganti mode terang/gelap">
-              <i class="fa-solid fa-sun" id="auth-theme-icon"></i>
+            <button type="button" id="auth-theme-toggle" class="auth-theme-pill" aria-label="${isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang'}" title="${isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang'}">
+              <i class="${isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun'}" id="auth-theme-icon"></i>
             </button>
           </div>
 
