@@ -1493,6 +1493,77 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if (preg_match('#\A/classes/(\d+)/meetings/(\d+)/grades-template\z#', $route, $match) && $method === 'GET') {
+        if (!in_array($_SESSION['iclabs_user']['role'] ?? '', array('admin', 'asisten'), true)) {
+            api_mode_json(array('error' => 'Template nilai pertemuan hanya dapat diakses admin atau asisten kelas.'), 403);
+        }
+        $classId = (int) $match[1];
+        $meetingNumber = (int) $match[2];
+        require_once __DIR__ . '/grades_import.php';
+        $classResponse = api_mode_request('GET', 'praktikum/kelas/' . $classId);
+        if ($classResponse['status'] < 200 || $classResponse['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($classResponse['data'] ?? array(), 'Data kelas tidak dapat dimuat untuk template nilai.')), $classResponse['status']);
+        }
+        $sheetResponse = api_mode_request('GET', 'praktikum/kelas/' . $classId . '/pertemuan/' . $meetingNumber . '/lembar-penilaian');
+        if ($sheetResponse['status'] < 200 || $sheetResponse['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($sheetResponse['data'] ?? array(), 'Skema penilaian pertemuan belum dapat dimuat.')), $sheetResponse['status']);
+        }
+        $class = (array) ($classResponse['data']['data'] ?? array());
+        $sheetData = (array) ($sheetResponse['data']['data'] ?? array());
+        $existingSheet = is_array($sheetData['lembar'] ?? null) ? $sheetData['lembar'] : null;
+        $scheme = $existingSheet['skema'] ?? ($sheetData['skema'] ?? null);
+        if (!is_array($scheme) || empty($scheme['komponen'])) {
+            api_mode_json(array('error' => 'Atur skema penilaian kelas terlebih dahulu sebelum mengunduh template nilai.'), 409);
+        }
+        $slug = static function ($text) {
+            return trim(preg_replace('/[^A-Za-z0-9]+/', '-', (string) $text), '-');
+        };
+        $filename = 'template-nilai-' . $slug($class['mata_kuliah']['kode'] ?? 'kelas') . '-' . $slug($class['kelompok']['kode'] ?? $classId) . '-P' . $meetingNumber . '.xlsx';
+        xlsx_grades_template_download($class, $meetingNumber, $scheme, $existingSheet, $filename);
+        exit;
+    }
+
+    if (preg_match('#\A/classes/(\d+)/meetings/(\d+)/grades-import\z#', $route, $match) && $method === 'POST') {
+        if (!in_array($_SESSION['iclabs_user']['role'] ?? '', array('admin', 'asisten'), true)) {
+            api_mode_json(array('error' => 'Import nilai pertemuan hanya dapat dilakukan admin atau asisten kelas.'), 403);
+        }
+        $classId = (int) $match[1];
+        $meetingNumber = (int) $match[2];
+        $version = filter_var($payload['versi'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if ($version === false || !is_string($payload['base64'] ?? null) || $payload['base64'] === '') {
+            api_mode_json(array('error' => 'Versi data dan berkas XLSX wajib dikirim.'), 422);
+        }
+        require_once __DIR__ . '/grades_import.php';
+        $sheetResponse = api_mode_request('GET', 'praktikum/kelas/' . $classId . '/pertemuan/' . $meetingNumber . '/lembar-penilaian');
+        if ($sheetResponse['status'] < 200 || $sheetResponse['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($sheetResponse['data'] ?? array(), 'Skema penilaian pertemuan belum dapat dimuat.')), $sheetResponse['status']);
+        }
+        $sheetData = (array) ($sheetResponse['data']['data'] ?? array());
+        $existingSheet = is_array($sheetData['lembar'] ?? null) ? $sheetData['lembar'] : null;
+        $scheme = $existingSheet['skema'] ?? ($sheetData['skema'] ?? null);
+        if (!is_array($scheme) || empty($scheme['komponen'])) {
+            api_mode_json(array('error' => 'Atur skema penilaian kelas terlebih dahulu sebelum mengimpor nilai.'), 409);
+        }
+        $file = read_xlsx($payload['base64']);
+        $built = grades_build_import_payload($file, $scheme['komponen'], $meetingNumber);
+        if ($built['errors'] !== array()) {
+            api_mode_json(array('error' => grades_errors_message($built['errors']), 'errors' => $built['errors']), 422);
+        }
+        $response = api_mode_request('POST', 'praktikum/kelas/' . $classId . '/pertemuan/' . $meetingNumber . '/nilai/import', array(
+            'versi' => (int) $version,
+            'pratinjau' => filter_var($payload['preview'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'nilai' => $built['nilai'],
+        ));
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            $errors = is_array($response['data']['errors'] ?? null) ? $response['data']['errors'] : array();
+            $message = $errors !== array() && isset($errors[0]['pesan'])
+                ? grades_errors_message($errors)
+                : api_mode_error_message($response['data'] ?? array(), 'Import nilai pertemuan ditolak API pusat. Tidak ada baris yang disimpan.');
+            api_mode_json(array('error' => $message), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/classes' && $method === 'POST') {
         $response = api_mode_request('POST', 'praktikum/kelas', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
