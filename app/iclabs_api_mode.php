@@ -1439,6 +1439,60 @@ try {
         api_mode_json($response['data']['data'] ?? array(), $response['status']);
     }
 
+    if (preg_match('#\A/classes/(\d+)/attendance-template\z#', $route, $match) && $method === 'GET') {
+        if (!in_array($_SESSION['iclabs_user']['role'] ?? '', array('admin', 'asisten'), true)) {
+            api_mode_json(array('error' => 'Template absensi hanya dapat diakses admin atau asisten kelas.'), 403);
+        }
+        require_once __DIR__ . '/attendance_import.php';
+        $response = api_mode_request('GET', 'praktikum/kelas/' . (int) $match[1]);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            api_mode_json(array('error' => api_mode_error_message($response['data'] ?? array(), 'Data kelas tidak dapat dimuat untuk template absensi.')), $response['status']);
+        }
+        $class = (array) ($response['data']['data'] ?? array());
+        $scheduleId = filter_var($_GET['schedule_id'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        $slug = static function ($text) {
+            return trim(preg_replace('/[^A-Za-z0-9]+/', '-', (string) $text), '-');
+        };
+        $filename = 'template-absensi-' . $slug($class['mata_kuliah']['kode'] ?? 'kelas') . '-' . $slug($class['kelompok']['kode'] ?? (int) $match[1]) . '.xlsx';
+        xlsx_attendance_template_download($class, $filename, $scheduleId === false ? null : $scheduleId);
+        exit;
+    }
+
+    if (preg_match('#\A/classes/(\d+)/attendance-import\z#', $route, $match) && $method === 'POST') {
+        if (!in_array($_SESSION['iclabs_user']['role'] ?? '', array('admin', 'asisten'), true)) {
+            api_mode_json(array('error' => 'Import absensi hanya dapat dilakukan admin atau asisten kelas.'), 403);
+        }
+        $version = filter_var($payload['versi'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if ($version === false || !is_string($payload['base64'] ?? null) || $payload['base64'] === '') {
+            api_mode_json(array('error' => 'Versi data dan berkas XLSX wajib dikirim.'), 422);
+        }
+        require_once __DIR__ . '/attendance_import.php';
+        $file = read_xlsx($payload['base64']);
+        $built = attendance_build_import_payload($file);
+        if ($built['errors'] !== array()) {
+            api_mode_json(array('error' => attendance_errors_message($built['errors']), 'errors' => $built['errors']), 422);
+        }
+        $body = array(
+            'versi' => (int) $version,
+            'pratinjau' => filter_var($payload['preview'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'pertemuan' => $built['pertemuan'],
+            'kehadiran' => $built['kehadiran'],
+        );
+        $scheduleId = filter_var($payload['id_jadwal_kelas_kuliah'] ?? null, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+        if ($scheduleId !== false && $scheduleId !== null) {
+            $body['id_jadwal_kelas_kuliah'] = (int) $scheduleId;
+        }
+        $response = api_mode_request('POST', 'praktikum/kelas/' . (int) $match[1] . '/kehadiran/import', $body);
+        if ($response['status'] < 200 || $response['status'] >= 300) {
+            $errors = is_array($response['data']['errors'] ?? null) ? $response['data']['errors'] : array();
+            $message = $errors !== array() && isset($errors[0]['pesan'])
+                ? attendance_errors_message($errors)
+                : api_mode_error_message($response['data'] ?? array(), 'Import absensi ditolak API pusat. Tidak ada baris yang disimpan.');
+            api_mode_json(array('error' => $message), $response['status']);
+        }
+        api_mode_json($response['data']['data'] ?? array(), $response['status']);
+    }
+
     if ($route === '/classes' && $method === 'POST') {
         $response = api_mode_request('POST', 'praktikum/kelas', $payload);
         if ($response['status'] < 200 || $response['status'] >= 300) {
