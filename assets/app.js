@@ -95,18 +95,18 @@ function initLoginInteractive() {
   const card = document.getElementById("login-card");
   if (card) {
     const handleMove = (e) => {
-      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
+      if (!document.getElementById("login-card") || window.innerWidth < 1024 || card.classList.contains("is-swapping")) return;
       const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
       const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
       card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
     };
     const handleEnter = () => {
-      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
+      if (!document.getElementById("login-card") || window.innerWidth < 1024 || card.classList.contains("is-swapping")) return;
       card.style.transition = "none";
     };
     const handleLeave = () => {
-      if (!document.getElementById("login-card") || window.innerWidth < 1024) return;
-      card.style.transition = "all 0.5s ease";
+      if (!document.getElementById("login-card") || window.innerWidth < 1024 || card.classList.contains("is-swapping")) return;
+      card.style.transition = "transform 0.5s ease";
       card.style.transform = "rotateY(0deg) rotateX(0deg)";
     };
     window.addEventListener("mousemove", handleMove);
@@ -126,19 +126,71 @@ function initLoginInteractive() {
     };
   }
 
-  document.querySelectorAll(".auth-details-box").forEach(box => {
-    box.addEventListener("toggle", () => {
-      if (box.open) {
-        document.querySelectorAll(".auth-details-box").forEach(other => {
-          if (other !== box) other.open = false;
-        });
+  const loginRoot = document.querySelector(".iclabs-login-split");
+
+  const replayAuthEntrance = (panel) => {
+    if (!panel) return;
+    panel.querySelectorAll(".auth-stagger").forEach((el, idx) => {
+      el.classList.remove("auth-stagger-in");
+      el.style.setProperty("--stagger-delay", `${50 + idx * 55}ms`);
+      void el.offsetWidth;
+      el.classList.add("auth-stagger-in");
+    });
+  };
+
+  const kocokAuthCard = (direction = "forward") => {
+    if (!card) return;
+    card.style.transform = "";
+    card.classList.remove("is-swapping", "swap-forward", "swap-back");
+    void card.offsetWidth;
+    card.classList.add("is-swapping", direction === "back" ? "swap-back" : "swap-forward");
+    setTimeout(() => {
+      if (card) card.classList.remove("is-swapping", "swap-forward", "swap-back");
+    }, 560);
+  };
+
+  const switchAuthMode = (targetMode) => {
+    if (!loginRoot || !targetMode) return;
+    const currentMode = loginRoot.dataset.authMode || "login";
+    if (currentMode === targetMode) return;
+    const direction = targetMode === "login" ? "back" : "forward";
+    kocokAuthCard(direction);
+    loginRoot.dataset.authMode = targetMode;
+    loginRoot.classList.toggle("active", targetMode === "activate");
+    loginRoot.classList.toggle("is-reset", targetMode === "reset");
+
+    const errorBox = document.getElementById("login-error");
+    if (errorBox && targetMode !== "login") {
+      errorBox.classList.remove("is-visible");
+    }
+
+    document.querySelectorAll("[data-auth-tab]").forEach(tab => {
+      const active = tab.dataset.authTab === targetMode;
+      tab.classList.toggle("active", active);
+      tab.setAttribute("aria-selected", String(active));
+    });
+
+    const targetPanel = document.querySelector(`[data-auth-panel="${targetMode}"]`);
+    replayAuthEntrance(targetPanel);
+
+    setTimeout(() => {
+      if (window.innerWidth >= 768) {
+        const firstInput = targetPanel?.querySelector('input:not([type="hidden"]):not([type="checkbox"])');
+        firstInput?.focus();
       }
+    }, 280);
+  };
+
+  document.querySelectorAll("[data-switch-auth], [data-auth-tab]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const target = btn.dataset.switchAuth || btn.dataset.authTab;
+      switchAuthMode(target);
     });
   });
 
   // 5. Theme Mode Management (Default: Ikuti Sistem / Light Mode)
   const themeToggleBtn = document.getElementById("auth-theme-toggle");
-  const loginRoot = document.querySelector(".iclabs-login-split");
 
   const applyTheme = (theme) => {
     if (!loginRoot) return;
@@ -190,7 +242,7 @@ function login() {
   user = null;
   const initialTheme = getResolvedAuthTheme();
   const isLight = initialTheme === 'light';
-  app.innerHTML = `<main class="iclabs-login auth-page iclabs-login-split ${isLight ? 'theme-light' : ''}">
+  app.innerHTML = `<main class="iclabs-login auth-page iclabs-login-split ${isLight ? 'theme-light' : ''}" data-auth-mode="login">
     <!-- Left Showcase Panel (Desktop) -->
     <div class="auth-split-showcase" aria-label="Laboratorium ICLabs">
       <div class="auth-split-bg">
@@ -205,10 +257,47 @@ function login() {
         <div class="brand auth-split-logo-badge animate-levitate">
           <img src="assets/logo-iclabs.png" alt="Logo ICLabs" class="brand-logo">
         </div>
-        <h1 class="auth-split-title animate-enter">ICLABS-PRAKTIKUM</h1>
-        <p class="auth-split-subtitle animate-enter" style="animation-delay: 0.2s">
-          Sistem Informasi Praktikum Laboratorium<br>Terintegrasi & Real-time.
-        </p>
+
+        <div class="auth-hero-stage">
+          <div class="auth-hero-var" data-hero-mode="login">
+            <span class="auth-hero-eyebrow">Integrated Computer Laboratory System</span>
+            <h1 class="auth-split-title">ICLABS-PRAKTIKUM</h1>
+            <p class="auth-split-subtitle">
+              Sistem Informasi Praktikum Laboratorium<br>Terintegrasi &amp; Real-time Fakultas Ilmu Komputer UMI.
+            </p>
+            <div class="auth-hero-steps" aria-label="Fitur utama">
+              <div class="auth-hero-step is-active"><span class="nd">1</span><b>Presensi Sesi</b></div>
+              <div class="auth-hero-step is-active"><span class="nd">2</span><b>Evaluasi Modul</b></div>
+              <div class="auth-hero-step is-active"><span class="nd">3</span><b>Transparansi Nilai</b></div>
+            </div>
+          </div>
+
+          <div class="auth-hero-var" data-hero-mode="activate">
+            <span class="auth-hero-eyebrow">Aktivasi Akun Kampus Resmi</span>
+            <h1 class="auth-split-title">AKTIFKAN AKUN</h1>
+            <p class="auth-split-subtitle">
+              Masukkan email resmi kampus (<strong>@student.umi.ac.id</strong> atau <strong>@umi.ac.id</strong>). Tautan pembuatan kata sandi dikirim langsung ke email Anda.
+            </p>
+            <div class="auth-hero-steps" aria-label="Alur aktivasi akun">
+              <div class="auth-hero-step is-current"><span class="nd">1</span><b>Input Email Kampus</b></div>
+              <div class="auth-hero-step"><span class="nd">2</span><b>Terima Token Email</b></div>
+              <div class="auth-hero-step"><span class="nd">3</span><b>Buat Kata Sandi</b></div>
+            </div>
+          </div>
+
+          <div class="auth-hero-var" data-hero-mode="reset">
+            <span class="auth-hero-eyebrow">Pemulihan Akses Akun Pusat</span>
+            <h1 class="auth-split-title">ATUR ULANG<br><span class="auth-title-accent">KATA SANDI</span></h1>
+            <p class="auth-split-subtitle">
+              Lupa kata sandi akun pusat ICLabs? Masukkan email aktif Anda dan kami akan mengirimkan tautan pemulihan secara aman.
+            </p>
+            <div class="auth-hero-steps" aria-label="Alur reset kata sandi">
+              <div class="auth-hero-step is-current"><span class="nd">1</span><b>Verifikasi Email</b></div>
+              <div class="auth-hero-step"><span class="nd">2</span><b>Buka Tautan Reset</b></div>
+              <div class="auth-hero-step"><span class="nd">3</span><b>Simpan Sandi Baru</b></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="auth-split-divider">
@@ -226,7 +315,7 @@ function login() {
       <div class="glow-sphere glow-sphere-1"></div>
       <div class="glow-sphere glow-sphere-2"></div>
 
-      <div id="login-card" class="tilt-card animate-enter" style="animation-delay: 0.3s">
+      <div id="login-card" class="tilt-card animate-enter" style="animation-delay: 0.25s">
         <div class="glass-card">
           <!-- Mobile Brand Banner -->
           <div class="auth-mobile-header">
@@ -238,98 +327,203 @@ function login() {
           </div>
 
           <div class="auth-card-top-row">
-            <div class="auth-panel-heading">
-              <h2>Login ICLabs</h2>
-              <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
+            <div class="auth-heading-stage">
+              <div class="auth-panel-heading" data-heading-mode="login">
+                <span class="auth-form-kicker">Formulir Masuk</span>
+                <h2>Login ICLabs</h2>
+                <p>Masuk menggunakan akun pusat ICLabs Anda.</p>
+              </div>
+              <div class="auth-panel-heading" data-heading-mode="activate">
+                <span class="auth-form-kicker">Formulir Aktivasi Akun</span>
+                <h2>Aktivasi Akun</h2>
+                <p>Khusus akun baru berstatus Menunggu Aktivasi.</p>
+              </div>
+              <div class="auth-panel-heading" data-heading-mode="reset">
+                <span class="auth-form-kicker">Pemulihan Akun Pusat</span>
+                <h2>Lupa Kata Sandi</h2>
+                <p>Kirim tautan pengaturan ulang kata sandi ke email.</p>
+              </div>
             </div>
             <button type="button" id="auth-theme-toggle" class="auth-theme-pill" aria-label="${isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang'}" title="${isLight ? 'Beralih ke mode gelap' : 'Beralih ke mode terang'}">
               <i class="${isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun'}" id="auth-theme-icon"></i>
             </button>
           </div>
 
-          <div id="login-error" role="alert" aria-live="assertive"></div>
+          <!-- Form Mode Switcher Tabs (Parity with Registrasi) -->
+          <div class="auth-mode-tabs" role="tablist" aria-label="Pilih formulir autentikasi">
+            <span class="auth-mode-glider" aria-hidden="true"></span>
+            <button type="button" role="tab" aria-selected="true" class="auth-mode-tab active" id="auth-tab-login" data-auth-tab="login">
+              <span class="auth-tab-radio" aria-hidden="true"></span>
+              <span>Masuk</span>
+            </button>
+            <button type="button" role="tab" aria-selected="false" class="auth-mode-tab" id="auth-tab-activate" data-auth-tab="activate">
+              <span class="auth-tab-radio" aria-hidden="true"></span>
+              <span>Aktivasi Akun</span>
+            </button>
+          </div>
 
-          <form id="login">
-            <div class="auth-field-group">
-              <label for="login-email" class="auth-field-label">Email akun pusat</label>
-              <div class="auth-input-wrap">
-                <div class="auth-input-icon-left">
-                  <i class="fas fa-envelope"></i>
-                </div>
-                <input id="login-email" name="email" type="text" class="auth-input-control" placeholder="nama@student.umi.ac.id" autocomplete="username" required>
-              </div>
-            </div>
+          <div class="auth-forms-stage">
+            <!-- ===== PANEL 1: FORM LOGIN ===== -->
+            <div class="auth-form-panel-view" id="login-panel" data-auth-panel="login">
+              <div id="login-error" role="alert" aria-live="assertive"></div>
 
-            <div class="auth-field-group">
-              <label for="login-password" class="auth-field-label">Kata sandi</label>
-              <div class="auth-input-wrap">
-                <div class="auth-input-icon-left">
-                  <i class="fas fa-lock"></i>
+              <form id="login">
+                <div class="auth-field-group auth-stagger auth-stagger-in" style="--stagger-delay: 50ms">
+                  <label for="login-email" class="auth-field-label">Email akun pusat</label>
+                  <div class="auth-input-wrap">
+                    <div class="auth-input-icon-left">
+                      <i class="fas fa-envelope"></i>
+                    </div>
+                    <input id="login-email" name="email" type="text" class="auth-input-control" placeholder="nama@student.umi.ac.id" autocomplete="username" required>
+                  </div>
                 </div>
-                <input id="login-password" name="password" type="password" class="auth-input-control" placeholder="Masukkan kata sandi" autocomplete="current-password" required>
-                <button type="button" id="toggle-password" class="auth-toggle-pwd" aria-label="Tampilkan kata sandi">
-                  <i class="fas fa-eye" id="toggle-password-icon"></i>
+
+                <div class="auth-field-group auth-stagger auth-stagger-in" style="--stagger-delay: 105ms">
+                  <label for="login-password" class="auth-field-label">Kata sandi</label>
+                  <div class="auth-input-wrap">
+                    <div class="auth-input-icon-left">
+                      <i class="fas fa-lock"></i>
+                    </div>
+                    <input id="login-password" name="password" type="password" class="auth-input-control" placeholder="Masukkan kata sandi" autocomplete="current-password" required>
+                    <button type="button" id="toggle-password" class="auth-toggle-pwd" aria-label="Tampilkan kata sandi">
+                      <i class="fas fa-eye" id="toggle-password-icon"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="auth-options-row auth-options-between auth-stagger auth-stagger-in" style="--stagger-delay: 160ms">
+                  <label class="auth-remember-check" for="remember-email">
+                    <input id="remember-email" type="checkbox">
+                    <span>Ingat email</span>
+                  </label>
+                  <button type="button" class="auth-forgot-trigger" data-switch-auth="reset">
+                    Lupa kata sandi?
+                  </button>
+                </div>
+
+                <button id="login-submit" class="auth-btn-primary auth-stagger auth-stagger-in" style="--stagger-delay: 215ms" type="submit">
+                  <div class="shimmer-fx"></div>
+                  <span class="btn-text-content">
+                    <span class="auth-submit-text">LOGIN SEKARANG</span>
+                    <i class="fas fa-arrow-right"></i>
+                  </span>
+                </button>
+              </form>
+
+              <div class="auth-swap-banner auth-stagger auth-stagger-in" style="--stagger-delay: 270ms">
+                <div class="auth-swap-copy">
+                  <strong>Akun kampus belum aktif?</strong>
+                  <small>Minta tautan aktivasi ke email kampus Anda</small>
+                </div>
+                <button type="button" class="auth-swap-btn" data-switch-auth="activate">
+                  <span>Aktivasi</span>
+                  <i class="fas fa-arrow-right"></i>
                 </button>
               </div>
             </div>
 
-            <div class="auth-options-row">
-              <label class="auth-remember-check" for="remember-email">
-                <input id="remember-email" type="checkbox">
-                <span>Ingat email di perangkat ini</span>
-              </label>
+            <!-- ===== PANEL 2: FORM AKTIVASI AKUN ===== -->
+            <div class="auth-form-panel-view" id="activation-card" data-auth-panel="activate">
+              <div class="auth-info-callout auth-stagger">
+                <i class="fas fa-id-card-clip"></i>
+                <span>Gunakan email resmi kampus (<strong>@student.umi.ac.id</strong> atau <strong>@umi.ac.id</strong>) untuk menerima tautan pembuatan kata sandi.</span>
+              </div>
+
+              <form id="activation-request">
+                <div class="auth-field-group auth-stagger">
+                  <label for="activation-email" class="auth-field-label">Email resmi kampus</label>
+                  <div class="auth-input-wrap">
+                    <div class="auth-input-icon-left">
+                      <i class="fas fa-envelope-open-text"></i>
+                    </div>
+                    <input id="activation-email" name="email" type="email" class="auth-input-control" maxlength="254" autocomplete="email" placeholder="1302026xxxx@student.umi.ac.id" required>
+                  </div>
+                </div>
+
+                <div class="account-action-status" id="activation-status" role="status" aria-live="polite"></div>
+
+                <button type="submit" class="auth-btn-primary auth-stagger">
+                  <div class="shimmer-fx"></div>
+                  <span class="btn-text-content">
+                    <span class="auth-submit-text">KIRIM TAUTAN AKTIVASI</span>
+                    <i class="fas fa-paper-plane"></i>
+                  </span>
+                </button>
+              </form>
+
+              <a href="aktivasi-akun" class="auth-token-card auth-stagger">
+                <div class="auth-token-icon"><i class="fas fa-key"></i></div>
+                <div class="auth-token-copy">
+                  <strong>Sudah punya token aktivasi?</strong>
+                  <small>Masukkan token &amp; buat kata sandi di sini</small>
+                </div>
+                <i class="fas fa-chevron-right auth-token-arrow"></i>
+              </a>
+
+              <div class="auth-swap-banner auth-stagger">
+                <div class="auth-swap-copy">
+                  <strong>Akun sudah aktif?</strong>
+                  <small>Kembali ke halaman masuk utama</small>
+                </div>
+                <button type="button" class="auth-swap-btn" data-switch-auth="login">
+                  <i class="fas fa-arrow-left"></i>
+                  <span>Masuk</span>
+                </button>
+              </div>
             </div>
 
-            <button id="login-submit" class="auth-btn-primary" type="submit">
-              <div class="shimmer-fx"></div>
-              <span class="btn-text-content">
-                <span class="auth-submit-text">LOGIN SEKARANG</span>
-                <i class="fas fa-arrow-right"></i>
-              </span>
-            </button>
-          </form>
-
-          <div class="auth-accordion-container">
-            <details class="auth-details-box" id="activation-card">
-              <summary class="auth-details-summary">
-                <i class="fas fa-play details-caret"></i>
-                <span>Minta email aktivasi akun</span>
-              </summary>
-              <div class="auth-details-content">
-                <p>Khusus akun baru berstatus <em>Menunggu Aktivasi</em>. Masukkan email resmi kampus (<strong>@student.umi.ac.id</strong> atau <strong>@umi.ac.id</strong>).</p>
-                <form id="activation-request">
-                  <label class="sr-only" for="activation-email">Email akun untuk aktivasi</label>
-                  <input id="activation-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
-                  <button type="submit" class="auth-details-submit auth-details-submit-primary">Kirim instruksi aktivasi</button>
-                  <div class="account-action-status" id="activation-status" role="status" aria-live="polite"></div>
-                </form>
-                <p style="margin-top:10px;font-size:11px;color:var(--text-muted,#64748b);line-height:1.5"><i class="fas fa-circle-info"></i> Jika akun sudah pernah aktif atau Anda lupa kata sandi, gunakan menu <strong>Lupa kata sandi?</strong> di bawah.</p>
+            <!-- ===== PANEL 3: FORM LUPA KATA SANDI ===== -->
+            <div class="auth-form-panel-view" id="reset-card" data-auth-panel="reset">
+              <div class="auth-info-callout auth-stagger">
+                <i class="fas fa-shield-halved"></i>
+                <span>Masukkan email akun pusat ICLabs yang sudah aktif. Tautan untuk mengatur ulang kata sandi akan dikirim ke email Anda.</span>
               </div>
-            </details>
 
-            <details class="auth-details-box" id="reset-card">
-              <summary class="auth-details-summary">
-                <i class="fas fa-play details-caret"></i>
-                <span>Lupa kata sandi?</span>
-              </summary>
-              <div class="auth-details-content">
-                <p>Masukkan email akun pusat. Jika akun aktif, tautan untuk mengatur ulang kata sandi akan dikirim ke email.</p>
-                <form id="password-reset-request">
-                  <label class="sr-only" for="reset-email">Email akun untuk reset kata sandi</label>
-                  <input id="reset-email" name="email" type="email" class="auth-details-input" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
-                  <button type="submit" class="auth-details-submit auth-details-submit-secondary">Kirim tautan reset</button>
-                  <div class="account-action-status" id="reset-status" role="status" aria-live="polite"></div>
-                </form>
+              <form id="password-reset-request">
+                <div class="auth-field-group auth-stagger">
+                  <label for="reset-email" class="auth-field-label">Email akun pusat</label>
+                  <div class="auth-input-wrap">
+                    <div class="auth-input-icon-left">
+                      <i class="fas fa-envelope"></i>
+                    </div>
+                    <input id="reset-email" name="email" type="email" class="auth-input-control" maxlength="254" autocomplete="email" placeholder="nama@student.umi.ac.id" required>
+                  </div>
+                </div>
+
+                <div class="account-action-status" id="reset-status" role="status" aria-live="polite"></div>
+
+                <button type="submit" class="auth-btn-primary auth-stagger">
+                  <div class="shimmer-fx"></div>
+                  <span class="btn-text-content">
+                    <span class="auth-submit-text">KIRIM TAUTAN RESET</span>
+                    <i class="fas fa-rotate"></i>
+                  </span>
+                </button>
+              </form>
+
+              <a href="reset-password" class="auth-token-card auth-stagger">
+                <div class="auth-token-icon"><i class="fas fa-unlock-keyhole"></i></div>
+                <div class="auth-token-copy">
+                  <strong>Sudah punya token reset?</strong>
+                  <small>Atur ulang kata sandi menggunakan token</small>
+                </div>
+                <i class="fas fa-chevron-right auth-token-arrow"></i>
+              </a>
+
+              <div class="auth-swap-banner auth-stagger">
+                <div class="auth-swap-copy">
+                  <strong>Ingat kata sandi Anda?</strong>
+                  <small>Kembali ke formulir login akun pusat</small>
+                </div>
+                <button type="button" class="auth-swap-btn" data-switch-auth="login">
+                  <i class="fas fa-arrow-left"></i>
+                  <span>Masuk</span>
+                </button>
               </div>
-            </details>
+            </div>
           </div>
 
           <div class="auth-bottom-links">
-            <div>
-              <a href="aktivasi-akun" class="auth-link-token">
-                <i class="fas fa-key"></i> <span>Sudah punya token aktivasi? Aktifkan di sini</span>
-              </a>
-            </div>
             <div>
               <a href="/sumber-daya/" class="auth-link-home">
                 <i class="fas fa-arrow-left"></i> Kembali ke Halaman Utama
@@ -769,23 +963,23 @@ function renderGoogleSheetReview(preserve) {
         </thead>
         <tbody>
           ${filteredEntries.length ? filteredEntries.map(({ row, index, issues, rowState }) => {
-            const statusText = rowState === 'valid' ? 'Siap' : rowState === 'warning' ? 'Peringatan · siap' : rowState === 'review' ? 'Perlu konfirmasi' : rowState === 'conflict' ? 'Konflik' : 'Belum lengkap';
-            return `<tr class="gs-row-${rowState}">
+    const statusText = rowState === 'valid' ? 'Siap' : rowState === 'warning' ? 'Peringatan · siap' : rowState === 'review' ? 'Perlu konfirmasi' : rowState === 'conflict' ? 'Konflik' : 'Belum lengkap';
+    return `<tr class="gs-row-${rowState}">
               <td class="gs-line">#${Number(row.baris_sumber)}</td>
               ${googleSheetReviewFields.map(([field, label]) => {
-                const isMapped = Boolean(googleSheetMappedFields[field]), raw = String(row[field] ?? '');
-                return `<td class="gs-cell ${isMapped ? 'gs-cell-mapped' : 'gs-cell-plain'}">
+      const isMapped = Boolean(googleSheetMappedFields[field]), raw = String(row[field] ?? '');
+      return `<td class="gs-cell ${isMapped ? 'gs-cell-mapped' : 'gs-cell-plain'}">
                   <label class="gs-mobile-label">${esc(label)}</label>
                   <input aria-label="${esc(label)} baris ${Number(row.baris_sumber)}" data-sheet-field="${field}" data-sheet-row="${index}" value="${esc(raw)}" ${field === 'frekuensi' ? 'placeholder="TI_ALPRO-1"' : ''}>
                   ${isMapped ? googleSheetMapSelect(row, index, field, conflicts) : ''}
                 </td>`;
-              }).join('')}
+    }).join('')}
               <td class="gs-status-col">
                 <span class="gs-row-badge gs-badge-${rowState}">${statusText}</span>
                 ${issues.filter(issue => issue.label).map(issue => `<small class="gs-status gs-status-error">${esc(issue.label)}</small>`).join('')}
               </td>
             </tr>`;
-          }).join('') : `<tr><td colspan="${googleSheetReviewFields.length + 2}" class="empty">Tidak ada baris jadwal pada kategori filter ini.</td></tr>`}
+  }).join('') : `<tr><td colspan="${googleSheetReviewFields.length + 2}" class="empty">Tidak ada baris jadwal pada kategori filter ini.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -989,9 +1183,9 @@ async function apiDashboard() {
       </div>
       <div class="dash-bar-list">
         ${topCourses.map(item => {
-          const widthPct = Math.max(8, Math.round((item.total / maxCourseCount) * 100));
-          const activeRatio = item.total > 0 ? Math.round((item.active / item.total) * 100) : 0;
-          return `<div class="dash-bar-row">
+      const widthPct = Math.max(8, Math.round((item.total / maxCourseCount) * 100));
+      const activeRatio = item.total > 0 ? Math.round((item.active / item.total) * 100) : 0;
+      return `<div class="dash-bar-row">
             <div class="dash-bar-meta row between">
               <div class="dash-bar-title">
                 <span class="badge blue">${esc(item.code)}</span>
@@ -1009,22 +1203,22 @@ async function apiDashboard() {
               </div>
             </div>
           </div>`;
-        }).join('')}
+    }).join('')}
       </div>
     </div>` : '<div class="empty">Belum ada data mata kuliah pada periode ini.</div>';
 
     const prodiStackedBar = prodiList.length ? `<div class="dash-stacked-bar" aria-label="Proporsi program studi">
       ${prodiList.map((p, idx) => {
-        const share = classList.length > 0 ? (p.count / classList.length) * 100 : 100;
-        return `<span class="dash-stacked-segment" style="width:${Math.max(5, share).toFixed(1)}%;background:${prodiColors[idx % prodiColors.length]}" title="${esc(p.name)}: ${p.count} frekuensi (${share.toFixed(1)}%)"></span>`;
-      }).join('')}
+      const share = classList.length > 0 ? (p.count / classList.length) * 100 : 100;
+      return `<span class="dash-stacked-segment" style="width:${Math.max(5, share).toFixed(1)}%;background:${prodiColors[idx % prodiColors.length]}" title="${esc(p.name)}: ${p.count} frekuensi (${share.toFixed(1)}%)"></span>`;
+    }).join('')}
     </div>` : '';
 
     const prodiBreakdownHtml = prodiList.length ? `<div class="dash-prodi-list">
       ${prodiStackedBar}
       ${prodiList.map((p, idx) => {
-        const share = classList.length > 0 ? (p.count / classList.length) * 100 : 0;
-        return `<div class="dash-prodi-item">
+      const share = classList.length > 0 ? (p.count / classList.length) * 100 : 0;
+      return `<div class="dash-prodi-item">
           <div class="row" style="gap:8px">
             <span class="dash-legend-dot" style="background:${prodiColors[idx % prodiColors.length]}"></span>
             <div>
@@ -1037,7 +1231,7 @@ async function apiDashboard() {
             <span class="badge">${share.toFixed(0)}%</span>
           </div>
         </div>`;
-      }).join('')}
+    }).join('')}
     </div>` : '<div class="empty">Data program studi belum tersedia.</div>';
 
     const statusMatrixHtml = `<div class="dash-status-matrix">
@@ -1065,22 +1259,22 @@ async function apiDashboard() {
 
     const quickNavItems = user.role === 'admin'
       ? [
-          ['Kelas Praktikum', 'grid', 'Kelola frekuensi & presensi'],
-          ['Sinkron Jadwal', 'refresh', 'Impor dari Google Sheet'],
-          ['Periode Akademik', 'clock', 'Atur periode & ekspor rekap'],
-          ['Konfigurasi Nilai', 'percent', 'Ambang nilai & predikat'],
-          ['Manajemen Akses', 'users', 'Akun & peran pengguna'],
-          ['Log Aktivitas', 'file-text', 'Riwayat audit perubahan']
-        ]
+        ['Kelas Praktikum', 'grid', 'Kelola frekuensi & presensi'],
+        ['Sinkron Jadwal', 'refresh', 'Impor dari Google Sheet'],
+        ['Periode Akademik', 'clock', 'Atur periode & ekspor rekap'],
+        ['Konfigurasi Nilai', 'percent', 'Ambang nilai & predikat'],
+        ['Manajemen Akses', 'users', 'Akun & peran pengguna'],
+        ['Log Aktivitas', 'file-text', 'Riwayat audit perubahan']
+      ]
       : (user.role === 'dosen'
         ? [
-            ['Aktivitas & Presensi', 'check-square', 'Pantau sesi & kehadiran'],
-            ['Hasil Penilaian', 'award', 'Verifikasi & kunci nilai']
-          ]
+          ['Aktivitas & Presensi', 'check-square', 'Pantau sesi & kehadiran'],
+          ['Hasil Penilaian', 'award', 'Verifikasi & kunci nilai']
+        ]
         : [
-            ['Kelas Praktikum', 'grid', 'Input presensi & nilai'],
-            ['Sinkron Jadwal', 'refresh', 'Pratinjau jadwal praktikum']
-          ]);
+          ['Kelas Praktikum', 'grid', 'Input presensi & nilai'],
+          ['Sinkron Jadwal', 'refresh', 'Pratinjau jadwal praktikum']
+        ]);
 
     const quickNavHtml = `<div class="dash-quick-grid">
       ${quickNavItems.map(([navTarget, ic, desc]) => `<button type="button" class="dash-quick-btn" data-dash-nav="${esc(navTarget)}">
@@ -1122,8 +1316,8 @@ async function apiDashboard() {
           </thead>
           <tbody id="dash-classes-tbody">
             ${recentClasses.map(c => {
-              const schedCnt = Number(c.jumlah_jadwal || (c.jadwal || []).length || 0);
-              return `<tr data-class-status="${esc(c.status)}" data-class-scheduled="${schedCnt > 0 ? '1' : '0'}">
+      const schedCnt = Number(c.jumlah_jadwal || (c.jadwal || []).length || 0);
+      return `<tr data-class-status="${esc(c.status)}" data-class-scheduled="${schedCnt > 0 ? '1' : '0'}">
                 <td><strong>${esc(c.mata_kuliah?.kode || '')} · ${esc(c.mata_kuliah?.nama || '')}</strong></td>
                 <td>${esc(c.program_studi?.nama || '')}</td>
                 <td><strong>${esc(c.kelompok?.nama || c.kelompok?.kode || '')}</strong><small class="muted" style="display:block">Kode: ${esc(c.kelompok?.kode || '')}</small></td>
@@ -1132,7 +1326,7 @@ async function apiDashboard() {
                 <td class="num">${Number(c.jumlah_pertemuan_rencana || 0)}</td>
                 <td class="col-actions"><button type="button" class="small btn-table-action" data-api-class="${Number(c.id_kelas_kuliah)}"><span>${attendanceOnly ? 'Lihat aktivitas' : 'Buka'}</span> ${iconSvg('arrow-right')}</button></td>
               </tr>`;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -1654,20 +1848,20 @@ function apiRenderStudentFreqCard(id, group, sched, actionAttr = 'data-select-st
         <div class="st-metric-cell">
           <span class="st-metric-label">Evaluasi</span>
           ${evalStr !== null
-            ? `<strong class="st-metric-val num">${evalStr}</strong>`
-            : `<span class="st-metric-empty">Belum dinilai</span>`}
+      ? `<strong class="st-metric-val num">${evalStr}</strong>`
+      : `<span class="st-metric-empty">Belum dinilai</span>`}
         </div>
         <div class="st-metric-cell">
           <span class="st-metric-label">Asistensi</span>
           ${asistStr !== null
-            ? `<strong class="st-metric-val num">${asistStr}</strong>`
-            : `<span class="st-metric-empty">Belum dinilai</span>`}
+      ? `<strong class="st-metric-val num">${asistStr}</strong>`
+      : `<span class="st-metric-empty">Belum dinilai</span>`}
         </div>
         <div class="st-metric-cell">
           <span class="st-metric-label">Nilai akhir</span>
           ${finalStr !== null
-            ? `<strong class="st-metric-val num is-accent">${finalStr}${s?.predikat ? ` <small>(${esc(s.predikat)})</small>` : ''}</strong>`
-            : `<span class="st-metric-empty">Berjalan</span>`}
+      ? `<strong class="st-metric-val num is-accent">${finalStr}${s?.predikat ? ` <small>(${esc(s.predikat)})</small>` : ''}</strong>`
+      : `<span class="st-metric-empty">Berjalan</span>`}
         </div>
       </div>
 
@@ -1799,8 +1993,8 @@ async function apiStudentDashboard() {
           <div class="st-kpi-cell">
             <span class="st-kpi-label">Capaian evaluasi</span>
             ${leadMetricVal !== null
-              ? `<div class="st-kpi-value num">${leadMetricVal} <small>${esc(leadMetricUnit)}</small></div>`
-              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+        ? `<div class="st-kpi-value num">${leadMetricVal} <small>${esc(leadMetricUnit)}</small></div>`
+        : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
             <div class="st-kpi-delta">${evalEvaluasi.length} dari ${totalCourses} frekuensi memiliki nilai evaluasi</div>
           </div>
           <div class="st-kpi-cell">
@@ -1824,10 +2018,10 @@ async function apiStudentDashboard() {
             ${courseList.length ? `
               <div class="st-freq-grid">
                 ${courseList.map(g => {
-                  const cls = classMap.get(g.id);
-                  const sched = apiExtractStudentScheduleInfo(cls, g.first);
-                  return apiRenderStudentFreqCard(g.id, g, sched, 'data-open-student-detail');
-                }).join('')}
+          const cls = classMap.get(g.id);
+          const sched = apiExtractStudentScheduleInfo(cls, g.first);
+          return apiRenderStudentFreqCard(g.id, g, sched, 'data-open-student-detail');
+        }).join('')}
               </div>
             ` : '<div class="empty">Anda belum terdaftar dalam kelas praktikum aktif periode ini.</div>'}
           </div>
@@ -2029,8 +2223,8 @@ async function apiStudentGrades() {
             <div class="st-kpi-cell">
               <span class="st-kpi-label">Rata-rata nilai</span>
               ${leadScore !== null
-                ? `<div class="st-kpi-value num">${leadScore} <small>${esc(leadLabel)}</small></div>`
-                : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+          ? `<div class="st-kpi-value num">${leadScore} <small>${esc(leadLabel)}</small></div>`
+          : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
               <div class="st-kpi-delta">${gradesWithScore.length ? `${gradesWithScore.length} dari ${groups.size} kelas memiliki nilai akhir` : `${evalCourses.length} dari ${groups.size} kelas memiliki nilai evaluasi`}</div>
             </div>
             <div class="st-kpi-cell">
@@ -2052,10 +2246,10 @@ async function apiStudentGrades() {
 
           <div class="st-freq-grid">
             ${[...groups.entries()].map(([id, group]) => {
-              const cls = classMap.get(id);
-              const sched = extractScheduleInfo(cls, group.first);
-              return apiRenderStudentFreqCard(id, group, sched, 'data-select-student-class');
-            }).join('')}
+            const cls = classMap.get(id);
+            const sched = extractScheduleInfo(cls, group.first);
+            return apiRenderStudentFreqCard(id, group, sched, 'data-select-student-class');
+          }).join('')}
           </div>
         </div>
       `;
@@ -2144,10 +2338,10 @@ async function apiStudentGrades() {
           </thead>
           <tbody>
             ${components.map(c => {
-              const contribution = c.bobot_persen != null && c.nilai != null
-                ? ((Number(c.nilai) * Number(c.bobot_persen)) / 100).toFixed(2)
-                : '—';
-              return `
+      const contribution = c.bobot_persen != null && c.nilai != null
+        ? ((Number(c.nilai) * Number(c.bobot_persen)) / 100).toFixed(2)
+        : '—';
+      return `
                 <tr>
                   <td><strong>${esc(c.nama_komponen || c.kode_komponen)}</strong></td>
                   <td class="num">${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
@@ -2156,7 +2350,7 @@ async function apiStudentGrades() {
                   <td class="num st-muted-cell">${esc(c.diubah_pada || '—')}</td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -2202,11 +2396,11 @@ async function apiStudentGrades() {
     const componentBarsHtml = components.length ? `
       <div class="st-comp-list">
         ${components.map(c => {
-          const hasScore = c.nilai !== null && c.nilai !== undefined;
-          const score = hasScore ? Math.min(100, Math.max(0, Number(c.nilai) || 0)) : 0;
-          const weight = c.bobot_persen != null ? Number(c.bobot_persen) : null;
-          const contribution = weight != null && hasScore ? ((Number(c.nilai) * weight) / 100).toFixed(2) : null;
-          return `
+      const hasScore = c.nilai !== null && c.nilai !== undefined;
+      const score = hasScore ? Math.min(100, Math.max(0, Number(c.nilai) || 0)) : 0;
+      const weight = c.bobot_persen != null ? Number(c.bobot_persen) : null;
+      const contribution = weight != null && hasScore ? ((Number(c.nilai) * weight) / 100).toFixed(2) : null;
+      return `
             <div class="st-comp-row">
               <div class="st-comp-top">
                 <span class="st-comp-name">${esc(c.nama_komponen || c.kode_komponen)} ${weight !== null ? `<small>(${weight}%)</small>` : ''}</span>
@@ -2223,7 +2417,7 @@ async function apiStudentGrades() {
               </div>
             </div>
           `;
-        }).join('')}
+    }).join('')}
       </div>
     ` : '<div class="empty">Belum ada komponen nilai akhir yang tercatat.</div>';
 
@@ -2315,22 +2509,22 @@ async function apiStudentGrades() {
           <div class="st-kpi-cell">
             <span class="st-kpi-label">Rata-rata evaluasi</span>
             ${s?.rata_evaluasi != null
-              ? `<div class="st-kpi-value num">${fmt(s.rata_evaluasi)} <small>/ 100</small></div>`
-              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+        ? `<div class="st-kpi-value num">${fmt(s.rata_evaluasi)} <small>/ 100</small></div>`
+        : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
             <div class="st-kpi-delta">${classMeetings.length ? `${classMeetings.length} lembar pertemuan tercatat` : `${evalComponents.length} modul dievaluasi`}</div>
           </div>
           <div class="st-kpi-cell">
             <span class="st-kpi-label">Rata-rata asistensi</span>
             ${s?.rata_asistensi != null
-              ? `<div class="st-kpi-value num">${fmt(s.rata_asistensi)} <small>/ 100</small></div>`
-              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+        ? `<div class="st-kpi-value num">${fmt(s.rata_asistensi)} <small>/ 100</small></div>`
+        : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
             <div class="st-kpi-delta">${asistComponents.length ? `${asistComponents.length} komponen asistensi` : 'Menunggu rekap asistensi'}</div>
           </div>
           <div class="st-kpi-cell">
             <span class="st-kpi-label">Nilai akhir</span>
             ${s?.nilai_akhir != null
-              ? `<div class="st-kpi-value num">${fmt(s.nilai_akhir)} ${s?.predikat ? `<small>(${esc(s.predikat)})</small>` : ''}</div>`
-              : `<div class="st-kpi-value is-empty">Nilai berjalan</div>`}
+        ? `<div class="st-kpi-value num">${fmt(s.nilai_akhir)} ${s?.predikat ? `<small>(${esc(s.predikat)})</small>` : ''}</div>`
+        : `<div class="st-kpi-value is-empty">Nilai berjalan</div>`}
             <div class="st-kpi-delta">${workflowLabel}</div>
           </div>
         </section>
@@ -3470,10 +3664,10 @@ async function studentDashboard() {
         </div>
         <div class="dash-bar-list">
           ${courses.map(c => {
-            const score = c.na != null ? Number(c.na) : null;
-            const scoreText = score != null ? `${score.toFixed(1)}${c.letter ? ` (${c.letter})` : ''}` : 'Berjalan';
-            const pct = score != null ? Math.min(100, Math.max(0, score)) : 0;
-            return `
+      const score = c.na != null ? Number(c.na) : null;
+      const scoreText = score != null ? `${score.toFixed(1)}${c.letter ? ` (${c.letter})` : ''}` : 'Berjalan';
+      const pct = score != null ? Math.min(100, Math.max(0, score)) : 0;
+      return `
               <div class="dash-bar-row">
                 <div class="dash-bar-meta row between">
                   <div class="dash-bar-title">
@@ -3491,7 +3685,7 @@ async function studentDashboard() {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     ` : '<div class="empty">Belum ada kelas yang terdaftar.</div>';
@@ -3712,10 +3906,10 @@ async function studentPortal() {
       const compBarsHtml = `
         <div class="dash-comp-list">
           ${compItems.map(item => {
-            const score = item.value != null ? Math.min(100, Math.max(0, Number(item.value))) : 0;
-            const contrib = item.value != null ? ((Number(item.value) * item.weight) / 100).toFixed(2) : null;
-            const color = score >= 80 ? '#0f766e' : (score >= 65 ? '#0284c7' : '#b45309');
-            return `
+        const score = item.value != null ? Math.min(100, Math.max(0, Number(item.value))) : 0;
+        const contrib = item.value != null ? ((Number(item.value) * item.weight) / 100).toFixed(2) : null;
+        const color = score >= 80 ? '#0f766e' : (score >= 65 ? '#0284c7' : '#b45309');
+        return `
               <div class="dash-comp-item">
                 <div class="dash-comp-head">
                   <span class="dash-comp-name">${esc(item.name)}</span>
@@ -3733,7 +3927,7 @@ async function studentPortal() {
                 </div>
               </div>
             `;
-          }).join('')}
+      }).join('')}
         </div>
       `;
 
@@ -3944,11 +4138,11 @@ async function studentPortal() {
                   </thead>
                   <tbody>
                     ${Array.from({ length: c.meeting_count }, (_, i) => {
-                      const p = attMeetings.find(x => x.number === i + 1);
-                      const statusVal = p?.value;
-                      const statusLabels = { H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpa', T: 'Terlambat' };
-                      const statusTones = { H: 'green', I: 'yellow', S: 'yellow', A: 'red', T: 'yellow' };
-                      return `
+        const p = attMeetings.find(x => x.number === i + 1);
+        const statusVal = p?.value;
+        const statusLabels = { H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpa', T: 'Terlambat' };
+        const statusTones = { H: 'green', I: 'yellow', S: 'yellow', A: 'red', T: 'yellow' };
+        return `
                         <tr>
                           <td><strong>Pertemuan ${i + 1}</strong></td>
                           <td>${esc(p?.date || '—')}</td>
@@ -3956,7 +4150,7 @@ async function studentPortal() {
                           <td><span class="badge ${statusTones[statusVal] || ''}">${esc(statusLabels[statusVal] || 'Belum diisi')}</span></td>
                         </tr>
                       `;
-                    }).join('')}
+      }).join('')}
                   </tbody>
                 </table>
               </div>

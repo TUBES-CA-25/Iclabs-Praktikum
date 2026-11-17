@@ -8804,3 +8804,559 @@ dialog#modal .schedule-preview-summary {
         border-left: 0;
     }
 }
+
+/* ==========================================================================
+   AUTH FORM SWAP & 3D CARD EXCHANGE (PARITY WITH REGISTRASI)
+   ========================================================================== */
+
+/* 1. Left Showcase Synchronized Hero Stage */
+.iclabs-login-split .auth-hero-stage {
+    display: grid;
+    width: 100%;
+    max-width: 560px;
+}
+
+.iclabs-login-split .auth-hero-var {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px);
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0s 0.22s;
+}
+
+.iclabs-login-split[data-auth-mode="login"] .auth-hero-var[data-hero-mode="login"],
+.iclabs-login-split[data-auth-mode="activate"] .auth-hero-var[data-hero-mode="activate"],
+.iclabs-login-split[data-auth-mode="reset"] .auth-hero-var[data-hero-mode="reset"] {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+    transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.16s,
+                transform 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.16s;
+}
+
+.iclabs-login-split .auth-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(186, 230, 253, 0.92);
+}
+
+.iclabs-login-split .auth-hero-eyebrow::before,
+.iclabs-login-split .auth-hero-eyebrow::after {
+    content: "";
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: #60a5fa;
+}
+
+.iclabs-login-split .auth-title-accent {
+    display: inline-block;
+    color: #60a5fa;
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(108deg, transparent 36%, rgba(186, 230, 253, 0.65) 45%, #ffffff 50%, rgba(186, 230, 253, 0.65) 55%, transparent 64%),
+                      linear-gradient(165deg, #c7e6ff 0%, #8cc8fb 34%, #4f95f5 68%, #2f6fe4 100%);
+    background-size: 260% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 140% 0, 0 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: auth-title-shimmer 6.5s ease-in-out 1s infinite;
+}
+
+@keyframes auth-title-shimmer {
+    0% { background-position: 140% 0, 0 0; }
+    42%, 100% { background-position: -40% 0, 0 0; }
+}
+
+.iclabs-login-split .auth-hero-steps {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.iclabs-login-split .auth-hero-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.48);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    backdrop-filter: blur(8px);
+    font-size: 12.5px;
+    color: rgba(226, 232, 240, 0.88);
+}
+
+.iclabs-login-split .auth-hero-step .nd {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(37, 99, 235, 0.35);
+    border: 1.5px solid rgba(147, 197, 253, 0.65);
+    color: #ffffff;
+}
+
+.iclabs-login-split .auth-hero-step.is-current {
+    background: rgba(37, 99, 235, 0.28);
+    border-color: rgba(96, 165, 250, 0.75);
+    color: #ffffff;
+}
+
+.iclabs-login-split .auth-hero-step.is-current .nd {
+    background: #2563eb;
+    border-color: #bfdbfe;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.28);
+}
+
+/* 2. 3D Card Swap / Flip Animation (kocokKartu) */
+@keyframes auth-card-swap-forward {
+    0%   { transform: perspective(1400px) rotateY(0deg) scale(1); }
+    45%  { transform: perspective(1400px) rotateY(-14deg) scale(0.955) translateY(4px); }
+    100% { transform: perspective(1400px) rotateY(0deg) scale(1); }
+}
+
+@keyframes auth-card-swap-back {
+    0%   { transform: perspective(1400px) rotateY(0deg) scale(1); }
+    45%  { transform: perspective(1400px) rotateY(14deg) scale(0.955) translateY(4px); }
+    100% { transform: perspective(1400px) rotateY(0deg) scale(1); }
+}
+
+@keyframes auth-card-flip-mobile {
+    0%   { transform: perspective(1400px) rotateY(0deg) scale(1); }
+    50%  { transform: perspective(1400px) rotateY(180deg) scale(0.93); }
+    100% { transform: perspective(1400px) rotateY(360deg) scale(1); }
+}
+
+.iclabs-login-split #login-card.is-swapping.swap-forward .glass-card {
+    animation: auth-card-swap-forward 0.54s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.iclabs-login-split #login-card.is-swapping.swap-back .glass-card {
+    animation: auth-card-swap-back 0.54s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (max-width: 767.98px) {
+    .iclabs-login-split #login-card.is-swapping .glass-card {
+        animation: auth-card-flip-mobile 0.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
+    }
+}
+
+/* 3. Card Heading Stacked Crossfade Stage */
+.iclabs-login-split .auth-card-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.iclabs-login-split .auth-heading-stage {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+}
+
+.iclabs-login-split .auth-heading-stage .auth-panel-heading {
+    grid-area: 1 / 1;
+    margin-bottom: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s 0.2s;
+}
+
+.iclabs-login-split[data-auth-mode="login"] .auth-panel-heading[data-heading-mode="login"],
+.iclabs-login-split[data-auth-mode="activate"] .auth-panel-heading[data-heading-mode="activate"],
+.iclabs-login-split[data-auth-mode="reset"] .auth-panel-heading[data-heading-mode="reset"] {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+    transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.14s,
+                transform 0.36s cubic-bezier(0.22, 1, 0.36, 1) 0.14s;
+}
+
+.iclabs-login-split .auth-form-kicker {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #60a5fa;
+    margin-bottom: 4px;
+}
+
+.iclabs-login-split.theme-light .auth-form-kicker {
+    color: #2563eb;
+}
+
+.iclabs-login-split .auth-panel-heading h2 {
+    font-size: 1.65rem;
+    line-height: 1.2;
+}
+
+/* 4. Mode Switcher Tabs with Gliding Pill & Radio Dot (Registrasi Style) */
+.iclabs-login-split .auth-mode-tabs {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    background: rgba(2, 6, 23, 0.52);
+    border: 1px solid var(--auth-input-border);
+}
+
+.iclabs-login-split.theme-light .auth-mode-tabs {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+.iclabs-login-split .auth-mode-glider {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    border-radius: 9px;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    pointer-events: none;
+}
+
+.iclabs-login-split.theme-light .auth-mode-glider {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.iclabs-login-split[data-auth-mode="activate"] .auth-mode-glider {
+    transform: translateX(100%);
+}
+
+.iclabs-login-split[data-auth-mode="reset"] .auth-mode-glider {
+    opacity: 0;
+}
+
+.iclabs-login-split .auth-mode-tab {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--auth-text-sub);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: none;
+    transition: color 0.2s ease;
+}
+
+.iclabs-login-split .auth-mode-tab:hover {
+    color: var(--auth-text-main);
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+.iclabs-login-split .auth-mode-tab.active {
+    color: var(--auth-text-main);
+}
+
+.iclabs-login-split .auth-tab-radio {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    display: inline-block;
+    position: relative;
+    flex-shrink: 0;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.iclabs-login-split .auth-mode-tab.active .auth-tab-radio {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    box-shadow: inset 0 0 0 2.5px var(--auth-card-bg);
+}
+
+.iclabs-login-split.theme-light .auth-mode-tab.active .auth-tab-radio {
+    border-color: #2563eb;
+    background: #2563eb;
+    box-shadow: inset 0 0 0 2.5px #ffffff;
+}
+
+/* 5. Stacked Forms Stage & Panel Transitions */
+.iclabs-login-split .auth-forms-stage {
+    display: grid;
+    position: relative;
+}
+
+.iclabs-login-split .auth-form-panel-view {
+    grid-area: 1 / 1;
+    width: 100%;
+    min-width: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(14px) scale(0.985);
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.18s ease, transform 0.2s ease, visibility 0s 0.2s;
+}
+
+.iclabs-login-split[data-auth-mode="login"] .auth-form-panel-view[data-auth-panel="login"],
+.iclabs-login-split[data-auth-mode="activate"] .auth-form-panel-view[data-auth-panel="activate"],
+.iclabs-login-split[data-auth-mode="reset"] .auth-form-panel-view[data-auth-panel="reset"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    max-height: 900px;
+    overflow: visible;
+    transition: opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1) 0.16s,
+                transform 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.16s;
+}
+
+@keyframes auth-stagger-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.iclabs-login-split .auth-stagger.auth-stagger-in {
+    animation: auth-stagger-fade-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--stagger-delay, 0ms);
+}
+
+/* 6. Inline Forgot Trigger, Info Callout, Token Card & Swap Banner */
+.iclabs-login-split .auth-options-between {
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.iclabs-login-split .auth-forgot-trigger {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.iclabs-login-split.theme-light .auth-forgot-trigger {
+    color: #2563eb;
+}
+
+.iclabs-login-split .auth-forgot-trigger:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.iclabs-login-split .auth-info-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    background: rgba(30, 58, 138, 0.25);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: var(--auth-text-sub);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.iclabs-login-split.theme-light .auth-info-callout {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #334155;
+}
+
+.iclabs-login-split .auth-info-callout i {
+    color: #60a5fa;
+    font-size: 15px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.iclabs-login-split.theme-light .auth-info-callout i {
+    color: #2563eb;
+}
+
+.iclabs-login-split .auth-info-callout strong {
+    color: var(--auth-text-main);
+}
+
+.iclabs-login-split .auth-token-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    background: var(--auth-details-bg);
+    border: 1px solid var(--auth-details-border);
+    text-decoration: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+
+.iclabs-login-split .auth-token-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+}
+
+.iclabs-login-split .auth-token-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(37, 99, 235, 0.18);
+    color: #60a5fa;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.iclabs-login-split.theme-light .auth-token-icon {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.iclabs-login-split .auth-token-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+
+.iclabs-login-split .auth-token-copy strong {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--auth-text-main);
+}
+
+.iclabs-login-split .auth-token-copy small {
+    font-size: 11.5px;
+    color: var(--auth-text-sub);
+}
+
+.iclabs-login-split .auth-token-arrow {
+    font-size: 12px;
+    color: var(--auth-text-sub);
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.iclabs-login-split .auth-token-card:hover .auth-token-arrow {
+    transform: translateX(3px);
+    color: #3b82f6;
+}
+
+.iclabs-login-split .auth-swap-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--auth-details-bg);
+    border: 1px dashed var(--auth-input-border);
+}
+
+.iclabs-login-split .auth-swap-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.iclabs-login-split .auth-swap-copy strong {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--auth-text-main);
+}
+
+.iclabs-login-split .auth-swap-copy small {
+    font-size: 11.5px;
+    color: var(--auth-text-sub);
+}
+
+.iclabs-login-split .auth-swap-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 13px;
+    border-radius: 9px;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    background: rgba(37, 99, 235, 0.16);
+    color: #93c5fd;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.iclabs-login-split.theme-light .auth-swap-btn {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.iclabs-login-split .auth-swap-btn:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iclabs-login-split #login-card.is-swapping .glass-card,
+    .iclabs-login-split .auth-stagger.auth-stagger-in,
+    .iclabs-login-split .auth-title-accent {
+        animation: none !important;
+    }
+}
