@@ -1525,9 +1525,165 @@ function apiExtractStudentScheduleInfo(cls, fallbackFirst) {
   }
   return { dayName, timeText, room, dosen, asisten_1, asisten_2, asisten_3, sks, workflow };
 }
+
+function apiStudentPersonChip(name, slotOffset = 0) {
+  const raw = String(name || '').trim();
+  if (!raw || raw === '—' || raw === '-') {
+    return '<span class="st-person-empty">Belum ditentukan</span>';
+  }
+  const coreName = raw
+    .replace(/\b(?:prof|dr|ir|h|hj|drs|dra)\b\.?\s*/gi, '')
+    .split(',')[0]
+    .trim();
+  const parts = (coreName || raw).split(/\s+/).filter(Boolean);
+  const initials = (parts.length >= 2 ? parts[0][0] + parts[1][0] : (parts[0] || 'IC').slice(0, 2)).toUpperCase();
+  const palettes = [
+    ['#e3f1ed', '#134e41'],
+    ['#e6eff8', '#1d4b78'],
+    ['#f5efe2', '#6e4711'],
+    ['#eaeef4', '#334155'],
+    ['#eef3e8', '#2d5428'],
+    ['#f2ece9', '#5c3a2e']
+  ];
+  let hash = slotOffset * 3;
+  for (let i = 0; i < raw.length; i++) hash = (hash + raw.charCodeAt(i)) % palettes.length;
+  const [bg, fg] = palettes[(hash + slotOffset) % palettes.length];
+  return `<span class="st-person-chip"><span class="st-person-monogram" style="background:${bg};color:${fg}" aria-hidden="true">${esc(initials)}</span><span class="st-person-name">${esc(raw)}</span></span>`;
+}
+
+function apiRenderStudentSessionStrip(attendance, totalPlanned = 14) {
+  const records = Array.isArray(attendance) ? attendance : [];
+  const byMeeting = new Map();
+  let maxNum = totalPlanned;
+  records.forEach(a => {
+    const num = Number(a.nomor_pertemuan);
+    if (num > 0) {
+      byMeeting.set(num, a);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  const labelMap = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
+  const cells = [];
+  for (let i = 1; i <= maxNum; i++) {
+    const rec = byMeeting.get(i);
+    const st = rec?.status || '';
+    const toneClass = st === 'HADIR' ? 'is-hadir' : (st === 'ALPA' ? 'is-alpa' : (st ? 'is-izin' : 'is-upcoming'));
+    const tip = rec
+      ? `Pertemuan ${i} (${rec.tanggal_sesi || 'Terjadwal'}): ${rec.nama_status || labelMap[st] || st}${rec.materi ? ' · ' + rec.materi : ''}`
+      : `Pertemuan ${i}: Sesi belum berlangsung`;
+    cells.push(`<span class="st-session-seg ${toneClass}" title="${esc(tip)}" aria-label="${esc(tip)}"><small>P${i}</small></span>`);
+  }
+  return `<div class="st-session-strip" role="group" aria-label="Progres sesi pertemuan 1 sampai ${maxNum}">${cells.join('')}</div>`;
+}
+
+function apiRenderStudentFreqCard(id, group, sched, actionAttr = 'data-select-student-class') {
+  const r = group.first, s = group.summary, att = group.attendanceSummary;
+  const isVerified = sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
+  const workflowClass = isVerified ? 'pos' : (sched.workflow === 'PERLU_REVISI' ? 'neg' : 'warn');
+  const workflowText = isVerified ? 'Terverifikasi' : (sched.workflow === 'DIAJUKAN' ? 'Menunggu dosen' : 'Nilai berjalan');
+  const fmtVal = val => val === null || val === undefined ? null : Number(val).toFixed(2);
+  const evalStr = fmtVal(s?.rata_evaluasi);
+  const asistStr = fmtVal(s?.rata_asistensi);
+  const finalStr = fmtVal(s?.nilai_akhir);
+  const sortedAtt = [...(group.attendance || [])].sort((a, b) => Number(b.nomor_pertemuan) - Number(a.nomor_pertemuan));
+  const lastSession = sortedAtt[0] || null;
+  const roomLabel = String(sched.room || 'Laboratorium').replace(/^lab(?:oratorium)?\s+/i, '');
+
+  return `
+    <article class="st-freq-card" ${actionAttr}="${esc(id)}" tabindex="0" role="button" aria-label="Buka rincian ${esc(r.nama_mata_kuliah)} frekuensi ${esc(r.kode_kelompok)}">
+      <header class="st-freq-head">
+        <div class="st-freq-meta-top">
+          <div class="st-freq-codes">
+            <span class="st-mono-code">${esc(r.kode_mata_kuliah)}</span>
+            <span class="st-sep">·</span>
+            <span>${Number(sched.sks)} SKS</span>
+            <span class="st-sep">·</span>
+            <span>${esc(r.semester)} ${esc(r.tahun_akademik)}</span>
+          </div>
+          <div class="st-freq-badges">
+            <span class="st-pill neutral">${esc(r.kode_kelompok)}</span>
+            <span class="st-pill ${workflowClass}">${workflowText}</span>
+          </div>
+        </div>
+        <h3 class="st-freq-title">${esc(r.nama_mata_kuliah)}</h3>
+        <div class="st-schedule-bar">
+          <span class="st-schedule-when">
+            <span class="st-schedule-dot" aria-hidden="true"></span>
+            <strong>${esc(sched.dayName)}</strong>
+            <span class="st-sep">·</span>
+            <span class="num">${esc(sched.timeText)}</span>
+          </span>
+          <span class="st-schedule-room">Lab ${esc(roomLabel)}</span>
+        </div>
+      </header>
+
+      <div class="st-people-ledger" aria-label="Tim pengajar dan asisten">
+        <div class="st-person-row">
+          <span class="st-person-role">Dosen pengampu</span>
+          <div class="st-person-val">${apiStudentPersonChip(sched.dosen, 0)}</div>
+        </div>
+        <div class="st-person-row">
+          <span class="st-person-role">Asisten utama</span>
+          <div class="st-person-val">${apiStudentPersonChip(sched.asisten_1, 1)}</div>
+        </div>
+        <div class="st-person-row">
+          <span class="st-person-role">Asisten 2</span>
+          <div class="st-person-val">${apiStudentPersonChip(sched.asisten_2, 2)}</div>
+        </div>
+        ${sched.asisten_3 ? `
+          <div class="st-person-row">
+            <span class="st-person-role">Pendamping teknis</span>
+            <div class="st-person-val">${apiStudentPersonChip(sched.asisten_3, 3)}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="st-session-block">
+        <div class="st-session-head">
+          <span>Realisasi pertemuan</span>
+          <span class="num"><strong>${Number(att.total_hadir)}</strong> / ${Number(att.total_sesi)} sesi hadir (${Number(att.persentase)}%)</span>
+        </div>
+        ${apiRenderStudentSessionStrip(group.attendance, 14)}
+      </div>
+
+      <div class="st-metrics-strip">
+        <div class="st-metric-cell">
+          <span class="st-metric-label">Kehadiran</span>
+          <strong class="st-metric-val num">${Number(att.persentase)}<small>%</small></strong>
+        </div>
+        <div class="st-metric-cell">
+          <span class="st-metric-label">Evaluasi</span>
+          ${evalStr !== null
+            ? `<strong class="st-metric-val num">${evalStr}</strong>`
+            : `<span class="st-metric-empty">Belum dinilai</span>`}
+        </div>
+        <div class="st-metric-cell">
+          <span class="st-metric-label">Asistensi</span>
+          ${asistStr !== null
+            ? `<strong class="st-metric-val num">${asistStr}</strong>`
+            : `<span class="st-metric-empty">Belum dinilai</span>`}
+        </div>
+        <div class="st-metric-cell">
+          <span class="st-metric-label">Nilai akhir</span>
+          ${finalStr !== null
+            ? `<strong class="st-metric-val num is-accent">${finalStr}${s?.predikat ? ` <small>(${esc(s.predikat)})</small>` : ''}</strong>`
+            : `<span class="st-metric-empty">Berjalan</span>`}
+        </div>
+      </div>
+
+      <footer class="st-freq-foot">
+        <span class="st-foot-meta">
+          ${lastSession ? `Tercatat terakhir: P${Number(lastSession.nomor_pertemuan)} · ${esc(lastSession.tanggal_sesi || '—')}` : 'Belum ada sesi tercatat'}
+        </span>
+        <span class="st-card-link">Rincian frekuensi <span aria-hidden="true">→</span></span>
+      </footer>
+    </article>
+  `;
+}
+
 async function apiStudentDashboard() {
   const view = $('#api-view');
-  view.innerHTML = '<div class="empty">Memuat dashboard mahasiswa dari API pusat…</div>';
+  view.innerHTML = '<div class="empty">Memuat ringkasan praktikum dari API pusat…</div>';
   try {
     const [rows, meetingResult, classList] = await Promise.all([
       api('/student/grades'),
@@ -1557,300 +1713,179 @@ async function apiStudentDashboard() {
 
     const courseList = [...groups.values()];
     const totalCourses = courseList.length;
+    const totalSks = courseList.reduce((acc, g) => {
+      const sched = apiExtractStudentScheduleInfo(classMap.get(g.id), g.first);
+      return acc + (Number(sched.sks) || 0);
+    }, 0);
     const totalHadir = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_hadir) || 0), 0);
     const totalSesi = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_sesi) || 0), 0);
     const overallAttPct = totalSesi > 0 ? Math.round((totalHadir / totalSesi) * 100) : (totalCourses ? 100 : 0);
 
     const gradesWithScore = courseList.filter(g => g.summary?.nilai_akhir != null);
     const overallAvgScore = gradesWithScore.length
-      ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(1)
-      : '—';
-    const overallAvgScoreNum = gradesWithScore.length
-      ? Math.min(100, Math.max(0, Number(overallAvgScore)))
-      : 0;
+      ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(2)
+      : null;
 
     const evalEvaluasi = courseList.filter(g => g.summary?.rata_evaluasi != null);
     const avgEvaluasi = evalEvaluasi.length
-      ? (evalEvaluasi.reduce((acc, g) => acc + Number(g.summary.rata_evaluasi), 0) / evalEvaluasi.length).toFixed(1)
-      : '—';
+      ? (evalEvaluasi.reduce((acc, g) => acc + Number(g.summary.rata_evaluasi), 0) / evalEvaluasi.length).toFixed(2)
+      : null;
 
-    const evalAsistensi = courseList.filter(g => g.summary?.rata_asistensi != null);
-    const avgAsistensi = evalAsistensi.length
-      ? (evalAsistensi.reduce((acc, g) => acc + Number(g.summary.rata_asistensi), 0) / evalAsistensi.length).toFixed(1)
-      : '—';
-
-    const passedCount = courseList.filter(g => Number(g.summary?.nilai_akhir || 0) >= 70).length;
     const verifiedCount = courseList.filter(g => {
       const cls = classMap.get(g.id);
-      return (cls?.jadwal || []).some(j => j.status_workflow === 'TERVERIFIKASI' || j.status_workflow === 'DIKUNCI');
+      const sched = apiExtractStudentScheduleInfo(cls, g.first);
+      return sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
     }).length;
 
     const studentNim = user.nim || (rows[0]?.nim) || user.email.split('@')[0];
     const studentProdi = (classList[0]?.program_studi?.nama) || (rows[0]?.program_studi) || 'Teknik Informatika';
     const periodLabel = activePeriod?.academic_year ? `${activePeriod.academic_year} · ${activePeriod.semester || ''}` : 'Semester Aktif';
-    const initials = (user.name || user.email || 'MU').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
 
-    const schedules = [];
-    courseList.forEach(g => {
+    const schedules = courseList.map(g => {
       const cls = classMap.get(g.id);
       const sched = apiExtractStudentScheduleInfo(cls, g.first);
-      schedules.push({
+      return {
+        id: g.id,
         courseCode: g.first.kode_mata_kuliah,
         courseName: g.first.nama_mata_kuliah,
         frequency: g.first.kode_kelompok,
         dayName: sched.dayName,
         timeText: sched.timeText,
-        room: sched.room,
+        room: String(sched.room || 'Laboratorium').replace(/^lab(?:oratorium)?\s+/i, ''),
         dosen: sched.dosen,
         asisten: sched.asisten_1,
         asisten_2: sched.asisten_2,
-      });
+        sks: sched.sks
+      };
     });
 
-    const kpis = [
-      [totalCourses, 'Praktikum Terdaftar', totalCourses ? `${courseList.map(g => g.first.kode_kelompok).join(' · ')}` : 'Belum terdaftar', totalCourses ? 'Aktif' : 'Kosong', '#0f766e'],
-      [`${overallAttPct}%`, 'Tingkat Kehadiran', `${totalHadir} dari ${totalSesi} sesi hadir`, overallAttPct >= 75 ? 'Memenuhi Syarat' : 'Perlu Perhatian', overallAttPct >= 75 ? '#0f766e' : '#b45309'],
-      [overallAvgScore, 'Rata-rata Nilai', `Evaluasi ${avgEvaluasi} · Asistensi ${avgAsistensi}`, gradesWithScore.length ? 'Nilai Berjalan' : 'Proses Pengisian', '#0369a1'],
-      [`${passedCount} / ${totalCourses}`, 'Capaian Praktikum', `${Math.max(0, totalCourses - passedCount)} mata kuliah berjalan`, verifiedCount > 0 ? `${verifiedCount} Terverifikasi` : 'Dipantau', '#0f766e']
-    ];
-
-    const kpiStripHtml = `<div class="dash-kpi-strip stats">
-      ${kpis.map(([val, label, sub, pill, color]) => `
-        <div class="dash-kpi-card stat">
-          <div class="row between">
-            <span class="label">${esc(label)}</span>
-            <span class="dash-kpi-pill" style="color:${color};background-color:${color}14;border-color:${color}33">${esc(pill)}</span>
-          </div>
-          <b>${esc(val)}</b>
-          <small>${esc(sub)}</small>
-        </div>
-      `).join('')}
-    </div>`;
-
-    const radialGaugesHtml = `<div class="dash-radial-grid">
-      ${renderRadialGaugeSvg(overallAttPct, '#0f766e', 'Kepatuhan Presensi', `${totalHadir} dari ${totalSesi} sesi hadir`, `${totalHadir}/${totalSesi}`)}
-      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgEvaluasi) || 0)), '#0284c7', 'Rata-rata Evaluasi', 'Tugas & modul praktikum', avgEvaluasi)}
-      ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(avgAsistensi) || 0)), '#d97706', 'Rata-rata Asistensi', 'Bimbingan & laporan asisten', avgAsistensi)}
-    </div>`;
-
-    const courseChartHtml = courseList.length ? `
-      <div class="dash-course-chart">
-        <div class="dash-subhead row between">
-          <strong>Distribusi Nilai Mata Kuliah</strong>
-          <small class="muted">Skala 0 – 100</small>
-        </div>
-        <div class="dash-bar-list">
-          ${courseList.map(g => {
-            const score = g.summary?.nilai_akhir != null ? Number(g.summary.nilai_akhir) : null;
-            const scoreText = score != null ? `${score.toFixed(1)}${g.summary?.predikat ? ` (${g.summary.predikat})` : ''}` : 'Berjalan';
-            const pct = score != null ? Math.min(100, Math.max(0, score)) : 0;
-            return `
-              <div class="dash-bar-row">
-                <div class="dash-bar-meta row between">
-                  <div class="dash-bar-title">
-                    <strong>${esc(g.first.kode_mata_kuliah)} · ${esc(g.first.nama_mata_kuliah)}</strong>
-                    <span class="badge blue">Frekuensi ${esc(g.first.kode_kelompok)}</span>
-                  </div>
-                  <div class="dash-bar-values">
-                    <strong>${esc(scoreText)}</strong>
-                  </div>
-                </div>
-                <div class="dash-bar-track">
-                  <div class="dash-bar-fill">
-                    <div class="dash-bar-fill-active" style="width:${pct}%;background-color:${pct >= 75 ? '#0f766e' : (pct >= 60 ? '#0284c7' : '#d97706')}"></div>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    ` : '<div class="empty">Belum ada nilai mata kuliah pada periode ini.</div>';
-
-    const scheduleListHtml = schedules.length ? `
-      <div class="student-schedule-list">
-        ${schedules.map(item => `
-          <div class="student-schedule-item">
-            <div class="student-schedule-time">
-              <strong>${esc(item.dayName)}, ${esc(item.timeText)}</strong>
-              <small>${esc(item.room)} · ${esc(item.frequency)}</small>
-            </div>
-            <div style="text-align:right">
-              <span class="badge blue">${esc(item.courseCode)}</span><br>
-              <small class="muted">${esc(item.dosen)}</small>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    ` : '<div class="empty">Belum ada jadwal praktikum yang ditetapkan untuk kelas Anda.</div>';
-
-    const courseCardsHtml = courseList.length ? `
-      <div class="student-course-grid">
-        ${courseList.map(g => {
-          const r = g.first, s = g.summary, att = g.attendanceSummary;
-          const cls = classMap.get(g.id);
-          const sched = apiExtractStudentScheduleInfo(cls, r);
-
-          return `
-            <div class="student-course-card">
-              <div class="student-course-header">
-                <div class="student-course-title">
-                  <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
-                  <small>Kelompok ${esc(r.kode_kelompok)} · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
-                </div>
-                <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
-              </div>
-              <div class="student-course-meta">
-                <div class="student-meta-item">
-                  <span class="label">Jadwal Praktikum</span>
-                  <strong>${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
-                </div>
-                <div class="student-meta-item">
-                  <span class="label">Laboratorium</span>
-                  <strong>${esc(sched.room)}</strong>
-                </div>
-                <div class="student-meta-item">
-                  <span class="label">Dosen Pengampu</span>
-                  <strong>${esc(sched.dosen)}</strong>
-                </div>
-                <div class="student-meta-item">
-                  <span class="label">Asisten Utama</span>
-                  <strong>${esc(sched.asisten_1)}</strong>
-                </div>
-                <div class="student-meta-item">
-                  <span class="label">Asisten 2</span>
-                  <strong>${esc(sched.asisten_2 || '—')}</strong>
-                </div>
-                ${sched.asisten_3 ? `
-                  <div class="student-meta-item">
-                    <span class="label">Pendamping Teknis</span>
-                    <strong>${esc(sched.asisten_3)}</strong>
-                  </div>
-                ` : ''}
-              </div>
-              <div class="student-grade-pills">
-                <div class="student-grade-pill ${att.persentase >= 75 ? 'highlight' : ''}">
-                  <span class="label">Kehadiran</span>
-                  <strong>${att.persentase}%</strong>
-                </div>
-                <div class="student-grade-pill">
-                  <span class="label">Evaluasi</span>
-                  <strong>${s?.rata_evaluasi != null ? Number(s.rata_evaluasi).toFixed(1) : '—'}</strong>
-                </div>
-                <div class="student-grade-pill">
-                  <span class="label">Asistensi</span>
-                  <strong>${s?.rata_asistensi != null ? Number(s.rata_asistensi).toFixed(1) : '—'}</strong>
-                </div>
-                <div class="student-grade-pill highlight">
-                  <span class="label">Nilai Akhir</span>
-                  <strong>${s?.nilai_akhir != null ? Number(s.nilai_akhir).toFixed(1) : '—'}${s?.predikat ? ` (${esc(s.predikat)})` : ''}</strong>
-                </div>
-              </div>
-              <div class="row between" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border,#e2e8f0)">
-                <small class="muted">${att.total_hadir} dari ${att.total_sesi} sesi tercatat</small>
-                <button type="button" class="small btn-subtle-teal" data-open-student-detail="${esc(g.id)}">
-                  <span>Lihat Rincian Nilai &amp; Presensi</span> ${iconSvg('arrow-right')}
-                </button>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    ` : '<div class="empty">Anda belum terdaftar dalam kelas praktikum aktif periode ini.</div>';
+    const leadMetricVal = overallAvgScore !== null ? overallAvgScore : (avgEvaluasi !== null ? avgEvaluasi : null);
+    const leadMetricUnit = overallAvgScore !== null ? 'nilai akhir' : (avgEvaluasi !== null ? 'rata-rata evaluasi' : '');
 
     view.innerHTML = `
-      <div class="intro row between">
-        <div class="intro-head">
-          <h1>Dashboard Mahasiswa</h1>
-          <p>${esc(user.name)} · NIM ${esc(studentNim)} · ${esc(studentProdi)} · Periode ${esc(periodLabel)}</p>
-        </div>
-        <div class="row">
-          <button type="button" class="small btn-subtle-teal" id="student-dash-open-grades">
-            ${iconSvg('file-text')} <span>Lihat Nilai Saya</span>
-          </button>
-        </div>
-      </div>
-
-      ${kpiStripHtml}
-
-      <div class="dash-analytics-grid">
-        <div class="dash-main-chart">
-          <section class="card dash-chart-card">
-            <div class="card-head">
-              <div>
-                <h2>Analitik Realisasi &amp; Performa Akademik</h2>
-                <p>Pantau ketercapaian kehadiran, nilai praktikum, dan status komponen semester ini.</p>
-              </div>
-            </div>
-            <div class="card-body">
-              ${radialGaugesHtml}
-              ${courseChartHtml}
-            </div>
-          </section>
-        </div>
-        <div class="dash-side-stack">
-          <section class="card">
-            <div class="card-head">
-              <h2>Profil Praktikan</h2>
-            </div>
-            <div class="card-body" style="padding:16px">
-              <div class="student-profile-strip">
-                <div class="student-profile-avatar">${esc(initials)}</div>
-                <div class="student-profile-copy">
-                  <strong>${esc(user.name)}</strong>
-                  <small>${esc(studentNim)} · ${esc(studentProdi)}</small>
-                  <small class="badge green" style="align-self:flex-start;margin-top:4px">Mahasiswa Aktif</small>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-head">
-              <h2>Jadwal Praktikum Mingguan</h2>
-              <p>Agenda praktikum rutin semester berjalan.</p>
-            </div>
-            <div class="card-body" style="padding:16px">
-              ${scheduleListHtml}
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-head">
-              <h2>Ketentuan &amp; Standar Praktikum</h2>
-            </div>
-            <div class="card-body" style="padding:16px">
-              <div class="student-guide-box">
-                <div class="student-guide-item">
-                  ${iconSvg('shield-check')}
-                  <span><strong>Syarat Presensi 75%:</strong> Mahasiswa wajib memenuhi minimal 75% kehadiran untuk berhak mengikuti evaluasi akhir.</span>
-                </div>
-                <div class="student-guide-item">
-                  ${iconSvg('check-circle')}
-                  <span><strong>Asistensi Modul:</strong> Selesaikan asistensi berkala bersama Asisten Praktikum sebelum batas waktu penutupan modul.</span>
-                </div>
-                <div class="student-guide-item">
-                  ${iconSvg('clock')}
-                  <span><strong>Nilai Berjalan:</strong> Nilai sementara dapat diperbarui secara bertahap oleh Dosen dan Asisten hingga verifikasi semester selesai.</span>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <section class="card" style="margin-top:20px">
-        <div class="card-head row between">
+      <div class="st-workspace">
+        <header class="st-title-row">
           <div>
-            <h2>Mata Kuliah Praktikum Saya</h2>
-            <p>${totalCourses} frekuensi praktikum aktif yang Anda ikuti.</p>
+            <h1>Ringkasan Praktikum</h1>
+            <p class="st-subline">
+              <span>${esc(user.name)}</span>
+              <span class="st-sep">·</span>
+              <span class="st-mono">NIM ${esc(studentNim)}</span>
+              <span class="st-sep">·</span>
+              <span>${esc(studentProdi)}</span>
+              <span class="st-sep">·</span>
+              <span>Periode ${esc(periodLabel)}</span>
+            </p>
           </div>
+          <div class="st-title-actions">
+            <button type="button" class="st-btn" id="student-dash-open-grades">
+              <span>Nilai &amp; presensi lengkap</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="st-kpi-strip" aria-label="Indikator capaian semester">
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Frekuensi terdaftar</span>
+            <div class="st-kpi-value num">${totalCourses} <small>kelas · ${totalSks} SKS</small></div>
+            <div class="st-kpi-delta">${totalCourses ? courseList.map(g => esc(g.first.kode_kelompok)).join(' · ') : 'Belum ada kelas aktif'}</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Kehadiran kumulatif</span>
+            <div class="st-kpi-value num">${overallAttPct}<small>%</small></div>
+            <div class="st-kpi-delta"><span class="${overallAttPct >= 75 ? 'st-pos-text' : 'st-warn-text'}">${totalHadir} dari ${totalSesi} sesi</span> tercatat hadir</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Capaian evaluasi</span>
+            ${leadMetricVal !== null
+              ? `<div class="st-kpi-value num">${leadMetricVal} <small>${esc(leadMetricUnit)}</small></div>`
+              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+            <div class="st-kpi-delta">${evalEvaluasi.length} dari ${totalCourses} frekuensi memiliki nilai evaluasi</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Status pengesahan</span>
+            <div class="st-kpi-value num">${verifiedCount} <small>/ ${totalCourses} disahkan</small></div>
+            <div class="st-kpi-delta">${verifiedCount === totalCourses && totalCourses > 0 ? '<span class="st-pos-text">Disetujui dosen pengampu</span>' : 'Nilai sementara (berjalan)'}</div>
+          </div>
+        </section>
+
+        <div class="st-dash-grid">
+          <div class="st-dash-main">
+            <div class="st-section-bar">
+              <h2>Frekuensi praktikum aktif</h2>
+              <span class="st-legend-inline">
+                <span><i class="st-dot is-hadir"></i> Hadir</span>
+                <span><i class="st-dot is-izin"></i> Izin/Sakit</span>
+                <span><i class="st-dot is-alpa"></i> Alpa</span>
+                <span><i class="st-dot is-upcoming"></i> Terjadwal</span>
+              </span>
+            </div>
+            ${courseList.length ? `
+              <div class="st-freq-grid">
+                ${courseList.map(g => {
+                  const cls = classMap.get(g.id);
+                  const sched = apiExtractStudentScheduleInfo(cls, g.first);
+                  return apiRenderStudentFreqCard(g.id, g, sched, 'data-open-student-detail');
+                }).join('')}
+              </div>
+            ` : '<div class="empty">Anda belum terdaftar dalam kelas praktikum aktif periode ini.</div>'}
+          </div>
+
+          <aside class="st-dash-side">
+            <section class="st-panel">
+              <header class="st-panel-head">
+                <h2>Jadwal laboratorium mingguan</h2>
+                <span class="st-panel-meta">${schedules.length} sesi / minggu</span>
+              </header>
+              ${schedules.length ? `
+                <div class="st-sched-list">
+                  ${schedules.map(item => `
+                    <div class="st-sched-row" data-open-student-detail="${esc(item.id)}" role="button" tabindex="0">
+                      <div class="st-sched-left">
+                        <div class="st-sched-day">
+                          <strong>${esc(item.dayName)}</strong>
+                          <span class="st-mono num">${esc(item.timeText)}</span>
+                        </div>
+                        <div class="st-sched-course">${esc(item.courseName)}</div>
+                        <div class="st-sched-sub">Dosen: ${esc(item.dosen)} · Asisten: ${esc(item.asisten)}</div>
+                      </div>
+                      <div class="st-sched-right">
+                        <span class="st-pill neutral">${esc(item.frequency)}</span>
+                        <span class="st-sched-lab">Lab ${esc(item.room)}</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<div class="empty">Belum ada jadwal praktikum yang ditetapkan.</div>'}
+            </section>
+
+            <section class="st-panel">
+              <header class="st-panel-head">
+                <h2>Perbandingan capaian frekuensi</h2>
+                <span class="st-panel-meta">Skala 0–100%</span>
+              </header>
+              <div id="st-dash-chart" class="st-chart-box"></div>
+              <div class="st-rules-note">
+                <div class="st-rule-line"><strong>Batas presensi 75%</strong><span>Syarat minimum mengikuti ujian akhir praktikum.</span></div>
+                <div class="st-rule-line"><strong>Asistensi berkala</strong><span>Penilaian modul dan konsultasi dicatat per pertemuan oleh asisten.</span></div>
+              </div>
+            </section>
+          </aside>
         </div>
-        <div class="card-body" style="padding:18px">
-          ${courseCardsHtml}
-        </div>
-      </section>
+      </div>
     `;
+
+    if (window.Charts && $('#st-dash-chart') && courseList.length) {
+      const barRows = courseList.map(g => ({
+        label: `${g.first.kode_kelompok} · ${g.first.nama_mata_kuliah}`,
+        value: Number(g.attendanceSummary.persentase) || 0
+      }));
+      window.Charts.barList($('#st-dash-chart'), barRows, {
+        format: v => `${Math.round(v)}% hadir`,
+        thin: true
+      });
+    }
 
     $('#student-dash-open-grades').onclick = () => {
       page = 'Nilai Saya';
@@ -1858,11 +1893,18 @@ async function apiStudentDashboard() {
       renderApiMode();
     };
 
-    document.querySelectorAll('[data-open-student-detail]').forEach(btn => {
-      btn.onclick = () => {
-        window.selectedStudentClassId = btn.dataset.openStudentDetail;
+    document.querySelectorAll('[data-open-student-detail]').forEach(el => {
+      const openFn = () => {
+        window.selectedStudentClassId = el.dataset.openStudentDetail;
         page = 'Nilai Saya';
         renderApiMode();
+      };
+      el.onclick = openFn;
+      el.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openFn();
+        }
       };
     });
   } catch (error) {
@@ -1908,14 +1950,14 @@ async function apiStudentGrades() {
     }
 
     const fmt = value => value === null || value === undefined ? '—' : Number(value).toFixed(2);
-    const attendanceTone = { HADIR: 'green', IZIN: 'yellow', SAKIT: 'yellow', ALPA: 'red', TERLAMBAT: 'yellow' };
+    const attendanceTone = { HADIR: 'pos', IZIN: 'warn', SAKIT: 'warn', ALPA: 'neg', TERLAMBAT: 'warn' };
     const attendanceLabel = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
     const studentNim = user.nim || (rows[0]?.nim) || user.email.split('@')[0];
 
     const extractScheduleInfo = (cls, fallbackFirst) => apiExtractStudentScheduleInfo(cls, fallbackFirst);
 
     if (!groups.size) {
-      view.innerHTML = `<div class="intro"><h1>Nilai &amp; Presensi Praktikum</h1><p>${esc(user.name)} · Hasil Penilaian &amp; Presensi Praktikum</p></div><section class="card"><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
+      view.innerHTML = `<div class="st-workspace"><header class="st-title-row"><div><h1>Nilai &amp; Presensi Praktikum</h1><p class="st-subline">${esc(user.name)} · Hasil Penilaian &amp; Presensi Praktikum</p></div></header><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></div>`;
       return;
     }
 
@@ -1925,14 +1967,23 @@ async function apiStudentGrades() {
 
     if (!selectedId) {
       const courseList = [...groups.values()];
+      const totalSks = courseList.reduce((acc, g) => {
+        const sched = extractScheduleInfo(classMap.get(g.id), g.first);
+        return acc + (Number(sched.sks) || 0);
+      }, 0);
       const totalHadir = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_hadir) || 0), 0);
       const totalSesi = courseList.reduce((acc, g) => acc + (Number(g.attendanceSummary.total_sesi) || 0), 0);
       const overallAttPct = totalSesi > 0 ? Math.round((totalHadir / totalSesi) * 100) : (courseList.length ? 100 : 0);
 
       const gradesWithScore = courseList.filter(g => g.summary?.nilai_akhir != null);
       const overallAvgScore = gradesWithScore.length
-        ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(1)
-        : '—';
+        ? (gradesWithScore.reduce((acc, g) => acc + Number(g.summary.nilai_akhir), 0) / gradesWithScore.length).toFixed(2)
+        : null;
+
+      const evalCourses = courseList.filter(g => g.summary?.rata_evaluasi != null);
+      const avgEvaluasi = evalCourses.length
+        ? (evalCourses.reduce((acc, g) => acc + Number(g.summary.rata_evaluasi), 0) / evalCourses.length).toFixed(2)
+        : null;
 
       const verifiedCount = courseList.filter(g => {
         const cls = classMap.get(g.id);
@@ -1940,126 +1991,73 @@ async function apiStudentGrades() {
         return sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
       }).length;
 
+      const leadScore = overallAvgScore !== null ? overallAvgScore : avgEvaluasi;
+      const leadLabel = overallAvgScore !== null ? 'nilai akhir' : (avgEvaluasi !== null ? 'evaluasi berjalan' : '');
+
       view.innerHTML = `
-        <div class="intro row between">
-          <div class="intro-head">
-            <h1>Nilai &amp; Presensi Praktikum</h1>
-            <p>${esc(user.name)} · NIM ${esc(studentNim)} · ${groups.size} frekuensi praktikum aktif terdaftar</p>
-          </div>
-          <div class="row">
-            <button type="button" class="small btn-back" id="student-back-to-dashboard-top">${iconSvg('arrow-left')} <span>Kembali ke Dashboard</span></button>
-          </div>
-        </div>
-
-        <div class="dash-kpi-strip stats" style="margin-bottom:16px">
-          <div class="dash-kpi-card stat">
-            <span class="label">Praktikum Terdaftar</span>
-            <b>${groups.size} <small style="font-weight:normal;font-size:13px">Kelas</small></b>
-            <small class="badge green">Aktif Semester Ini</small>
-          </div>
-          <div class="dash-kpi-card stat">
-            <span class="label">Rata-rata Kehadiran</span>
-            <b>${overallAttPct}%</b>
-            <small class="badge ${overallAttPct >= 75 ? 'green' : 'yellow'}">${totalHadir} dari ${totalSesi} sesi hadir</small>
-          </div>
-          <div class="dash-kpi-card stat">
-            <span class="label">Rata-rata Nilai</span>
-            <b>${overallAvgScore}</b>
-            <small>${gradesWithScore.length} dari ${groups.size} kelas dinilai</small>
-          </div>
-          <div class="dash-kpi-card stat">
-            <span class="label">Status Verifikasi</span>
-            <b>${verifiedCount} <small style="font-weight:normal;font-size:13px">/ ${groups.size}</small></b>
-            <small class="badge ${verifiedCount === groups.size && groups.size > 0 ? 'green' : ''}">${verifiedCount > 0 ? `${verifiedCount} Terverifikasi` : 'Nilai Sementara'}</small>
-          </div>
-        </div>
-
-        <section class="card">
-          <div class="card-head">
+        <div class="st-workspace">
+          <header class="st-title-row">
             <div>
-              <h2>Pilih Frekuensi Praktikum</h2>
-              <p>Pilih kelas praktikum di bawah untuk membuka dashboard rincian absensi kehadiran, grafik performa modul, dan bobot nilai akhir.</p>
+              <h1>Nilai &amp; Presensi Praktikum</h1>
+              <p class="st-subline">
+                <span>${esc(user.name)}</span>
+                <span class="st-sep">·</span>
+                <span class="st-mono">NIM ${esc(studentNim)}</span>
+                <span class="st-sep">·</span>
+                <span>${groups.size} frekuensi aktif (${totalSks} SKS)</span>
+              </p>
             </div>
-          </div>
-          <div class="card-body">
-            <div class="student-course-grid">
-              ${[...groups.entries()].map(([id, group]) => {
-                const r = group.first, s = group.summary, att = group.attendanceSummary;
-                const cls = classMap.get(id);
-                const sched = extractScheduleInfo(cls, r);
-                const isVerified = sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
-                const workflowBadge = isVerified ? '<span class="badge green">Terverifikasi</span>' : '<span class="badge yellow">Nilai Berjalan</span>';
-
-                return `
-                  <div class="student-course-card">
-                    <div class="student-course-header">
-                      <div class="student-course-title">
-                        <strong>${esc(r.kode_mata_kuliah)} · ${esc(r.nama_mata_kuliah)}</strong>
-                        <small>${sched.sks} SKS · ${esc(r.semester)} ${esc(r.tahun_akademik)}</small>
-                      </div>
-                      <div class="row" style="gap:4px">
-                        <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
-                        ${workflowBadge}
-                      </div>
-                    </div>
-
-                    <div class="student-course-meta">
-                      <div class="student-meta-item">
-                        <span class="label">Jadwal Praktikum</span>
-                        <strong>${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
-                      </div>
-                      <div class="student-meta-item">
-                        <span class="label">Laboratorium</span>
-                        <strong>${esc(sched.room)}</strong>
-                      </div>
-                      <div class="student-meta-item">
-                        <span class="label">Dosen Pengampu</span>
-                        <strong>${esc(sched.dosen)}</strong>
-                      </div>
-                      <div class="student-meta-item">
-                        <span class="label">Asisten Utama</span>
-                        <strong>${esc(sched.asisten_1)}</strong>
-                      </div>
-                      <div class="student-meta-item">
-                        <span class="label">Asisten 2</span>
-                        <strong>${esc(sched.asisten_2 || '—')}</strong>
-                      </div>
-                      ${sched.asisten_3 ? `
-                        <div class="student-meta-item">
-                          <span class="label">Pendamping Teknis</span>
-                          <strong>${esc(sched.asisten_3)}</strong>
-                        </div>
-                      ` : ''}
-                    </div>
-
-                    <div class="student-grade-pills">
-                      <div class="student-grade-pill">
-                        <span class="label">Kehadiran</span>
-                        <strong>${att.persentase}%</strong>
-                      </div>
-                      <div class="student-grade-pill">
-                        <span class="label">Evaluasi</span>
-                        <strong>${fmt(s?.rata_evaluasi)}</strong>
-                      </div>
-                      <div class="student-grade-pill">
-                        <span class="label">Asistensi</span>
-                        <strong>${fmt(s?.rata_asistensi)}</strong>
-                      </div>
-                      <div class="student-grade-pill highlight">
-                        <span class="label">Nilai Akhir</span>
-                        <strong>${s?.nilai_akhir != null ? fmt(s.nilai_akhir) : '—'}${s?.predikat ? ` (${esc(s.predikat)})` : ''}</strong>
-                      </div>
-                    </div>
-
-                    <button type="button" class="primary small" style="width:100%;justify-content:center;margin-top:6px" data-select-student-class="${esc(id)}">
-                      ${iconSvg('bar-chart')} <span>Buka Dashboard Frekuensi</span> <span aria-hidden="true">→</span>
-                    </button>
-                  </div>
-                `;
-              }).join('')}
+            <div class="st-title-actions">
+              <button type="button" class="st-btn" id="student-back-to-dashboard-top">
+                <span aria-hidden="true">←</span>
+                <span>Ringkasan utama</span>
+              </button>
             </div>
+          </header>
+
+          <section class="st-kpi-strip" aria-label="Ringkasan nilai dan kehadiran">
+            <div class="st-kpi-cell">
+              <span class="st-kpi-label">Praktikum terdaftar</span>
+              <div class="st-kpi-value num">${groups.size} <small>kelas · ${totalSks} SKS</small></div>
+              <div class="st-kpi-delta">${courseList.map(g => esc(g.first.kode_kelompok)).join(' · ')}</div>
+            </div>
+            <div class="st-kpi-cell">
+              <span class="st-kpi-label">Rata-rata kehadiran</span>
+              <div class="st-kpi-value num">${overallAttPct}<small>%</small></div>
+              <div class="st-kpi-delta"><span class="${overallAttPct >= 75 ? 'st-pos-text' : 'st-warn-text'}">${totalHadir} dari ${totalSesi} sesi</span> hadir tercatat</div>
+            </div>
+            <div class="st-kpi-cell">
+              <span class="st-kpi-label">Rata-rata nilai</span>
+              ${leadScore !== null
+                ? `<div class="st-kpi-value num">${leadScore} <small>${esc(leadLabel)}</small></div>`
+                : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+              <div class="st-kpi-delta">${gradesWithScore.length ? `${gradesWithScore.length} dari ${groups.size} kelas memiliki nilai akhir` : `${evalCourses.length} dari ${groups.size} kelas memiliki nilai evaluasi`}</div>
+            </div>
+            <div class="st-kpi-cell">
+              <span class="st-kpi-label">Status verifikasi</span>
+              <div class="st-kpi-value num">${verifiedCount} <small>/ ${groups.size} kelas</small></div>
+              <div class="st-kpi-delta">${verifiedCount > 0 ? `<span class="st-pos-text">${verifiedCount} frekuensi terverifikasi</span>` : 'Nilai sementara (berjalan)'}</div>
+            </div>
+          </section>
+
+          <div class="st-section-bar">
+            <h2>Frekuensi praktikum diikuti</h2>
+            <span class="st-legend-inline">
+              <span><i class="st-dot is-hadir"></i> Hadir</span>
+              <span><i class="st-dot is-izin"></i> Izin/Sakit</span>
+              <span><i class="st-dot is-alpa"></i> Alpa</span>
+              <span><i class="st-dot is-upcoming"></i> Sesi berikutnya</span>
+            </span>
           </div>
-        </section>
+
+          <div class="st-freq-grid">
+            ${[...groups.entries()].map(([id, group]) => {
+              const cls = classMap.get(id);
+              const sched = extractScheduleInfo(cls, group.first);
+              return apiRenderStudentFreqCard(id, group, sched, 'data-select-student-class');
+            }).join('')}
+          </div>
+        </div>
       `;
 
       if ($('#student-back-to-dashboard-top')) {
@@ -2069,10 +2067,17 @@ async function apiStudentGrades() {
           renderApiMode();
         };
       }
-      document.querySelectorAll('[data-select-student-class]').forEach(b => {
-        b.onclick = () => {
-          window.selectedStudentClassId = b.dataset.selectStudentClass;
+      document.querySelectorAll('[data-select-student-class]').forEach(el => {
+        const selectFn = () => {
+          window.selectedStudentClassId = el.dataset.selectStudentClass;
           apiStudentGrades();
+        };
+        el.onclick = selectFn;
+        el.onkeydown = e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectFn();
+          }
         };
       });
       return;
@@ -2084,10 +2089,11 @@ async function apiStudentGrades() {
     const classMeetings = meetingGroups.get(selectedId)?.meetings || [];
     const cls = classMap.get(selectedId);
     const sched = extractScheduleInfo(cls, r);
+    const roomClean = String(sched.room || 'Laboratorium').replace(/^lab(?:oratorium)?\s+/i, '');
 
     const isVerified = sched.workflow === 'TERVERIFIKASI' || sched.workflow === 'DIKUNCI';
-    const workflowTone = isVerified ? 'green' : (sched.workflow === 'DIAJUKAN' ? 'yellow' : (sched.workflow === 'PERLU_REVISI' ? 'red' : ''));
-    const workflowLabel = sched.workflow === 'TERVERIFIKASI' ? 'Disetujui Dosen' : (sched.workflow === 'DIKUNCI' ? 'Penilaian Dikunci' : (sched.workflow === 'DIAJUKAN' ? 'Menunggu Dosen' : (sched.workflow === 'PERLU_REVISI' ? 'Perlu Revisi' : 'Nilai Sementara (Draf)')));
+    const workflowTone = isVerified ? 'pos' : (sched.workflow === 'PERLU_REVISI' ? 'neg' : 'warn');
+    const workflowLabel = sched.workflow === 'TERVERIFIKASI' ? 'Disetujui dosen' : (sched.workflow === 'DIKUNCI' ? 'Penilaian dikunci' : (sched.workflow === 'DIAJUKAN' ? 'Menunggu dosen' : (sched.workflow === 'PERLU_REVISI' ? 'Perlu revisi' : 'Nilai sementara (draf)')));
 
     const hadirCount = attendance.filter(a => a.status === 'HADIR').length;
     const izinCount = attendance.filter(a => a.status === 'IZIN').length;
@@ -2098,60 +2104,42 @@ async function apiStudentGrades() {
     const asistComponents = components.filter(c => (c.kode_komponen || '').startsWith('ASISTENSI') || (c.nama_komponen || '').toLowerCase().includes('asistensi'));
 
     const attendanceRows = attendance.length ? `
-      <div class="dash-att-summary-strip">
-        <div class="dash-att-summary-item">
-          <span class="label">Hadir</span>
-          <strong style="color:#0f766e">${hadirCount}</strong>
-        </div>
-        <div class="dash-att-summary-item">
-          <span class="label">Izin</span>
-          <strong style="color:#b45309">${izinCount}</strong>
-        </div>
-        <div class="dash-att-summary-item">
-          <span class="label">Sakit</span>
-          <strong style="color:#b45309">${sakitCount}</strong>
-        </div>
-        <div class="dash-att-summary-item">
-          <span class="label">Alpa</span>
-          <strong style="color:#b91c1c">${alpaCount}</strong>
-        </div>
-      </div>
       <div class="table-wrap">
-        <table>
+        <table class="st-table">
           <thead>
             <tr>
-              <th>PERTEMUAN</th>
-              <th>TANGGAL SESI</th>
-              <th>MATERI / TOPIK</th>
-              <th>STATUS KEHADIRAN</th>
-              <th>CATATAN</th>
+              <th>Pertemuan</th>
+              <th>Tanggal sesi</th>
+              <th>Materi &amp; topik</th>
+              <th>Status kehadiran</th>
+              <th>Catatan asisten</th>
             </tr>
           </thead>
           <tbody>
             ${attendance.map(a => `
               <tr>
                 <td><strong>Pertemuan ${Number(a.nomor_pertemuan)}</strong></td>
-                <td>${esc(a.tanggal_sesi || '—')}</td>
+                <td class="st-mono num">${esc(a.tanggal_sesi || '—')}</td>
                 <td>${esc([a.topik, a.materi].filter(Boolean).join(' · ') || '—')}</td>
-                <td><span class="badge ${attendanceTone[a.status] || ''}">${esc(a.nama_status || attendanceLabel[a.status] || a.status)}</span></td>
-                <td>${esc(a.catatan || '—')}</td>
+                <td><span class="st-pill ${attendanceTone[a.status] || 'neutral'}">${esc(a.nama_status || attendanceLabel[a.status] || a.status)}</span></td>
+                <td class="st-muted-cell">${esc(a.catatan || '—')}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
-    ` : '<div class="empty">Belum ada sesi presensi yang dicatat oleh Asisten.</div>';
+    ` : '<div class="empty">Belum ada sesi presensi yang dicatat oleh asisten.</div>';
 
     const componentRows = components.length ? `
       <div class="table-wrap">
-        <table>
+        <table class="st-table">
           <thead>
             <tr>
-              <th>KOMPONEN PENILAIAN</th>
-              <th>BOBOT PERSEN</th>
-              <th>NILAI ANDA</th>
-              <th>KONTRIBUSI BOBOT</th>
-              <th>TANGGAL INPUT</th>
+              <th>Komponen penilaian</th>
+              <th class="num">Bobot</th>
+              <th class="num">Nilai</th>
+              <th class="num">Kontribusi poin</th>
+              <th class="num">Diperbarui</th>
             </tr>
           </thead>
           <tbody>
@@ -2162,308 +2150,320 @@ async function apiStudentGrades() {
               return `
                 <tr>
                   <td><strong>${esc(c.nama_komponen || c.kode_komponen)}</strong></td>
-                  <td>${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
-                  <td><strong>${fmt(c.nilai)}</strong></td>
-                  <td><span class="badge blue">${contribution} poin</span></td>
-                  <td>${esc(c.diubah_pada || '—')}</td>
+                  <td class="num">${c.bobot_persen === null ? '—' : Number(c.bobot_persen) + '%'}</td>
+                  <td class="num"><strong>${fmt(c.nilai)}</strong></td>
+                  <td class="num">${contribution !== '—' ? `${contribution} poin` : '—'}</td>
+                  <td class="num st-muted-cell">${esc(c.diubah_pada || '—')}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
       </div>
-    ` : '<div class="empty">Belum ada komponen nilai akhir yang tercatat.</div>';
+    ` : '<div class="empty">Belum ada komponen nilai akhir yang tercatat pada frekuensi ini.</div>';
 
     const meetingRows = classMeetings.length ? classMeetings.map(meeting => `
-      <div class="card-body" style="border-bottom:1px solid var(--border-color, #e2e8f0);padding-bottom:16px;margin-bottom:16px">
-        <div class="row between" style="margin-bottom:10px">
-          <h3 style="margin:0">Pertemuan ${Number(meeting.nomor_pertemuan)} · ${esc(meeting.tanggal_sesi || 'Tanggal belum ditentukan')}</h3>
-          <span class="badge ${meeting.lengkap ? 'green' : 'yellow'}">Nilai pertemuan: ${meeting.nilai_pertemuan === null ? 'Belum lengkap' : fmt(meeting.nilai_pertemuan)}</span>
+      <div class="st-meeting-eval-block">
+        <div class="st-meeting-eval-head">
+          <div>
+            <strong>Pertemuan ${Number(meeting.nomor_pertemuan)}</strong>
+            <span class="st-sep">·</span>
+            <span class="st-mono num">${esc(meeting.tanggal_sesi || 'Tanggal belum ditentukan')}</span>
+          </div>
+          <span class="st-pill ${meeting.lengkap ? 'pos' : 'warn'}">
+            Nilai pertemuan: ${meeting.nilai_pertemuan === null ? 'Belum lengkap' : fmt(meeting.nilai_pertemuan)}
+          </span>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="st-table">
             <thead>
               <tr>
-                <th>KATEGORI</th>
-                <th>BOBOT</th>
-                <th>NILAI</th>
-                <th>CATATAN ASISTEN</th>
+                <th>Kategori penilaian</th>
+                <th class="num">Bobot</th>
+                <th class="num">Nilai</th>
+                <th>Catatan asisten</th>
               </tr>
             </thead>
             <tbody>
               ${meeting.komponen.map(component => `
                 <tr>
                   <td><strong>${esc(component.nama)}</strong></td>
-                  <td>${Number(component.bobot_persen)}%</td>
-                  <td><strong>${fmt(component.nilai)}</strong></td>
-                  <td>${esc(component.catatan || '—')}</td>
+                  <td class="num">${Number(component.bobot_persen)}%</td>
+                  <td class="num"><strong>${fmt(component.nilai)}</strong></td>
+                  <td class="st-muted-cell">${esc(component.catatan || '—')}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       </div>
-    `).join('') : '<div class="empty">Belum ada nilai kategori per pertemuan.</div>';
+    `).join('') : '<div class="empty">Belum ada rincian nilai kategori per pertemuan.</div>';
 
     const componentBarsHtml = components.length ? `
-      <div class="dash-comp-list">
+      <div class="st-comp-list">
         ${components.map(c => {
-          const score = Math.min(100, Math.max(0, Number(c.nilai) || 0));
+          const hasScore = c.nilai !== null && c.nilai !== undefined;
+          const score = hasScore ? Math.min(100, Math.max(0, Number(c.nilai) || 0)) : 0;
           const weight = c.bobot_persen != null ? Number(c.bobot_persen) : null;
-          const contribution = weight != null && c.nilai != null ? ((Number(c.nilai) * weight) / 100).toFixed(2) : null;
-          const color = score >= 80 ? '#0f766e' : (score >= 65 ? '#0284c7' : '#b45309');
+          const contribution = weight != null && hasScore ? ((Number(c.nilai) * weight) / 100).toFixed(2) : null;
           return `
-            <div class="dash-comp-item">
-              <div class="dash-comp-head">
-                <span class="dash-comp-name">${esc(c.nama_komponen || c.kode_komponen)}</span>
-                <span class="dash-comp-meta">
-                  <strong>${fmt(c.nilai)}</strong> <small>/ 100</small>
-                  ${weight !== null ? `<span class="badge">${weight}%</span>` : ''}
+            <div class="st-comp-row">
+              <div class="st-comp-top">
+                <span class="st-comp-name">${esc(c.nama_komponen || c.kode_komponen)} ${weight !== null ? `<small>(${weight}%)</small>` : ''}</span>
+                <span class="st-comp-val num">
+                  ${hasScore ? `<strong>${fmt(c.nilai)}</strong> <small>/ 100</small>` : '<span class="st-metric-empty">Belum dinilai</span>'}
                 </span>
               </div>
-              <div class="dash-comp-bar">
-                <div class="dash-comp-fill" style="width:${score}%;background-color:${color}"></div>
+              <div class="st-comp-track">
+                <div class="st-comp-fill" style="width:${score}%"></div>
               </div>
-              <div class="dash-comp-foot">
-                <span>${contribution !== null ? `Kontribusi: ${contribution} poin` : 'Bobot belum diatur'}</span>
-                <span>${c.diubah_pada ? esc(c.diubah_pada) : ''}</span>
+              <div class="st-comp-sub">
+                <span>${contribution !== null ? `Kontribusi bobot: ${contribution} poin` : 'Menunggu penilaian komponen'}</span>
+                <span class="num">${c.diubah_pada ? esc(String(c.diubah_pada).slice(0, 10)) : ''}</span>
               </div>
             </div>
           `;
         }).join('')}
       </div>
-    ` : '<div class="empty" style="margin-top:12px">Belum ada komponen nilai akhir yang tercatat.</div>';
+    ` : '<div class="empty">Belum ada komponen nilai akhir yang tercatat.</div>';
 
     const activeTab = window.apiStudentDetailTab || 'attendance';
     const detailTabs = [
-      ['attendance', 'Presensi Sesi', attendance.length, 'check-square'],
-      ['components', 'Komponen Nilai & Bobot', components.length, 'file-text'],
-      ['meetings', 'Evaluasi Tiap Pertemuan', classMeetings.length, 'table']
+      ['attendance', 'Presensi sesi', attendance.length],
+      ['meetings', 'Evaluasi tiap pertemuan', classMeetings.length],
+      ['components', 'Komponen nilai akhir', components.length]
     ];
 
     view.innerHTML = `
-      <div class="freq-nav-bar">
-        <div class="freq-nav-actions">
-          <button type="button" class="small btn-back" id="student-back-to-list">${iconSvg('arrow-left')} <span>Daftar Frekuensi</span></button>
-          <button type="button" class="small btn-back" id="student-back-to-dashboard">${iconSvg('grid')} <span>Dashboard Utama</span></button>
-        </div>
-        ${groups.size > 1 ? `
-          <div class="freq-pill-nav" role="tablist" aria-label="Pindah frekuensi">
-            ${[...groups.entries()].map(([gid, g]) => `
-              <button type="button" class="freq-pill-btn ${gid === selectedId ? 'active' : ''}" data-freq-switch="${esc(gid)}">
-                <span>${esc(g.first.kode_kelompok)}</span>
-                <small>${esc(g.first.kode_mata_kuliah)}</small>
-              </button>
-            `).join('')}
+      <div class="st-workspace">
+        <div class="st-detail-topbar">
+          <div class="st-detail-back-group">
+            <button type="button" class="st-btn" id="student-back-to-list">
+              <span aria-hidden="true">←</span>
+              <span>Semua frekuensi</span>
+            </button>
+            <button type="button" class="st-btn ghost" id="student-back-to-dashboard">
+              <span>Ringkasan</span>
+            </button>
           </div>
-        ` : ''}
-      </div>
+          ${groups.size > 1 ? `
+            <div class="st-segmented" role="tablist" aria-label="Pindah frekuensi">
+              ${[...groups.entries()].map(([gid, g]) => `
+                <button type="button" role="tab" aria-selected="${gid === selectedId}" class="${gid === selectedId ? 'active' : ''}" data-freq-switch="${esc(gid)}">
+                  <span class="st-mono">${esc(g.first.kode_kelompok)}</span>
+                  <small>${esc(g.first.nama_mata_kuliah)}</small>
+                </button>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
 
-      <div class="freq-hero-card">
-        <div class="freq-hero-badges">
-          <span class="badge blue">Frekuensi ${esc(r.kode_kelompok)}</span>
-          <span class="badge">${esc(r.kode_mata_kuliah)} · ${sched.sks} SKS</span>
-          <span class="badge">${esc(r.semester)} ${esc(r.tahun_akademik)}</span>
-          <span class="badge ${workflowTone}">${workflowLabel}</span>
-        </div>
-        <div class="freq-hero-title">
-          <h1>${esc(r.nama_mata_kuliah)}</h1>
-          <p>Dashboard Rincian Frekuensi · Ruang ${esc(sched.room)} · ${esc(sched.dayName)}, ${esc(sched.timeText)} · Dosen: ${esc(sched.dosen)}</p>
-        </div>
-      </div>
-
-      <div class="dash-kpi-strip stats" style="margin-bottom:16px">
-        <div class="dash-kpi-card stat">
-          <span class="label">Total Kehadiran</span>
-          <b>${att.total_hadir} <small style="font-weight:normal;font-size:13px">/ ${att.total_sesi} sesi</small></b>
-          <small class="badge ${att.persentase >= 75 ? 'green' : (att.total_sesi ? 'yellow' : '')}">${att.persentase}% Kehadiran</small>
-        </div>
-        <div class="dash-kpi-card stat">
-          <span class="label">Nilai Akhir</span>
-          <b>${fmt(s?.nilai_akhir)}</b>
-          <small class="badge ${s?.predikat ? 'green' : ''}">${s?.predikat ? `Predikat ${esc(s.predikat)}` : (s?.konfigurasi_nilai_tersedia ? 'Nilai Berjalan' : 'Belum Dikonfigurasi')}</small>
-        </div>
-        <div class="dash-kpi-card stat">
-          <span class="label">Rata-rata Evaluasi</span>
-          <b>${fmt(s?.rata_evaluasi)}</b>
-          <small>${evalComponents.length} modul dinilai</small>
-        </div>
-        <div class="dash-kpi-card stat">
-          <span class="label">Rata-rata Asistensi</span>
-          <b>${fmt(s?.rata_asistensi)}</b>
-          <small>${asistComponents.length} asistensi dinilai</small>
-        </div>
-      </div>
-
-      <div class="dash-analytics-grid">
-        <section class="dash-chart-card card">
-          <div class="card-head">
-            <div>
-              <h2>Visualisasi Capaian &amp; Bobot Komponen</h2>
-              <p>Grafik capaian presensi, evaluasi tugas modul, dan kontribusi komponen ke nilai akhir.</p>
+        <section class="st-object-header">
+          <div class="st-object-main">
+            <div class="st-object-meta">
+              <span class="st-mono-code">${esc(r.kode_mata_kuliah)}</span>
+              <span class="st-sep">·</span>
+              <span>Frekuensi ${esc(r.kode_kelompok)}</span>
+              <span class="st-sep">·</span>
+              <span>${Number(sched.sks)} SKS</span>
+              <span class="st-sep">·</span>
+              <span>${esc(r.semester)} ${esc(r.tahun_akademik)}</span>
+            </div>
+            <div class="st-object-title-row">
+              <h1>${esc(r.nama_mata_kuliah)}</h1>
+              <span class="st-pill ${workflowTone}">${workflowLabel}</span>
+            </div>
+            <div class="st-schedule-bar">
+              <span class="st-schedule-when">
+                <span class="st-schedule-dot" aria-hidden="true"></span>
+                <strong>${esc(sched.dayName)}</strong>
+                <span class="st-sep">·</span>
+                <span class="num">${esc(sched.timeText)}</span>
+              </span>
+              <span class="st-schedule-room">Lab ${esc(roomClean)}</span>
             </div>
           </div>
-          <div class="card-body">
-            <div class="dash-radial-grid">
-              ${renderRadialGaugeSvg(att.persentase, '#0f766e', 'Presensi', `${att.total_hadir} dari ${att.total_sesi} sesi`, `${att.total_hadir}/${att.total_sesi}`)}
-              ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(s?.rata_evaluasi) || 0)), '#0284c7', 'Evaluasi', 'Tugas & modul praktikum', fmt(s?.rata_evaluasi))}
-              ${renderRadialGaugeSvg(Math.min(100, Math.max(0, Number(s?.rata_asistensi) || 0)), '#0d9488', 'Asistensi', 'Konsultasi & laporan', fmt(s?.rata_asistensi))}
-            </div>
 
-            <div class="dash-course-chart">
-              <div class="dash-subhead">
-                <strong>Distribusi Komponen &amp; Bobot Nilai Akhir</strong>
+          <div class="st-object-team">
+            <div class="st-team-cell">
+              <span class="st-person-role">Dosen pengampu</span>
+              ${apiStudentPersonChip(sched.dosen, 0)}
+            </div>
+            <div class="st-team-cell">
+              <span class="st-person-role">Asisten utama</span>
+              ${apiStudentPersonChip(sched.asisten_1, 1)}
+            </div>
+            <div class="st-team-cell">
+              <span class="st-person-role">Asisten 2</span>
+              ${apiStudentPersonChip(sched.asisten_2, 2)}
+            </div>
+            ${sched.asisten_3 ? `
+              <div class="st-team-cell">
+                <span class="st-person-role">Pendamping teknis</span>
+                ${apiStudentPersonChip(sched.asisten_3, 3)}
               </div>
-              ${componentBarsHtml}
-            </div>
+            ` : ''}
           </div>
         </section>
 
-        <div class="dash-side-stack">
-          <section class="card">
-            <div class="card-head">
-              <h2>Informasi Pelaksanaan</h2>
-            </div>
-            <div class="card-body">
-              <div class="dash-personnel-list">
-                <div class="dash-personnel-item">
-                  ${iconSvg('calendar')}
-                  <div class="dash-personnel-copy">
-                    <span class="dash-personnel-role">Hari &amp; Jam</span>
-                    <strong class="dash-personnel-name">${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
-                  </div>
-                </div>
-                <div class="dash-personnel-item">
-                  ${iconSvg('grid')}
-                  <div class="dash-personnel-copy">
-                    <span class="dash-personnel-role">Laboratorium</span>
-                    <strong class="dash-personnel-name">${esc(sched.room)}</strong>
-                  </div>
-                </div>
-                <div class="dash-personnel-item">
-                  ${iconSvg('clock')}
-                  <div class="dash-personnel-copy">
-                    <span class="dash-personnel-role">Beban Akademik</span>
-                    <strong class="dash-personnel-name">${sched.sks} SKS · ${esc(r.semester)} ${esc(r.tahun_akademik)}</strong>
-                  </div>
-                </div>
+        <section class="st-kpi-strip" aria-label="Ringkasan capaian frekuensi">
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Total kehadiran</span>
+            <div class="st-kpi-value num">${Number(att.total_hadir)} <small>/ ${Number(att.total_sesi)} sesi (${Number(att.persentase)}%)</small></div>
+            <div class="st-kpi-delta">Hadir ${hadirCount} · Izin ${izinCount} · Sakit ${sakitCount} · Alpa ${alpaCount}</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Rata-rata evaluasi</span>
+            ${s?.rata_evaluasi != null
+              ? `<div class="st-kpi-value num">${fmt(s.rata_evaluasi)} <small>/ 100</small></div>`
+              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+            <div class="st-kpi-delta">${classMeetings.length ? `${classMeetings.length} lembar pertemuan tercatat` : `${evalComponents.length} modul dievaluasi`}</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Rata-rata asistensi</span>
+            ${s?.rata_asistensi != null
+              ? `<div class="st-kpi-value num">${fmt(s.rata_asistensi)} <small>/ 100</small></div>`
+              : `<div class="st-kpi-value is-empty">Belum dinilai</div>`}
+            <div class="st-kpi-delta">${asistComponents.length ? `${asistComponents.length} komponen asistensi` : 'Menunggu rekap asistensi'}</div>
+          </div>
+          <div class="st-kpi-cell">
+            <span class="st-kpi-label">Nilai akhir</span>
+            ${s?.nilai_akhir != null
+              ? `<div class="st-kpi-value num">${fmt(s.nilai_akhir)} ${s?.predikat ? `<small>(${esc(s.predikat)})</small>` : ''}</div>`
+              : `<div class="st-kpi-value is-empty">Nilai berjalan</div>`}
+            <div class="st-kpi-delta">${workflowLabel}</div>
+          </div>
+        </section>
+
+        <div class="st-detail-grid">
+          <section class="st-panel">
+            <header class="st-panel-head">
+              <div>
+                <h2>Realisasi sesi &amp; tren evaluasi pertemuan</h2>
+                <p class="st-panel-sub">Garis waktu kehadiran P1–P14 serta grafik nilai per sesi praktikum.</p>
               </div>
+              <span class="st-legend-inline">
+                <span><i class="st-dot is-hadir"></i> Hadir</span>
+                <span><i class="st-dot is-izin"></i> Izin/Sakit</span>
+                <span><i class="st-dot is-alpa"></i> Alpa</span>
+              </span>
+            </header>
+            <div class="st-session-block" style="margin-bottom:16px">
+              ${apiRenderStudentSessionStrip(attendance, 14)}
+            </div>
+            <div id="st-detail-chart" class="st-chart-box"></div>
+            <div class="st-chart-foot">
+              <span>Target kehadiran minimum: <strong>75%</strong> (maks. 3 ketidakhadiran dari 14 sesi)</span>
+              <span class="num">Realisasi saat ini: <strong>${Number(att.total_hadir)} / ${Number(att.total_sesi)} sesi (${Number(att.persentase)}%)</strong></span>
             </div>
           </section>
 
-          <section class="card">
-            <div class="card-head">
-              <h2>Pengajar &amp; Asisten</h2>
-            </div>
-            <div class="card-body">
-              <div class="dash-personnel-list">
-                <div class="dash-personnel-item">
-                  ${iconSvg('users')}
-                  <div class="dash-personnel-copy">
-                    <span class="dash-personnel-role">Dosen Pengampu</span>
-                    <strong class="dash-personnel-name">${esc(sched.dosen)}</strong>
-                  </div>
-                </div>
-                <div class="dash-personnel-item">
-                  ${iconSvg('shield-check')}
-                  <div class="dash-personnel-copy">
-                    <span class="dash-personnel-role">Asisten Utama (1)</span>
-                    <strong class="dash-personnel-name">${esc(sched.asisten_1)}</strong>
-                  </div>
-                </div>
-                ${sched.asisten_2 ? `
-                  <div class="dash-personnel-item">
-                    ${iconSvg('users')}
-                    <div class="dash-personnel-copy">
-                      <span class="dash-personnel-role">Asisten Pendukung (2)</span>
-                      <strong class="dash-personnel-name">${esc(sched.asisten_2)}</strong>
-                    </div>
-                  </div>
-                ` : ''}
-                ${sched.asisten_3 ? `
-                  <div class="dash-personnel-item">
-                    ${iconSvg('users')}
-                    <div class="dash-personnel-copy">
-                      <span class="dash-personnel-role">Pendamping Teknis (3)</span>
-                      <strong class="dash-personnel-name">${esc(sched.asisten_3)}</strong>
-                    </div>
-                  </div>
-                ` : ''}
+          <section class="st-panel">
+            <header class="st-panel-head">
+              <div>
+                <h2>Distribusi komponen &amp; bobot</h2>
+                <p class="st-panel-sub">Proporsi kontribusi tiap komponen terhadap nilai akhir.</p>
               </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-head">
-              <h2>Status &amp; Panduan</h2>
-            </div>
-            <div class="card-body">
-              <div class="student-guide-box">
-                <div class="student-guide-item">
-                  ${iconSvg('check-circle')}
-                  <span>Status Verifikasi: <strong class="badge ${workflowTone}">${workflowLabel}</strong></span>
-                </div>
-                <div class="student-guide-item">
-                  ${iconSvg('check')}
-                  <span>Syarat minimal kehadiran untuk berhak mengikuti ujian adalah 75%.</span>
-                </div>
-                <div class="student-guide-item">
-                  ${iconSvg('check')}
-                  <span>Nilai akhir final disahkan setelah diverifikasi penuh oleh Dosen Pengampu.</span>
-                </div>
-                <div class="student-guide-item">
-                  ${iconSvg('check')}
-                  <span>Konsultasikan catatan evaluasi atau revisi tugas langsung dengan Asisten terkait.</span>
-                </div>
-              </div>
-            </div>
+            </header>
+            ${componentBarsHtml}
           </section>
         </div>
-      </div>
 
-      <div class="api-detail-tabs" role="tablist" aria-label="Rincian data frekuensi">
-        ${detailTabs.map(([key, label, count, iconName]) => `
-          <button type="button" role="tab" aria-selected="${key === activeTab}" data-api-detail-tab="${key}" class="${key === activeTab ? 'active' : ''}">
-            ${iconSvg(iconName)} <span>${label}</span><span class="tab-count">${count}</span>
-          </button>
-        `).join('')}
-      </div>
+        <nav class="st-underline-tabs" role="tablist" aria-label="Rincian data frekuensi">
+          ${detailTabs.map(([key, label, count]) => `
+            <button type="button" role="tab" class="st-utab ${activeTab === key ? 'active' : ''}" aria-selected="${activeTab === key}" data-api-detail-tab="${key}">
+              <span>${esc(label)}</span>
+              <small class="num">${Number(count)}</small>
+            </button>
+          `).join('')}
+        </nav>
 
-      <div class="api-detail-panel" data-api-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}>
-        <section class="card">
-          <div class="card-head">
-            <h2>Presensi Pertemuan Mahasiswa · ${att.total_hadir} Hadir (${att.persentase}%)</h2>
-            <p>Catatan kehadiran resmi Anda pada setiap pertemuan sesi praktikum.</p>
-          </div>
-          <div class="card-body">
+        <div class="api-detail-panel" data-api-panel="attendance" ${activeTab === 'attendance' ? '' : 'hidden'}>
+          <section class="st-panel">
+            <header class="st-panel-head">
+              <div>
+                <h2>Riwayat presensi praktikum</h2>
+                <p class="st-panel-sub">Daftar sesi pertemuan yang telah dicatat oleh asisten di laboratorium.</p>
+              </div>
+              <span class="st-panel-meta num">${hadirCount} hadir dari ${attendance.length} sesi</span>
+            </header>
             ${attendanceRows}
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
 
-      <div class="api-detail-panel" data-api-panel="components" ${activeTab === 'components' ? '' : 'hidden'}>
-        <section class="card">
-          <div class="card-head">
-            <h2>Komponen &amp; Bobot Nilai Akhir Semester</h2>
-            <p>Rincian perolehan nilai, bobot persentase, dan kontribusi poin pada kelas praktikum ini.</p>
-          </div>
-          <div class="card-body">
+        <div class="api-detail-panel" data-api-panel="meetings" ${activeTab === 'meetings' ? '' : 'hidden'}>
+          <section class="st-panel">
+            <header class="st-panel-head">
+              <div>
+                <h2>Evaluasi tiap pertemuan &amp; catatan asisten</h2>
+                <p class="st-panel-sub">Rincian nilai per kategori skema penilaian pada setiap pertemuan.</p>
+              </div>
+            </header>
+            ${meetingResult.error ? `<div class="warning" style="margin-bottom:12px">${esc(meetingResult.error)}</div>` : ''}
+            ${meetingRows}
+          </section>
+        </div>
+
+        <div class="api-detail-panel" data-api-panel="components" ${activeTab === 'components' ? '' : 'hidden'}>
+          <section class="st-panel">
+            <header class="st-panel-head">
+              <div>
+                <h2>Komponen nilai akhir</h2>
+                <p class="st-panel-sub">Bobot persentase dan kontribusi poin menuju nilai akhir mata kuliah.</p>
+              </div>
+            </header>
             ${componentRows}
-          </div>
-        </section>
-      </div>
-
-      <div class="api-detail-panel" data-api-panel="meetings" ${activeTab === 'meetings' ? '' : 'hidden'}>
-        <section class="card">
-          <div class="card-head">
-            <h2>Nilai Tiap Pertemuan &amp; Catatan Asisten</h2>
-            <p>Riwayat penilaian kategori dan catatan umpan balik asisten pada setiap sesi.</p>
-          </div>
-          ${meetingResult.error ? `<div class="warning" style="margin:16px 20px 0">${esc(meetingResult.error)}</div>` : ''}
-          ${meetingRows}
-        </section>
+          </section>
+        </div>
       </div>
     `;
+
+    if (window.Charts && $('#st-detail-chart')) {
+      if (classMeetings.length > 0) {
+        const sortedM = [...classMeetings].sort((a, b) => Number(a.nomor_pertemuan) - Number(b.nomor_pertemuan));
+        const labels = sortedM.map(m => `P${m.nomor_pertemuan}`);
+        const values = sortedM.map(m => Number(m.nilai_pertemuan) || 0);
+        window.Charts.bars($('#st-detail-chart'), {
+          labels,
+          values,
+          highlight: values.length - 1,
+          height: 185,
+          yTicks: [0, 25, 50, 75, 100],
+          tickFormat: v => String(Math.round(v)),
+          format: v => `${Number(v).toFixed(1)} poin`,
+          reference: { value: 75, label: 'Target 75' }
+        });
+      } else if (components.some(c => c.nilai != null)) {
+        const scored = components.filter(c => c.nilai != null);
+        window.Charts.bars($('#st-detail-chart'), {
+          labels: scored.map(c => c.nama_komponen || c.kode_komponen),
+          values: scored.map(c => Number(c.nilai) || 0),
+          highlight: scored.length - 1,
+          height: 185,
+          yTicks: [0, 25, 50, 75, 100],
+          tickFormat: v => String(Math.round(v)),
+          format: v => `${Number(v).toFixed(1)} / 100`
+        });
+      } else {
+        const maxP = Math.max(8, attendance.length);
+        const byP = new Map(attendance.map(a => [Number(a.nomor_pertemuan), a]));
+        const labels = Array.from({ length: maxP }, (_, i) => `P${i + 1}`);
+        const values = Array.from({ length: maxP }, (_, i) => {
+          const rec = byP.get(i + 1);
+          if (!rec) return 0;
+          return rec.status === 'HADIR' ? 100 : (rec.status === 'ALPA' ? 0 : 50);
+        });
+        window.Charts.bars($('#st-detail-chart'), {
+          labels,
+          values,
+          highlight: attendance.length ? attendance.length - 1 : 0,
+          height: 165,
+          yTicks: [0, 50, 100],
+          tickFormat: v => v === 100 ? 'Hadir' : (v === 50 ? 'Izin' : '0'),
+          format: v => v === 100 ? 'Hadir (100%)' : (v === 50 ? 'Izin/Sakit' : 'Belum / Alpa')
+        });
+      }
+    }
 
     $('#student-back-to-list').onclick = () => {
       window.selectedStudentClassId = null;
