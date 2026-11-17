@@ -1479,6 +1479,52 @@ async function apiClassDetail(id) {
     $('#api-back').onclick = apiClassList;
   }
 }
+function apiExtractStudentScheduleInfo(cls, fallbackFirst) {
+  const weekdays = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
+  let dayName = 'Jadwal Reguler', timeText = '—', room = 'Laboratorium';
+  let dosen = '—', asisten_1 = '—', asisten_2 = '', asisten_3 = '';
+  let sks = fallbackFirst?.sks || cls?.mata_kuliah?.sks || cls?.sks || 3;
+  let workflow = 'DRAF';
+
+  const schedSource = (cls && Array.isArray(cls.jadwal) && cls.jadwal.length)
+    ? (cls.jadwal.find(x => x.status === 'AKTIF') || cls.jadwal[0])
+    : (fallbackFirst?.jadwal_utama || (Array.isArray(fallbackFirst?.jadwal) && fallbackFirst.jadwal[0]) || null);
+
+  if (schedSource) {
+    if (schedSource.hari_ke) dayName = weekdays[schedSource.hari_ke] || dayName;
+    if (schedSource.jam_mulai && schedSource.jam_selesai) {
+      timeText = `${String(schedSource.jam_mulai).slice(0, 5)}–${String(schedSource.jam_selesai).slice(0, 5)}`;
+    }
+    room = schedSource.nama_laboratorium || schedSource.nama_ruang || room;
+    workflow = schedSource.status_workflow || workflow;
+    if (schedSource.dosen) dosen = schedSource.dosen;
+    if (schedSource.asisten_1) asisten_1 = schedSource.asisten_1;
+    if (schedSource.asisten_2) asisten_2 = schedSource.asisten_2;
+    if (schedSource.asisten_3) asisten_3 = schedSource.asisten_3;
+    if (Array.isArray(schedSource.pengajar) && schedSource.pengajar.length) {
+      const d = schedSource.pengajar.find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU');
+      if (d) dosen = d.nama || dosen;
+      const a1 = schedSource.pengajar.find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA');
+      if (a1) asisten_1 = a1.nama || asisten_1;
+      const a2 = schedSource.pengajar.find(p => p.peran === 'ASISTEN_PENGAJAR_PENDUKUNG' || p.kode_peran === 'ASISTEN_PENGAJAR_PENDUKUNG');
+      if (a2) asisten_2 = a2.nama || asisten_2;
+      const a3 = schedSource.pengajar.find(p => p.peran === 'PENDAMPING_TEKNIS' || p.kode_peran === 'PENDAMPING_TEKNIS');
+      if (a3) asisten_3 = a3.nama || asisten_3;
+    }
+  } else if (fallbackFirst) {
+    if (fallbackFirst.hari_ke) dayName = weekdays[fallbackFirst.hari_ke] || dayName;
+    if (fallbackFirst.jam_mulai && fallbackFirst.jam_selesai) {
+      timeText = `${String(fallbackFirst.jam_mulai).slice(0, 5)}–${String(fallbackFirst.jam_selesai).slice(0, 5)}`;
+    }
+    room = fallbackFirst.nama_laboratorium || fallbackFirst.nama_ruang || room;
+    if (fallbackFirst.dosen) dosen = fallbackFirst.dosen;
+    if (fallbackFirst.asisten_1) asisten_1 = fallbackFirst.asisten_1;
+    if (fallbackFirst.asisten_2) asisten_2 = fallbackFirst.asisten_2;
+    if (fallbackFirst.asisten_3) asisten_3 = fallbackFirst.asisten_3;
+    if (fallbackFirst.status_workflow) workflow = fallbackFirst.status_workflow;
+  }
+  return { dayName, timeText, room, dosen, asisten_1, asisten_2, asisten_3, sks, workflow };
+}
 async function apiStudentDashboard() {
   const view = $('#api-view');
   view.innerHTML = '<div class="empty">Memuat dashboard mahasiswa dari API pusat…</div>';
@@ -1544,28 +1590,21 @@ async function apiStudentDashboard() {
     const periodLabel = activePeriod?.academic_year ? `${activePeriod.academic_year} · ${activePeriod.semester || ''}` : 'Semester Aktif';
     const initials = (user.name || user.email || 'MU').split(/\s+/).map(x => x[0]).slice(0, 2).join('').toUpperCase();
 
-    const weekdays = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
     const schedules = [];
     courseList.forEach(g => {
       const cls = classMap.get(g.id);
-      if (cls && Array.isArray(cls.jadwal)) {
-        cls.jadwal.forEach(j => {
-          if (j.status === 'AKTIF') {
-            const dosen = (j.pengajar || []).find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU')?.nama || 'Dosen Pengampu';
-            const asisten = (j.pengajar || []).find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA')?.nama || '';
-            schedules.push({
-              courseCode: cls.mata_kuliah?.kode || g.first.kode_mata_kuliah,
-              courseName: cls.mata_kuliah?.nama || g.first.nama_mata_kuliah,
-              frequency: cls.kelompok?.kode || g.first.kode_kelompok,
-              dayName: weekdays[j.hari_ke] || 'Hari Belum Diatur',
-              timeText: `${j.jam_mulai}–${j.jam_selesai}`,
-              room: j.nama_laboratorium || 'Laboratorium',
-              dosen,
-              asisten
-            });
-          }
-        });
-      }
+      const sched = apiExtractStudentScheduleInfo(cls, g.first);
+      schedules.push({
+        courseCode: g.first.kode_mata_kuliah,
+        courseName: g.first.nama_mata_kuliah,
+        frequency: g.first.kode_kelompok,
+        dayName: sched.dayName,
+        timeText: sched.timeText,
+        room: sched.room,
+        dosen: sched.dosen,
+        asisten: sched.asisten_1,
+        asisten_2: sched.asisten_2,
+      });
     });
 
     const kpis = [
@@ -1650,12 +1689,7 @@ async function apiStudentDashboard() {
         ${courseList.map(g => {
           const r = g.first, s = g.summary, att = g.attendanceSummary;
           const cls = classMap.get(g.id);
-          const activeSchedule = (cls?.jadwal || []).find(j => j.status === 'AKTIF');
-          const dayName = activeSchedule ? (weekdays[activeSchedule.hari_ke] || '—') : '—';
-          const timeText = activeSchedule ? `${activeSchedule.jam_mulai}–${activeSchedule.jam_selesai}` : '—';
-          const labName = activeSchedule?.nama_laboratorium || 'Laboratorium';
-          const dosenName = activeSchedule?.pengajar?.find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU')?.nama || 'Dosen Pengampu';
-          const asistenName = activeSchedule?.pengajar?.find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA')?.nama || 'Asisten';
+          const sched = apiExtractStudentScheduleInfo(cls, r);
 
           return `
             <div class="student-course-card">
@@ -1668,21 +1702,31 @@ async function apiStudentDashboard() {
               </div>
               <div class="student-course-meta">
                 <div class="student-meta-item">
+                  <span class="label">Jadwal Praktikum</span>
+                  <strong>${esc(sched.dayName)}, ${esc(sched.timeText)}</strong>
+                </div>
+                <div class="student-meta-item">
                   <span class="label">Laboratorium</span>
-                  <strong>${esc(labName)}</strong>
+                  <strong>${esc(sched.room)}</strong>
                 </div>
                 <div class="student-meta-item">
-                  <span class="label">Jadwal</span>
-                  <strong>${esc(dayName)}, ${esc(timeText)}</strong>
-                </div>
-                <div class="student-meta-item">
-                  <span class="label">Dosen</span>
-                  <strong>${esc(dosenName)}</strong>
+                  <span class="label">Dosen Pengampu</span>
+                  <strong>${esc(sched.dosen)}</strong>
                 </div>
                 <div class="student-meta-item">
                   <span class="label">Asisten Utama</span>
-                  <strong>${esc(asistenName)}</strong>
+                  <strong>${esc(sched.asisten_1)}</strong>
                 </div>
+                <div class="student-meta-item">
+                  <span class="label">Asisten 2</span>
+                  <strong>${esc(sched.asisten_2 || '—')}</strong>
+                </div>
+                ${sched.asisten_3 ? `
+                  <div class="student-meta-item">
+                    <span class="label">Pendamping Teknis</span>
+                    <strong>${esc(sched.asisten_3)}</strong>
+                  </div>
+                ` : ''}
               </div>
               <div class="student-grade-pills">
                 <div class="student-grade-pill ${att.persentase >= 75 ? 'highlight' : ''}">
@@ -1868,34 +1912,7 @@ async function apiStudentGrades() {
     const attendanceLabel = { HADIR: 'Hadir', IZIN: 'Izin', SAKIT: 'Sakit', ALPA: 'Alpa', TERLAMBAT: 'Terlambat' };
     const studentNim = user.nim || (rows[0]?.nim) || user.email.split('@')[0];
 
-    const weekdays = { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Minggu' };
-    function extractScheduleInfo(cls, fallbackFirst) {
-      let dayName = 'Jadwal Reguler', timeText = '—', room = 'Laboratorium';
-      let dosen = '—', asisten_1 = '—', asisten_2 = '', asisten_3 = '';
-      let sks = fallbackFirst?.sks || cls?.mata_kuliah?.sks || cls?.sks || 3;
-      let workflow = 'DRAF';
-
-      if (cls && Array.isArray(cls.jadwal) && cls.jadwal.length) {
-        const j = cls.jadwal.find(x => x.status === 'AKTIF') || cls.jadwal[0];
-        if (j) {
-          if (j.hari_ke) dayName = weekdays[j.hari_ke] || dayName;
-          if (j.jam_mulai && j.jam_selesai) timeText = `${String(j.jam_mulai).slice(0, 5)}–${String(j.jam_selesai).slice(0, 5)}`;
-          room = j.nama_laboratorium || j.nama_ruang || room;
-          workflow = j.status_workflow || workflow;
-          if (Array.isArray(j.pengajar)) {
-            const d = j.pengajar.find(p => p.peran === 'DOSEN_PENGAMPU' || p.kode_peran === 'DOSEN_PENGAMPU');
-            if (d) dosen = d.nama || 'Dosen Pengampu';
-            const a1 = j.pengajar.find(p => p.peran === 'ASISTEN_UTAMA' || p.kode_peran === 'ASISTEN_UTAMA');
-            if (a1) asisten_1 = a1.nama || 'Asisten 1';
-            const a2 = j.pengajar.find(p => p.peran === 'ASISTEN_PENGAJAR_PENDUKUNG' || p.kode_peran === 'ASISTEN_PENGAJAR_PENDUKUNG');
-            if (a2) asisten_2 = a2.nama || '';
-            const a3 = j.pengajar.find(p => p.peran === 'PENDAMPING_TEKNIS' || p.kode_peran === 'PENDAMPING_TEKNIS');
-            if (a3) asisten_3 = a3.nama || '';
-          }
-        }
-      }
-      return { dayName, timeText, room, dosen, asisten_1, asisten_2, asisten_3, sks, workflow };
-    }
+    const extractScheduleInfo = (cls, fallbackFirst) => apiExtractStudentScheduleInfo(cls, fallbackFirst);
 
     if (!groups.size) {
       view.innerHTML = `<div class="intro"><h1>Nilai &amp; Presensi Praktikum</h1><p>${esc(user.name)} · Hasil Penilaian &amp; Presensi Praktikum</p></div><section class="card"><div class="empty">Tidak ada kelas praktikum yang terdaftar untuk akun Anda.</div></section>`;
@@ -2003,6 +2020,16 @@ async function apiStudentGrades() {
                         <span class="label">Asisten Utama</span>
                         <strong>${esc(sched.asisten_1)}</strong>
                       </div>
+                      <div class="student-meta-item">
+                        <span class="label">Asisten 2</span>
+                        <strong>${esc(sched.asisten_2 || '—')}</strong>
+                      </div>
+                      ${sched.asisten_3 ? `
+                        <div class="student-meta-item">
+                          <span class="label">Pendamping Teknis</span>
+                          <strong>${esc(sched.asisten_3)}</strong>
+                        </div>
+                      ` : ''}
                     </div>
 
                     <div class="student-grade-pills">

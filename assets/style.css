@@ -2899,8 +2899,8 @@ dialog select.assistant-select-error {
 
 .app .student-course-meta {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 12px;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 10px 14px;
     padding: 10px 14px;
     background: #f8fafc;
     border: 1px solid var(--border, #e2e8f0);
